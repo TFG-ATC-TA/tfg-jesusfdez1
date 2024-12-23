@@ -23,12 +23,13 @@ export async function middleware(req: NextRequest) {
       const userRole = token.role as string
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
-    return NextResponse.next()
+    // Redirigir a /login si no está autenticado en la página principal
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
   if (!isAuth) {
     // Redirect to the login page if not authenticated
-    return NextResponse.redirect(new URL('/', req.url))
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
   // Si el usuario está autenticado, verifica el acceso basado en el rol
