@@ -3,8 +3,8 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import UserAuthForm from '@/components/forms/sign-in-form'
-import { Milk } from 'lucide-react'
 import VideoBackground from '@/components/layout/video-background'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import ThemeToggle from '@/components/layout/theme-toggle';
@@ -50,8 +50,17 @@ export default function AuthenticationPage() {
         
         <div className="relative z-10 w-full max-w-md mx-4 my-8 p-6 bg-background/95 dark:bg-background/90 rounded-lg shadow-xl lg:mx-0 lg:my-0 lg:mr-24">
           <div className="flex items-center justify-center mb-6">
-            <Milk className="h-8 w-8 text-primary mr-2" />
-            <span className="font-bold text-xl text-foreground">LactoKeeper</span>
+            <Image
+              src="/logo.png"
+              alt="LactoKeeper Logo"
+              width={52}
+              height={52}
+              className="text-primary mr-2 dark:opacity-80"
+            />
+            <span className="font-['LT_Saeada'] text-2xl text-foreground flex flex-col items-center leading-none">
+              LACTO
+              <span className="text-primary">KEEPER</span>
+            </span>
           </div>
           
           <div className="space-y-6">
