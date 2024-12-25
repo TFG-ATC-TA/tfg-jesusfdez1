@@ -2,10 +2,10 @@ import { NavItem } from '@/types';
 import { Tractor, Users, TabletSmartphone, Bell } from 'lucide-react';
 
 export const navItems: NavItem[] = [
-    { name: 'Granjas', icon: Tractor, href: '/dashboard/farms', roles: ['Administrador', 'Ganadero', 'Veterinario', 'Industria'], description: 'Gestiona las granjas y visualiza su información' },
-    { name: 'Usuarios', icon: Users, href: '/dashboard/users', roles: ['Administrador'], description: 'Administra los usuarios del sistema' },
-    { name: 'Dispositivos', icon: TabletSmartphone, href: '/dashboard/devices', roles: ['Administrador'], description: 'Administra los dispositivos del sistema' },
-    { name: 'Notificaciones', icon: Bell, href: '/dashboard/notifications', roles: ['Administrador', 'Ganadero', 'Veterinario', 'Industria'], description: 'Accede a las notificaciones del sistema' },
+    { name: 'Granjas', icon: Tractor, href: '/farms', roles: ['Administrador', 'Ganadero', 'Veterinario', 'Industria'], description: 'Gestiona las granjas y visualiza su información' },
+    { name: 'Usuarios', icon: Users, href: '/users', roles: ['Administrador'], description: 'Administra los usuarios del sistema' },
+    { name: 'Dispositivos', icon: TabletSmartphone, href: '/devices', roles: ['Administrador'], description: 'Administra los dispositivos del sistema' },
+    { name: 'Notificaciones', icon: Bell, href: '/notifications', roles: ['Administrador', 'Ganadero', 'Veterinario', 'Industria'], description: 'Accede a las notificaciones del sistema' },
   ];
 
 export const roleColors: { [key: string]: string } = {
