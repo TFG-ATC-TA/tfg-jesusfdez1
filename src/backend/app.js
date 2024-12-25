@@ -3,6 +3,9 @@ var express = require('express');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
+var indexRouter = require('./routes/index');
+
+
 var app = express();
 const connectDB = require('./config/db'); // Ruta hacia el archivo de conexión de la base de datos
 
@@ -12,6 +15,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+app.use('/', indexRouter);
 
 // Conectar a la base de datos
 connectDB();

@@ -8,7 +8,7 @@ import { navItems } from './constants/data'
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const isAuth = !!token
-  const isAuthPage = req.nextUrl.pathname === '/'
+  const isLoginPage = req.nextUrl.pathname === '/login'
   
   // Función para verificar si una ruta está permitida para un rol
   const isRouteAllowed = (pathname: string, userRole: string) => {
@@ -17,14 +17,11 @@ export async function middleware(req: NextRequest) {
     )
   }
 
-
-  if (isAuthPage) {
+  if (isLoginPage) {
     if (isAuth) {
-      const userRole = token.role as string
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      return NextResponse.redirect(new URL('/', req.url))
     }
-    // Redirigir a /login si no está autenticado en la página principal
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.next()
   }
 
   if (!isAuth) {
@@ -36,11 +33,11 @@ export async function middleware(req: NextRequest) {
   const userRole = token.role as string
   const pathname = req.nextUrl.pathname
 
-  if (pathname === '/dashboard') {
+  if (pathname === '/') {
     return NextResponse.next();
-  } else if (pathname.startsWith('/dashboard')) {
+  } else {
     if (!isRouteAllowed(pathname, userRole)) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+      return NextResponse.redirect(new URL('/', req.url))
     }
     // Verifica si la ruta existe en navItems
     const exists = navItems.some(item => pathname === item.href)

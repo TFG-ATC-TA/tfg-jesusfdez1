@@ -1,4 +1,3 @@
-
 import Providers from '@/components/layout/providers';
 import { Toaster } from '@/components/ui/toaster';
 import type { Metadata } from 'next';

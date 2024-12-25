@@ -56,7 +56,7 @@ export default function Component() {
       if (result?.error) {
         setError(result.error); // Mostrar el mensaje de error enviado por el servidor
       } else if (result?.ok) {
-        router.push('/dashboard');
+        router.push('/');
       }
     } catch (error) {
       console.error('Login error:', error);
