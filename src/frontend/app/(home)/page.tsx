@@ -5,6 +5,7 @@ import PageContainer from '@/components/layout/page-container';
 import { navItems } from '@/constants/data'
 import { Settings } from 'lucide-react'
 import { motion } from "framer-motion"
+import { AuroraBackground } from "@/components/layout/aurora-background"
 
 export default function Component() {
   const { data: session } = useSession()
@@ -15,6 +16,7 @@ export default function Component() {
   )
 
   return (
+    <AuroraBackground>
     <PageContainer scrollable={true}>
         <div className="container mx-auto px-4 sm:px-6 pb-2 pt-6 sm:pt-12 max-w-5xl">
           <motion.div 
@@ -80,5 +82,6 @@ export default function Component() {
           </motion.div>
         </div>
       </PageContainer>
+    </AuroraBackground>
   )
 }
