@@ -3,6 +3,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { LucideIcon, Settings, LogOut } from "lucide-react";
 import { ExpandableTabs } from "@/components/ui/expandable-tabs";
+import { SettingsModal } from '../modals/settings-modal';
 import { navItems } from '@/constants/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -95,6 +96,7 @@ export function MobileSidebar({ className }: SidebarProps) {
           </DropdownMenu>
         </div>
       </div>
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </>
   );
 }

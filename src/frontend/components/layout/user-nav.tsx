@@ -18,6 +18,7 @@ import {
 import { signOut, useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Settings, LogOut } from 'lucide-react';
+import { SettingsModal } from '../modals/settings-modal';
 import { Badge } from '@/components/ui/badge';
 import { roleColors } from '@/constants/data';
 
@@ -88,6 +89,7 @@ export function UserNav({ isMinimized }: UserNavProps) {
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       </>
     );
   }
