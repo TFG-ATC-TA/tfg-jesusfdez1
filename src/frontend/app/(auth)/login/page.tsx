@@ -51,7 +51,7 @@ export default function AuthenticationPage() {
         <div className="relative z-10 w-full max-w-md mx-4 my-8 p-6 bg-background/95 dark:bg-background/90 rounded-lg shadow-xl lg:mx-0 lg:my-0 lg:mr-24">
           <div className="flex items-center justify-center mb-6">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="LactoKeeper Logo"
               width={52}
               height={52}

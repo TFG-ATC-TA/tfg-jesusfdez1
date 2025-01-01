@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, Milk } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { useSidebar } from '@/hooks/useSidebar';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,8 @@ import { navItems } from '@/constants/data';
 import { UserNav } from '@/components/layout/user-nav';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+
 type SidebarProps = {
   className?: string;
 };
@@ -27,20 +29,50 @@ export default function Sidebar({ className }: SidebarProps) {
         className
       )}
     >
-      <div className="flex items-center justify-between p-4">
-        <Link href="/dashboard" className="flex items-center space-x-2">
-          <Milk className="h-9 w-8 text-primary" />
-          <span className={cn('font-bold text-xl', isMinimized && 'hidden')}>LactoKeeper</span>
+      <div className={cn(
+        "flex items-center",
+        isMinimized 
+          ? "justify-center px-3 pt-7 pb-3" 
+          : "justify-between px-6 pt-7 pb-4"
+      )}>
+        <Link href="/dashboard" className={cn("flex items-center justify-center", isMinimized ? "w-full ml-1" : "")}>
+          <Image
+            src="/logo.svg"
+            alt="LactoKeeper Logo"
+            width="50"
+            height="50"
+            className="text-primary dark:opacity-80"
+          />
+          {!isMinimized && (
+            <span className="font-['LT_Saeada'] text-2xl text-foreground flex flex-col items-center leading-none ml-4">
+              LACTO
+              <span className="text-primary">KEEPER</span>
+            </span>
+          )}
         </Link>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={toggle}
-          className="rounded-md border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground "
-        >
-          <ChevronLeft className={cn("h-4 w-4", isMinimized && 'rotate-180')} />
-        </Button>
+        {!isMinimized && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggle}
+            className="rounded-md border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
       </div>
+      {isMinimized && (
+        <div className="flex justify-center mt-2 mb-8">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggle}
+            className="rounded-md border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <ChevronLeft className="h-4 w-4 rotate-180" />
+          </Button>
+        </div>
+      )}
       <div className="flex-grow py-6 flex flex-col px-3">
         <nav className="space-y-3">
           {navItems
