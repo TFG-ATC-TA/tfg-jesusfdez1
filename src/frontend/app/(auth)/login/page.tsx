@@ -48,22 +48,22 @@ export default function AuthenticationPage() {
           <ThemeToggle />
         </div>
         
-        <div className="relative z-10 w-full max-w-md mx-4 my-8 p-6 bg-background/95 dark:bg-background/90 rounded-lg shadow-xl lg:mx-0 lg:my-0 lg:mr-24">
-          <div className="flex items-center justify-center mb-6">
+        <div className="relative z-10 w-full max-w-md mx-4 my-9 p-6 bg-background/95 dark:bg-background/90 rounded-lg shadow-xl lg:mx-0 lg:my-0 lg:mr-24">
+          <div className="flex items-center justify-center mb-8 mt-3">
             <Image
               src="/logo.svg"
               alt="LactoKeeper Logo"
-              width={52}
-              height={52}
-              className="text-primary mr-2 dark:opacity-80"
+              width={66}
+              height={66}
+              className="text-primary mr-4 dark:opacity-80"
             />
-            <span className="font-['LT_Saeada'] text-2xl text-foreground flex flex-col items-center leading-none">
+            <span className="font-['LT_Saeada'] text-3xl text-foreground flex flex-col items-center leading-none">
               LACTO
               <span className="text-primary">KEEPER</span>
             </span>
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="text-center">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Iniciar sesión

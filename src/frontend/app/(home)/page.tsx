@@ -10,6 +10,9 @@ import { AuroraBackground } from "@/components/layout/aurora-background"
 export default function Component() {
   const { data: session } = useSession()
   const userRole = session?.user?.role || 'Usuario'
+  
+  // Only show name if it has 16 or fewer characters
+  const displayName = session?.user?.name && session.user.name.length <= 16 ? session.user.name : ''
 
   const allowedNavItems = navItems.filter(item => 
     item.roles.includes(userRole)
@@ -27,7 +30,7 @@ export default function Component() {
           >
             <div className="text-center">
               <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-                Hola {session?.user?.name || 'Usuario'} 
+                Hola {displayName} 
               </h1>
               <p className="mt-2 sm:mt-4 text-base sm:text-xl text-gray-600 dark:text-neutral-200 font-light">
                 Tu espacio personal para gestionar la información de tus granjas
