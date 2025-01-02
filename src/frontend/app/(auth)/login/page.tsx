@@ -1,13 +1,23 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import UserAuthForm from '@/components/forms/sign-in-form'
-import VideoBackground from '@/components/layout/video-background'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import ThemeToggle from '@/components/layout/theme-toggle';
+
+// Dynamically import client-only components with no SSR
+const VideoBackground = dynamic(
+  () => import('@/components/layout/video-background'),
+  { ssr: false }
+)
+
+const ThemeToggle = dynamic(
+  () => import('@/components/layout/theme-toggle'),
+  { ssr: false }
+)
 
 const videos = [
   '/vid/signin/108077-679386057.mp4',
@@ -44,9 +54,11 @@ export default function AuthenticationPage() {
           <div className="absolute inset-0 bg-background/60 dark:bg-background/80" />
         </div>
         
-        <div className="absolute top-4 right-4 z-20">
-          <ThemeToggle />
-        </div>
+        {isMounted && (
+          <div className="absolute top-4 right-4 z-20">
+            <ThemeToggle />
+          </div>
+        )}
         
         <div className="relative z-10 w-full max-w-md mx-4 my-9 p-6 bg-background/95 dark:bg-background/90 rounded-lg shadow-xl lg:mx-0 lg:my-0 lg:mr-24">
           <div className="flex items-center justify-center mb-8 mt-3">
@@ -57,7 +69,8 @@ export default function AuthenticationPage() {
               height={66}
               className="text-primary mr-4 dark:opacity-80"
             />
-            <span className="font-['LT_Saeada'] text-3xl text-foreground flex flex-col items-center leading-none">
+            {/* Use a className conditional on client-side mounting to prevent font hydration issues */}
+            <span className={`text-3xl text-foreground flex flex-col items-center leading-none ${isMounted ? "font-['LT_Saeada']" : "font-sans"}`}>
               LACTO
               <span className="text-primary">KEEPER</span>
             </span>

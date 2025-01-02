@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
@@ -34,7 +34,14 @@ export default function Component() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
+  
+  // Set isMounted to true once component is mounted on client side
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,7 +61,7 @@ export default function Component() {
       });
 
       if (result?.error) {
-        setError(result.error); // Mostrar el mensaje de error enviado por el servidor
+        setError(result.error);
       } else if (result?.ok) {
         router.push('/');
       }
@@ -65,6 +72,27 @@ export default function Component() {
       setLoading(false);
     }
   };
+
+  // Use a simple placeholder during server-side rendering to avoid hydration mismatch
+  if (!isMounted) {
+    return (
+      <div className="w-full max-w-md mx-auto space-y-2">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="font-medium">Correo electrónico</div>
+            <div className="h-10 bg-white dark:bg-gray-800 rounded-md border"></div>
+          </div>
+          <div className="space-y-2">
+            <div className="font-medium">Contraseña</div>
+            <div className="h-10 bg-white dark:bg-gray-800 rounded-md border"></div>
+          </div>
+          <button className="w-full h-10 bg-primary/90 rounded-md text-white font-medium">
+            Iniciar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto space-y-2">
