@@ -5,16 +5,80 @@ import PageContainer from '@/components/layout/page-container';
 import { navItems } from '@/constants/data'
 import { Settings } from 'lucide-react'
 import { motion } from "framer-motion"
+import { AuroraBackground } from "@/components/layout/aurora-background"
+import { useState, useEffect } from "react";
+import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/user-service';
 
 export default function Component() {
-  const { data: session } = useSession()
-  const userRole = session?.user?.role || 'Usuario'
+  const { data: session } = useSession();
+  const [userData, setUserData] = useState({
+    name: '',
+    surname: '',
+    role: ''
+  });
+  
+  // Solo mostrar nombre si tiene 16 o menos caracteres
+  const displayName = userData.name && userData.name.length <= 16 ? userData.name : '';
+  const userRole = userData.role || 'Usuario';
+
+  // Inicializar datos de usuario desde localStorage o sesión
+  useEffect(() => {
+    const localData = getUserLocalData();
+    
+    if (localData) {
+      // Si hay datos en localStorage, tienen prioridad
+      setUserData(prev => ({
+        ...prev,
+        name: localData.name || prev.name,
+        surname: localData.surname || prev.surname,
+        role: localData.role || prev.role
+      }));
+    } else if (session?.user) {
+      // Si no hay datos en localStorage, usar los de la sesión
+      setUserData({
+        name: session.user.name || '',
+        surname: session.user.surname || '',
+        role: session.user.role || ''
+      });
+    }
+  }, [session]);
+
+  // Suscribirse a actualizaciones del perfil de usuario
+  useUserProfileUpdates((updatedData: UserProfileUpdate) => {
+    setUserData(prev => ({
+      ...prev,
+      ...updatedData
+    }));
+  });
+
+  // También escuchar el evento user-data-changed para actualizaciones directas
+  useEffect(() => {
+    const handleUserDataChanged = (event: CustomEvent<UserProfileUpdate>) => {
+      setUserData(prev => ({
+        ...prev,
+        ...event.detail
+      }));
+    };
+
+    window.addEventListener(
+      'user-data-changed',
+      handleUserDataChanged as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        'user-data-changed',
+        handleUserDataChanged as EventListener
+      );
+    };
+  }, []);
 
   const allowedNavItems = navItems.filter(item => 
     item.roles.includes(userRole)
   )
 
   return (
+    <AuroraBackground>
     <PageContainer scrollable={true}>
         <div className="container mx-auto px-4 sm:px-6 pb-2 pt-6 sm:pt-12 max-w-5xl">
           <motion.div 
@@ -25,7 +89,7 @@ export default function Component() {
           >
             <div className="text-center">
               <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-                Hola {session?.user?.name || 'Usuario'} 
+                Hola {displayName} 
               </h1>
               <p className="mt-2 sm:mt-4 text-base sm:text-xl text-gray-600 dark:text-neutral-200 font-light">
                 Tu espacio personal para gestionar la información de tus granjas
@@ -80,5 +144,6 @@ export default function Component() {
           </motion.div>
         </div>
       </PageContainer>
+    </AuroraBackground>
   )
 }

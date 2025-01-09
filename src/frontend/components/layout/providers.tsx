@@ -3,6 +3,8 @@
 import React from 'react';
 import { ThemeProvider } from 'next-themes';
 import { SessionProvider } from 'next-auth/react';
+import { UserProvider } from '@/hooks/useUserContext';
+import { SessionUpdateListener } from '@/components/layout/session-update-listener';
 
 export default function Providers({
   children
@@ -12,7 +14,10 @@ export default function Providers({
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <SessionProvider>
-        {children}
+        <UserProvider>
+          <SessionUpdateListener />
+          {children}
+        </UserProvider>
       </SessionProvider>
     </ThemeProvider>
   );

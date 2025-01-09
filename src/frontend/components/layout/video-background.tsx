@@ -10,22 +10,41 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState(1)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   
   const currentVideoRef = useRef<HTMLVideoElement>(null)
   const nextVideoRef = useRef<HTMLVideoElement>(null)
 
-  const bufferTime = 2 // Start transition 0.5 seconds before video ends
+  const bufferTime = 2 // Start transition 2 seconds before video ends
+
+  // Handle initial client-side mounting
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
+    if (!isMounted) return;
+    
     const currentVideo = currentVideoRef.current
     const nextVideo = nextVideoRef.current
 
     if (!currentVideo || !nextVideo) return
 
+    // Auto-play the first video after mounting
+    const playVideo = async () => {
+      try {
+        await currentVideo.play();
+      } catch (error) {
+        console.error('Error playing video:', error);
+      }
+    }
+    
+    playVideo();
+
     const handleTimeUpdate = () => {
       if (currentVideo.duration - currentVideo.currentTime <= bufferTime && !isTransitioning) {
         setIsTransitioning(true)
-        nextVideo.play()
+        nextVideo.play().catch(err => console.error('Error playing next video:', err))
       }
     }
 
@@ -42,13 +61,20 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
       currentVideo.removeEventListener('timeupdate', handleTimeUpdate)
       nextVideo.removeEventListener('transitionend', handleTransitionEnd)
     }
-  }, [currentIndex, nextIndex, videos.length, isTransitioning])
+  }, [currentIndex, nextIndex, videos.length, isTransitioning, isMounted])
 
   useEffect(() => {
+    if (!isMounted) return;
+    
     if (nextVideoRef.current) {
       nextVideoRef.current.load()
     }
-  }, [nextIndex])
+  }, [nextIndex, isMounted])
+
+  // Don't render anything during SSR
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -57,7 +83,6 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
         key={`video-${currentIndex}`}
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-2000 ease-in-out"
         style={{ opacity: isTransitioning ? 0 : 1 }}
-        autoPlay
         muted
         playsInline
       >
