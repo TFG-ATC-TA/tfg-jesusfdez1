@@ -53,6 +53,12 @@ export default function Component() {
   const onSubmit = async (data: UserFormValues) => {
     setLoading(true);
     setError(null);
+    
+    // Limpiar localStorage al iniciar sesión para evitar conflictos con datos antiguos
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('lactokeeper-user-data');
+    }
+    
     try {
       const result = await signIn('credentials', {
         redirect: false,
@@ -61,9 +67,12 @@ export default function Component() {
       });
 
       if (result?.error) {
-        setError(result.error);
+        setError(result.error); // Mostrar el mensaje de error enviado por el servidor
       } else if (result?.ok) {
-        router.push('/');
+        // Retrasamos la redirección para asegurarnos de que la sesión se haya cargado completamente
+        setTimeout(() => {
+          router.push('/');
+        }, 100);
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -72,27 +81,6 @@ export default function Component() {
       setLoading(false);
     }
   };
-
-  // Use a simple placeholder during server-side rendering to avoid hydration mismatch
-  if (!isMounted) {
-    return (
-      <div className="w-full max-w-md mx-auto space-y-2">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="font-medium">Correo electrónico</div>
-            <div className="h-10 bg-white dark:bg-gray-800 rounded-md border"></div>
-          </div>
-          <div className="space-y-2">
-            <div className="font-medium">Contraseña</div>
-            <div className="h-10 bg-white dark:bg-gray-800 rounded-md border"></div>
-          </div>
-          <button className="w-full h-10 bg-primary/90 rounded-md text-white font-medium">
-            Iniciar sesión
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-md mx-auto space-y-2">
@@ -131,7 +119,7 @@ export default function Component() {
                 <FormControl>
                   <div className="relative">
                     <Input
-                      type={showPassword ? "text" : "password"}
+                      type={isMounted && showPassword ? "text" : "password"}
                       placeholder="Introduce tu contraseña"
                       disabled={loading}
                       className="bg-white dark:bg-gray-800 text-black dark:text-white"
@@ -141,13 +129,15 @@ export default function Component() {
                         setError(null);
                       }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 top-2 mt-1 mr-1"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    {isMounted && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-2 mt-1 mr-1"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    )}
                   </div>
                 </FormControl>
                 <FormMessage className="text-red-500" />

@@ -6,13 +6,72 @@ import { navItems } from '@/constants/data'
 import { Settings } from 'lucide-react'
 import { motion } from "framer-motion"
 import { AuroraBackground } from "@/components/layout/aurora-background"
+import { useState, useEffect } from "react";
+import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/user-service';
 
 export default function Component() {
-  const { data: session } = useSession()
-  const userRole = session?.user?.role || 'Usuario'
+  const { data: session } = useSession();
+  const [userData, setUserData] = useState({
+    name: '',
+    surname: '',
+    role: ''
+  });
   
-  // Only show name if it has 16 or fewer characters
-  const displayName = session?.user?.name && session.user.name.length <= 16 ? session.user.name : ''
+  // Solo mostrar nombre si tiene 16 o menos caracteres
+  const displayName = userData.name && userData.name.length <= 16 ? userData.name : '';
+  const userRole = userData.role || 'Usuario';
+
+  // Inicializar datos de usuario desde localStorage o sesión
+  useEffect(() => {
+    const localData = getUserLocalData();
+    
+    if (localData) {
+      // Si hay datos en localStorage, tienen prioridad
+      setUserData(prev => ({
+        ...prev,
+        name: localData.name || prev.name,
+        surname: localData.surname || prev.surname,
+        role: localData.role || prev.role
+      }));
+    } else if (session?.user) {
+      // Si no hay datos en localStorage, usar los de la sesión
+      setUserData({
+        name: session.user.name || '',
+        surname: session.user.surname || '',
+        role: session.user.role || ''
+      });
+    }
+  }, [session]);
+
+  // Suscribirse a actualizaciones del perfil de usuario
+  useUserProfileUpdates((updatedData: UserProfileUpdate) => {
+    setUserData(prev => ({
+      ...prev,
+      ...updatedData
+    }));
+  });
+
+  // También escuchar el evento user-data-changed para actualizaciones directas
+  useEffect(() => {
+    const handleUserDataChanged = (event: CustomEvent<UserProfileUpdate>) => {
+      setUserData(prev => ({
+        ...prev,
+        ...event.detail
+      }));
+    };
+
+    window.addEventListener(
+      'user-data-changed',
+      handleUserDataChanged as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        'user-data-changed',
+        handleUserDataChanged as EventListener
+      );
+    };
+  }, []);
 
   const allowedNavItems = navItems.filter(item => 
     item.roles.includes(userRole)

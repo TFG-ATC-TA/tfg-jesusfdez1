@@ -20,9 +20,37 @@ router.use(express.json());
 
 router.post('/update-basic', verifyToken, async (req, res) => {
   try {
-    const { name, surname, email } = req.body;
+    let { name, surname, email } = req.body;
+    
+    // Trim all input fields to remove extra whitespace
+    name = name ? name.trim() : '';
+    surname = surname ? surname.trim() : '';
+    email = email ? email.trim() : '';
+
+    // Validate required fields
     if (!name || !email) {
       return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    }
+
+    // Validate name (at least 2 characters, only letters, spaces and some accents)
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{2,50}$/;
+    if (!nameRegex.test(name)) {
+      return res.status(400).json({ 
+        message: 'El nombre debe contener al menos 2 caracteres y solo puede contener letras' 
+      });
+    }
+
+    // Validate surname if provided
+    if (surname && !nameRegex.test(surname)) {
+      return res.status(400).json({ 
+        message: 'El apellido solo puede contener letras' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'El formato del email no es válido' });
     }
 
     const user = await User.findById(req.user.id);

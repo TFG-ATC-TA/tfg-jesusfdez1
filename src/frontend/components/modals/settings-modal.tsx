@@ -10,12 +10,14 @@ import { ChevronRight, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
-import { useRouter } from 'next/navigation';
+import { useUser } from '@/hooks/useUserContext';
+import { notifyProfileUpdate, getUserLocalData } from '@/services/user-service';
 
 export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState('');
   const [personalInfo, setPersonalInfo] = useState({
     name: '',
@@ -34,21 +36,45 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     confirm: false
   });
   const { toast } = useToast();
-  const router = useRouter();
 
+  // Cargar datos del usuario cuando se abre el modal, priorizando localStorage
   useEffect(() => {
-    if (session?.user) {
-      setPersonalInfo({
-        name: session.user.name || '',
-        surname: session.user.surname || '',
-        email: session.user.email || ''
-      });
+    if (isOpen) {
+      // Primero intentar obtener datos del localStorage
+      const localData = getUserLocalData();
+      
+      if (localData && localData.name && localData.email) {
+        // Si hay datos en localStorage, usar esos
+        setPersonalInfo({
+          name: localData.name || '',
+          surname: localData.surname || '',
+          email: localData.email || ''
+        });
+      } else if (user) {
+        // Si no hay datos en localStorage, usar los de context
+        setPersonalInfo({
+          name: user.name || '',
+          surname: user.surname || '',
+          email: user.email || ''
+        });
+      } else if (session?.user) {
+        // Última opción: usar datos de la sesión
+        setPersonalInfo({
+          name: session.user.name || '',
+          surname: session.user.surname || '',
+          email: session.user.email || ''
+        });
+      }
+      
+      // Establecer la pestaña activa por defecto
+      if (!activeTab) {
+        setActiveTab("cuenta");
+      }
     }
-  }, [session]);
+  }, [isOpen, user, session, activeTab]);
 
   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPersonalInfo({ ...personalInfo, [e.target.id]: e.target.value });
-    console.log('Cambios en información personal:', { ...personalInfo, [e.target.id]: e.target.value });
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,21 +111,20 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       if (!response.ok) throw new Error('Error al actualizar los datos básicos');
       const data = await response.json();
       
-      // Reemplazar completamente la sesión con los nuevos datos
-      const newSession = {
-        ...session,
-        user: data.user,
-        accessToken: data.token
-      };
-      
-      await update(newSession);
+      // Utilizar nuestra función de notificación para actualizar los datos en toda la aplicación
+      notifyProfileUpdate({
+        name: personalInfo.name,
+        surname: personalInfo.surname,
+        email: personalInfo.email,
+        token: data.token
+      });
       
       toast({
         description: "Datos básicos actualizados con éxito",
         variant: "success",
       });
 
-      onClose(); // Cerrar el modal después de actualizar
+      onClose();
       
     } catch (error) {
       toast({
@@ -141,19 +166,18 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
         }),
       });
       if (!response.ok) throw new Error('Error al actualizar la contraseña');
-      const data = await response.json();
+      
       toast({
         description: "Contraseña actualizada con éxito",
         variant: "success",
       });
-      // Refrescar la sesión con token y usuario retornados, si existen
-      if (data.token && data.user) {
-        await update({
-          ...session,
-          user: data.user,
-          accessToken: data.token,
-        });
-      }
+      
+      // Resetear los campos de contraseña
+      setPasswords({
+        current: '',
+        new: '',
+        confirm: ''
+      });
       
     } catch (error) {
       toast({
@@ -165,13 +189,9 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
 
   const handleClose = () => {
     onClose();
+    
     // Reset state when modal is closed
     setActiveTab('');
-    setPersonalInfo({
-      name: '',
-      surname: '',
-      email: ''
-    });
     setPasswords({
       current: '',
       new: '',
@@ -320,5 +340,4 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       </DialogContent>
     </Dialog>
   );
-
 }
