@@ -108,8 +108,11 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
         body: JSON.stringify(personalInfo),
       });
       
-      if (!response.ok) throw new Error('Error al actualizar los datos básicos');
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al actualizar los datos básicos');
+      }
       
       // Utilizar nuestra función de notificación para actualizar los datos en toda la aplicación
       notifyProfileUpdate({
@@ -129,7 +132,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al actualizar los datos básicos",
+        description: error instanceof Error ? error.message : "Error al actualizar los datos básicos",
         variant: "destructive",
       });
     }
@@ -165,7 +168,12 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
           newPassword: passwords.new,
         }),
       });
-      if (!response.ok) throw new Error('Error al actualizar la contraseña');
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al actualizar la contraseña');
+      }
       
       toast({
         description: "Contraseña actualizada con éxito",
@@ -181,7 +189,8 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       
     } catch (error) {
       toast({
-        title: "Error al actualizar la contraseña",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al actualizar la contraseña",
         variant: "destructive",
       });
     }
