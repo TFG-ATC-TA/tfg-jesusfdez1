@@ -43,7 +43,7 @@ router.post('/update-basic', verifyToken, async (req, res) => {
     // Validate surname if provided
     if (surname && !nameRegex.test(surname)) {
       return res.status(400).json({ 
-        message: 'El apellido solo puede contener letras' 
+        message: 'El apellido debe contener al menos 2 caracteres y solo puede contener letras' 
       });
     }
 
