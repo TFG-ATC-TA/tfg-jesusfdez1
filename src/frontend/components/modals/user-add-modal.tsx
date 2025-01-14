@@ -43,7 +43,32 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
   const { toast } = useToast();
 
   const fetchFarms = async () => {
-    
+    if (!session?.accessToken) {
+      console.error('No hay sesión iniciada');
+      return;
+    }
+  
+    try {
+      const response = await fetch(
+        `http://localhost:5001/farm/list?page=${page}&limit=10&searchTerm=${searchTerm}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `${session.accessToken}`,
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Error al obtener granjas');
+      }
+      const result = await response.json();
+      setFarms(result.data);
+      setTotalItems(result.totalItems);
+      setTotalPages(result.totalPages);
+    } catch (error) {
+      console.error('Error al obtener granjas:', error);
+    }
   };
 
   useEffect(() => {
@@ -98,7 +123,72 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-
+    e.preventDefault();
+    const target = (e as React.FormEvent<HTMLFormElement> & { nativeEvent: SubmitEvent }).nativeEvent.submitter as HTMLButtonElement;
+    if (target && target.id === 'submit-data-button') {
+      if (!role) {
+        setRoleError(true);
+        return;
+      }
+      const selectedFarmIds = Object.entries(selectedFarms)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([farmId, _]) => farmId);
+      console.log('Datos actualizados:', {
+        ...personalInfo,
+        role,
+        farms: selectedFarmIds
+      });
+      const updateUser = async () => {
+        if (!session?.accessToken) {
+          console.error('No hay sesión iniciada');
+          toast({
+            title: "Error",
+            description: "No hay sesión iniciada",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        try {
+          const response = await fetch(`http://localhost:5001/user`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `${session.accessToken}`,
+            },
+            body: JSON.stringify({
+              ...personalInfo,
+              role,
+              farms: selectedFarmIds,
+              password: passwords.new === passwords.confirm ? passwords.new : undefined,
+            }),
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.message || 'Error al crear el usuario');
+          }
+          
+          console.log('Usuario creado con éxito');
+          toast({
+            description: "Usuario creado con éxito",
+            variant: "success",
+          });
+          resetForm();
+          onClose();
+          onRefresh();
+        } catch (error) {
+          console.error('Error al crear el usuario:', error);
+          toast({
+            title: "Error",
+            description: error instanceof Error ? error.message : "Error al crear el usuario",
+            variant: "destructive",
+          });
+        }
+      };
+      updateUser();
+    }
   };
 
   const isFormValid = personalInfo.name && personalInfo.email && passwords.new && passwords.confirm && passwordsMatch && role;

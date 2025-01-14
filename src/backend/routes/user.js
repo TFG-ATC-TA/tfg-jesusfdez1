@@ -18,6 +18,36 @@ router.use(cors());
 router.use(express.json());
 
 
+router.post('/', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'Administrador') {
+      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+    }
+
+    const { name, surname, email, password, role, farms } = req.body;
+    if (!name || !email || !role || !password) { 
+      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'El usuario ya existe' });
+    }
+
+    const passwordHash = password;
+    const newUser = new User({ name, surname, email, passwordHash, role, farms: farms || [] });
+
+    await newUser.save();
+
+    res.json({ message: 'Usuario creado correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creando el usuario: ' + error });
+  }
+});
+
+
+
+
 router.post('/update-basic', verifyToken, async (req, res) => {
   try {
     let { name, surname, email } = req.body;
