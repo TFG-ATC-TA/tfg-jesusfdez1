@@ -11,6 +11,8 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Farm } from '@/types';
 import { useSession } from 'next-auth/react';
+import { DataTable } from '@/components/ui/data-table';
+import { columnsAlternative } from '@/components/tables/farm-tables/columns';
 
 import { useToast } from '@/components/ui/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
@@ -283,13 +285,27 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
                   ) }
                   {role !== 'Administrador' && (
                     <>
-                      <Separator />
-                      <div>
-                        <CardTitle className="mb-4">Granjas asignadas</CardTitle>
-                      </div>
+                    <Separator />
+                    <div>
+                      <CardTitle className="mb-4">Granjas asignadas</CardTitle>
+                    </div>
+                    <div className="space-y-2">
+                      <DataTable<Farm>
+                        columns={columnsAlternative}
+                        data={farms}
+                        enableColumnSelection={true}
+                        rowSelection={selectedFarms}
+                        onRowSelectionChange={handleSelectionChange}
+                        onPageChange={handlePageChange}
+                        onSearchChange={handleSearchChange}
+                        currentPage={page}
+                        totalPages={totalPages}
+                        limit={10}
+                        totalItems={totalItems} // Añadido
 
-                      
-                    </>
+                      />
+                    </div>
+                  </>
                   )}
                   <Button id="submit-data-button" type="submit" disabled={!isFormValid}>Enviar datos</Button>
                 </form>
@@ -303,4 +319,5 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
 }
 
 export default UserAddModal;
+
 
