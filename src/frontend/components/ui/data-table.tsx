@@ -1,40 +1,42 @@
-'use client'
+"use client"
 
-import React, { useEffect, useRef, useState, useCallback, memo, useMemo } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import {
-  ColumnDef,
+  type ColumnDef,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
-  SortingState,
+  type SortingState,
   useReactTable,
-} from '@tanstack/react-table'
-import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, Filter, ChevronDown } from 'lucide-react'
+} from "@tanstack/react-table"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ChevronDown } from "lucide-react"
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DataTableSearch } from "./data-table-search"
+import { DataTableFilters } from "./data-table-filters"
 
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, any>[]
   data: TData[]
   enableColumnSelection?: boolean
   enableRowNumbering?: boolean
-  showSearchBar?: boolean 
-  filters?: string[] 
-  filterOptions?: Record<string, string[]> // Añadido
+  showSearchBar?: boolean
+  filters?: string[]
+  filterOptions?: Record<string, string[]>
   rowSelection?: Record<string, boolean>
   onRowSelectionChange?: (selectedRowIds: Record<string, boolean>) => void
-  onPageChange?: (newPage: number) => void; 
-  onSearchChange?: (term: string) => void;
-  currentPage?: number;
-  totalPages?: number;
-  limit?: number;
-  totalItems?: number; // Añadido
-  onFilterChange?: (filters: Record<string, string[]>) => void;
+  onPageChange?: (newPage: number) => void
+  onSearchChange?: (term: string) => void
+  currentPage?: number
+  totalPages?: number
+  limit?: number
+  totalItems?: number
+  onFilterChange?: (filters: Record<string, string[]>) => void
+  containerClassName?: string // Nueva prop para personalizar el contenedor
 }
 
 function useDataTable<TData>({
@@ -48,7 +50,7 @@ function useDataTable<TData>({
   limit,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = React.useState('')
+  const [globalFilter, setGlobalFilter] = React.useState("")
 
   const table = useReactTable({
     data,
@@ -58,12 +60,12 @@ function useDataTable<TData>({
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: 'includesString',
+    globalFilterFn: "includesString",
     onRowSelectionChange: (updaterOrValue) => {
-      if (typeof updaterOrValue === 'function') {
-        onRowSelectionChange?.(updaterOrValue(rowSelection));
+      if (typeof updaterOrValue === "function") {
+        onRowSelectionChange?.(updaterOrValue(rowSelection))
       } else {
-        onRowSelectionChange?.(updaterOrValue);
+        onRowSelectionChange?.(updaterOrValue)
       }
     },
     getRowId: (row) => (row as any)._id,
@@ -93,26 +95,26 @@ function useDataTable<TData>({
 
   React.useEffect(() => {
     // Avisar cuando cambie el filtro global
-    onSearchChange?.(globalFilter);
-  }, [globalFilter]);
+    onSearchChange?.(globalFilter)
+  }, [globalFilter])
 
   return { table, handleSearch, globalFilter }
 }
 
 const columnNames: Record<string, string> = {
-  role: 'rol',
-  type: 'tipo',
+  role: "rol",
+  type: "tipo",
   // Añadir más mapeos de id a nombres de columnas si es necesario
-};
+}
 
 export function DataTable<TData>({
   columns,
   data,
   enableColumnSelection,
   enableRowNumbering = true,
-  showSearchBar = true, 
-  filters = [], 
-  filterOptions = {}, 
+  showSearchBar = true,
+  filters = [],
+  filterOptions = {},
   rowSelection = {},
   onRowSelectionChange,
   onPageChange,
@@ -120,24 +122,26 @@ export function DataTable<TData>({
   currentPage = 1,
   totalPages = 1,
   limit,
-  totalItems = 0, 
+  totalItems = 0,
   onFilterChange,
+  containerClassName = "w-full border rounded-md shadow-sm", // Valor por defecto sin max-width
 }: DataTableProps<TData>) {
-
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [maxTotalItems, setMaxTotalItems] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const [maxTotalItems, setMaxTotalItems] = useState(0)
   const numberColumn: ColumnDef<TData> = {
-    id: 'number',
+    id: "number",
     header: () => <div className="pl-4">#</div>,
     cell: ({ row }) => {
-      const rowNumber = ((currentPage - 1) * (limit || 10)) + (row.index + 1);
-      return <div className="pl-4">{rowNumber}</div>;
+      const rowNumber = (currentPage - 1) * (limit || 10) + (row.index + 1)
+      return <div className="pl-4">{rowNumber}</div>
     },
     size: 50,
+    minSize: 50,
+    maxSize: 50,
   }
 
   const checkboxColumn: ColumnDef<TData> = {
-    id: 'select',
+    id: "select",
     header: () => null,
     cell: ({ row }) => (
       <div className="pl-4 pr-0">
@@ -151,28 +155,61 @@ export function DataTable<TData>({
       </div>
     ),
     size: 50,
+    minSize: 50,
+    maxSize: 50,
   }
 
   const allColumns = enableRowNumbering
     ? [...(enableColumnSelection ? [checkboxColumn] : []), numberColumn, ...columns]
     : [...(enableColumnSelection ? [checkboxColumn] : []), ...columns]
 
-  const { table, handleSearch, globalFilter } = useDataTable({ data, columns: allColumns, rowSelection, onRowSelectionChange, onPageChange, onSearchChange, currentPage })
+  const { table, handleSearch, globalFilter } = useDataTable({
+    data,
+    columns: allColumns,
+    rowSelection,
+    onRowSelectionChange,
+    onPageChange,
+    onSearchChange,
+    currentPage,
+    limit,
+  })
 
   useEffect(() => {
     if (tableContainerRef.current) {
-      tableContainerRef.current.style.minHeight = `${tableContainerRef.current.offsetHeight}px`;
+      tableContainerRef.current.style.minHeight = `${tableContainerRef.current.offsetHeight}px`
     }
-  }, [data]);
+  }, [data])
 
   useEffect(() => {
     if (totalItems > maxTotalItems) {
-      setMaxTotalItems(totalItems);
+      setMaxTotalItems(totalItems)
     }
-  }, [totalItems, maxTotalItems]);
+  }, [totalItems, maxTotalItems])
+
+  const initialSelectedFilters = useMemo(() => {
+    const initial: Record<string, string[]> = {}
+    filters.forEach((filter) => {
+      initial[filter] = filterOptions[filter] ? [...filterOptions[filter]] : []
+    })
+    return initial
+  }, [filters, filterOptions])
+
+  const [selectedFiltersState, setSelectedFiltersState] = useState<Record<string, string[]>>(initialSelectedFilters)
+
+  useEffect(() => {
+    onFilterChange?.(selectedFiltersState)
+  }, [selectedFiltersState, onFilterChange])
+
+  const memoizedHandleFilterChange = useCallback(
+    (filters: Record<string, string[]>) => {
+      setSelectedFiltersState(filters)
+      onPageChange?.(1)
+    },
+    [onPageChange],
+  )
 
   const PageSelector = () => {
-    if (totalPages <= 1) return null;
+    if (totalPages <= 1) return null
     return (
       <div className="flex items-center space-x-2 text-sm pb-4 justify-center sm:pb-0 sm:justify-start">
         <span>Página</span>
@@ -183,10 +220,7 @@ export function DataTable<TData>({
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[60px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
             {Array.from({ length: totalPages }, (_, i) => (
-              <DropdownMenuItem
-                key={i}
-                onSelect={() => onPageChange?.(i + 1)}
-              >
+              <DropdownMenuItem key={i} onSelect={() => onPageChange?.(i + 1)}>
                 {i + 1}
               </DropdownMenuItem>
             ))}
@@ -194,145 +228,58 @@ export function DataTable<TData>({
         </DropdownMenu>
         <span>de {totalPages}</span>
       </div>
-    );
-  };
-
-  // Eliminar estado local de selectedFilters
-  // const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
-
-  const initialSelectedFilters = useMemo(() => {
-    const initial: Record<string, string[]> = {};
-    filters.forEach(filter => {
-      initial[filter] = filterOptions[filter] ? [...filterOptions[filter]] : [];
-    });
-    return initial;
-  }, [filters, filterOptions]);
-
-  const [selectedFiltersState, setSelectedFiltersState] = useState<Record<string, string[]>>(initialSelectedFilters);
-
-  useEffect(() => {
-    onFilterChange?.(selectedFiltersState);
-  }, [selectedFiltersState, onFilterChange]);
-
-  const memoizedHandleFilterChange = useCallback((filters: Record<string, string[]>) => {
-    setSelectedFiltersState(filters);
-    onPageChange?.(1); // Resetear la página a 1 al cambiar los filtros
-  }, [onPageChange]);
-
-  const FilterSelector = memo(({ filter, data, selectedFilters, onFilterChange, options }: { 
-    filter: string, 
-    data: any[], 
-    selectedFilters: Record<string, string[]>, 
-    onFilterChange: (filters: Record<string, string[]>) => void,
-    options: string[] // Añadido
-  }) => {
-    const uniqueValues = options.length > 0 ? options : Array.from(new Set(data.map((item) => (item as Record<string, any>)[filter])));
-    const filterName = columnNames[filter] || filter;
-
-    const handleCheckboxChange = useCallback((value: string) => {
-      const currentFilters = selectedFilters[filter] || [];
-      const updatedFilters = currentFilters.includes(value)
-        ? currentFilters.filter(v => v !== value)
-        : [...currentFilters, value];
-      onFilterChange({
-        ...selectedFilters,
-        [filter]: updatedFilters
-      });
-    }, [filter, selectedFilters, onFilterChange]);
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger className="w-[200px] bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700 flex items-center justify-between space-x-2 cursor-pointer rounded-md p-2 text-sm">
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4" />
-            <span>Filtrar por {filterName}</span>
-          </div>
-          <div className="ml-auto">
-            <ChevronDown className="w-4 h-4" />
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[200px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-          {uniqueValues.map((value, index) => (
-            <DropdownMenuItem
-              key={index}
-              className="flex items-center space-x-2 cursor-default"
-              onSelect={(e) => {
-                e.preventDefault();
-                e.stopPropagation(); // Prevenir la propagación para que el menú no se cierre
-              }}
-            >
-              <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-                <Checkbox
-                  checked={selectedFilters[filter]?.includes(value) || false}
-                  onCheckedChange={() => handleCheckboxChange(value)}
-                />
-                <span className="pointer-events-none ml-2">{value}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}        
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  });
+    )
+  }
 
   return (
     <div className="space-y-4 lg:space-y-6 xl:space-y-7">
       <div className="flex flex-col gap-6 lg:flex-row lg:justify-between lg:items-center lg:gap-4">
         <div className="flex flex-col gap-6 lg:flex-row lg:gap-4 w-full justify-center">
-          {showSearchBar && (
-            <div className="relative w-full sm:max-w-sm">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-              <Input
-                placeholder={`Buscar...`}
-                value={globalFilter}
-                onChange={handleSearch}
-                className="pl-8 w-full  bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700"
-                aria-label={`Buscar`}
-              />
-            </div>
-          )}
-          <div className="flex space-x-2">
-            {filters.map((filter) => (
-              <FilterSelector 
-                key={filter} 
-                filter={filter} 
-                data={data} 
-                selectedFilters={selectedFiltersState}
-                onFilterChange={memoizedHandleFilterChange} 
-                options={filterOptions[filter] || []} // Añadido
-              />
-            ))}
-          </div>
+          {showSearchBar && <DataTableSearch value={globalFilter} onChange={handleSearch} />}
+          <DataTableFilters
+            filters={filters}
+            data={data}
+            selectedFilters={selectedFiltersState}
+            onFilterChange={memoizedHandleFilterChange}
+            filterOptions={filterOptions}
+          />
         </div>
         {enableColumnSelection && (
           <div className="text-sm text-muted-foreground">
-            {Object.values(rowSelection).filter(v => v).length} de {maxTotalItems} fila(s) seleccionada(s)
+            {Object.values(rowSelection).filter((v) => v).length} de {maxTotalItems} fila(s) seleccionada(s)
           </div>
         )}
       </div>
-      <div ref={tableContainerRef} className="overflow-hidden rounded-md border">
-        <div className="overflow-x-auto">
-          <Table className="w-full">
-            <TableHeader className="sticky top-0 bg-white dark:bg-gray-800 z-10">
+      {/* Contenedor principal con clases personalizables desde props */}
+      <div ref={tableContainerRef} className={containerClassName}>
+        {/* Contenedor de scroll horizontal con ancho fijo */}
+        <div className="w-full overflow-x-auto rounded-md" style={{ maxWidth: "100%" }}>
+          {/* Tabla con anchos para columnas pero sin forzar dimensiones del contenedor */}
+          <Table className="w-full" style={{ tableLayout: "auto" }}>
+            <TableHeader className="sticky top-0 bg-white dark:bg-gray-800 z-0">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header, index) => (
                     <TableHead
                       key={header.id}
-                      className={`font-bold text-black dark:text-white ${!enableRowNumbering && index === 0 ? 'pl-4' : ''}`}
-                      style={{ width: header.getSize() }}
+                      className={`font-bold text-black dark:text-white px-4 py-2 ${!enableRowNumbering && index === 0 ? "pl-4" : ""}`}
+                      style={{ 
+                        minWidth: header.column.columnDef.minSize || (header.id === 'number' || header.id === 'select' ? 50 : 120)
+                      }}
                     >
                       {header.isPlaceholder ? null : (
                         <div
                           {...{
                             className: header.column.getCanSort()
-                              ? 'cursor-pointer select-none flex items-center'
-                              : 'flex items-center',
+                              ? "cursor-pointer select-none flex items-center"
+                              : "flex items-center",
                             onClick: header.column.getToggleSortingHandler(),
                           }}
                         >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getCanSort() && <ArrowUpDown className="ml-2 h-4 w-4" />}
+                          <span className="whitespace-nowrap">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </span>
+                          {header.column.getCanSort() && <ArrowUpDown className="ml-2 h-4 w-4 flex-shrink-0" />}
                         </div>
                       )}
                     </TableHead>
@@ -343,10 +290,20 @@ export function DataTable<TData>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && 'seleccionado'}>
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "seleccionado"}
+                    className="border-b border-gray-100 dark:border-gray-800"
+                  >
                     {row.getVisibleCells().map((cell, index) => (
-                      <TableCell key={cell.id} style={{ width: cell.column.getSize() }} className={!enableRowNumbering && index === 0 ? 'pl-4' : ''}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      <TableCell
+                        key={cell.id}
+                        className={`px-3 py-1.5 ${!enableRowNumbering && index === 0 ? "pl-2" : ""}`}
+                        style={{ 
+                          minWidth: cell.column.columnDef.minSize || (cell.column.id === 'number' || cell.column.id === 'select' ? 50 : 120)
+                        }}
+                      >
+                        <div className="whitespace-nowrap">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                       </TableCell>
                     ))}
                   </TableRow>

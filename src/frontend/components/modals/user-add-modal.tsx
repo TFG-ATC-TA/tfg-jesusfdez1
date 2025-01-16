@@ -301,7 +301,8 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
                         currentPage={page}
                         totalPages={totalPages}
                         limit={10}
-                        totalItems={totalItems} // Añadido
+                        totalItems={totalItems} 
+                        containerClassName="w-full border rounded-md shadow-sm max-w-[80vw]"
 
                       />
                     </div>
