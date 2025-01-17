@@ -2,12 +2,15 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { User } from '@/types/index';
+import { columns } from '@/components/tables/user-tables/columns';
 import PageContainer from '@/components/layout/page-container';
 import UserAddModal from '@/components/modals/user-add-modal';
+import {CellAction} from '@/components/tables/user-tables/cell-action';
 
 const UserClient: React.FC = () => {
   const router = useRouter();
@@ -67,7 +70,16 @@ const UserClient: React.FC = () => {
     setSelectedFilters(filters);
   };
 
-
+  const updatedColumns = columns.map(column => {
+    if (column.id === 'actions') {
+      return {
+        ...column,
+        cell: ({ row }: { row: { original: User } }) => <CellAction data={row.original} onRefresh={fetchUsers} />
+      };
+    }
+    return column;
+  });
+  
   return (
     <>    
     <PageContainer scrollable={true}>
@@ -90,7 +102,23 @@ const UserClient: React.FC = () => {
       </div>
 
       <div className="my-4"></div>
+      <DataTable<User>
+        columns={updatedColumns}
+        data={data}
+        enableColumnSelection={false}
+        enableRowNumbering
+        showSearchBar
+        filters={["role"]}
+        filterOptions={filterOptions}
+        currentPage={page}
+        totalPages={totalPages}
+        limit={10}
+        onPageChange={(newPage) => setPage(newPage)}
+        onSearchChange={(term) => setSearchTerm(term)}
+        onFilterChange={handleFilterChange}
+        containerClassName="w-full border rounded-md shadow-sm max-w-[87vw]"
 
+      />
      </div>
     </PageContainer>
     <UserAddModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onRefresh={fetchUsers} />

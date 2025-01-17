@@ -17,6 +17,58 @@ dotenv.config();
 router.use(cors());
 router.use(express.json());
 
+router.get('/list', verifyToken, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const searchTerm = req.query.searchTerm || '';
+    const roles = req.query.roles ? req.query.roles.split(',') : [];
+    const filters = req.query.filters ? JSON.parse(decodeURIComponent(req.query.filters)) : {};
+
+    let query = {
+      _id: { $ne: req.user.id } // Exclude the requesting user
+    };
+    
+    if (req.user.role === 'Administrador') { 
+      if (searchTerm) {
+        query.$or = [
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { surname: { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } }
+        ];
+      }
+      if (roles.length > 0) {
+        query.role = { $in: roles };
+      }
+
+      if (req.query.farmId) {
+        query.farms = req.query.farmId;
+      }
+
+      // Aplicar filtros adicionales
+      Object.keys(filters).forEach(key => {
+        if (filters[key].length > 0) {
+          query[key] = { $in: filters[key] };
+        }
+      });
+
+      const totalItems = await User.countDocuments(query);
+      const users = await User.find(query)
+        .select('_id name surname email role')
+        .skip(skip)
+        .limit(limit);
+      const totalPages = Math.ceil(totalItems / limit);
+
+      res.json({ data: users, totalItems, totalPages, currentPage: page });
+    } else {
+      res.status(401).json({ message: 'No tienes permisos para acceder a esta información' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo datos de los usuarios' });
+  }
+});
+
 
 router.post('/', verifyToken, async (req, res) => {
   try {
