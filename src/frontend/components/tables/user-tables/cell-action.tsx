@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Edit, MoreHorizontal, Trash } from 'lucide-react';
+import UserEditModal from '@/components/modals/user-edit-modal';
 import { User } from '@/types';
 
 interface CellActionProps {
@@ -72,7 +73,12 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
 
   return (
     <>
-   
+      <UserEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        userId={data._id}
+        onRefresh={onRefresh}
+      />
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>

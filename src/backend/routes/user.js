@@ -97,7 +97,86 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+router.put('/:userId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'Administrador') {
+      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+    }
 
+    const { userId } = req.params;
+
+    // Evitar que un usuario se modifique a sí mismo por esta ruta
+    if (userId === req.user.id) {
+      return res.status(403).json({ message: 'No puedes modificarte a ti mismo por esta ruta. Usa /update-basic en su lugar' });
+    }
+
+    const { name, surname, email, password, role, farms } = req.body;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    if (name && email && role) {
+      user.name = name;
+      user.email = email;
+      user.role = role;
+    } else {
+      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    }
+
+    if (password){ // Si se ha enviado una contraseña nueva, se actualiza 
+      user.passwordHash = password;
+    }
+    user.surname = surname;
+    user.farms = farms;
+
+    await user.save();
+
+    res.json({ message: 'Usuario actualizado correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error actualizando el usuario: ' + error});
+  }
+});
+
+router.delete('/:userId', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'Administrador') {
+      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+    }
+
+    const { userId } = req.params;
+
+    // Evitar que un usuario se borre a sí mismo
+    if (userId === req.user.id) {
+      return res.status(403).json({ message: 'No puedes eliminarte a ti mismo' });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    res.json({ message: 'Usuario eliminado correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error eliminando el usuario' });
+  }
+});
+
+router.get('/:userId', verifyToken, async (req, res) => {
+  try {
+    let user;
+    if (req.user.role === 'Administrador') {
+      user = await User.findOne({ _id: req.params.userId }).select('_id name surname email role farms'); 
+      res.json(user);
+    } else {
+      res.status(401).json({ message: 'No tienes permisos para acceder a esta información' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo datos de los usuarios' });
+  }
+});
 
 
 router.post('/update-basic', verifyToken, async (req, res) => {

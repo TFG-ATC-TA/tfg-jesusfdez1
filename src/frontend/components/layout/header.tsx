@@ -10,7 +10,7 @@ export default function Header() {
   return (
     <header className="sticky inset-x-0 top-0 w-full">
       <nav className="flex items-center py-2 sm:px-6 sm:py-2">
-        <div className="text-sm font-medium flex-grow mx-4 flex items-center">
+        <div className="text-sm font-medium flex-grow mx-4 flex items-center mt-3">
           {pathname !== '/' && (
             <>
               <Link href="/" className="hover:text-primary flex items-center relative top-[0.5px]">
