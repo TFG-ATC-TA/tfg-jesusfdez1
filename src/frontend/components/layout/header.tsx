@@ -3,9 +3,20 @@ import { Home } from "lucide-react";
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
+const pathTranslations: { [key: string]: string } = {
+  'users': 'Usuarios',
+  'farms': 'Granjas',
+  'devices': 'Dispositivos',
+  'notifications': 'Notificaciones',
+};
+
 export default function Header() {
   const pathname = usePathname();
   const pathSegments = pathname?.slice(1).split('/').filter(Boolean) || [];
+
+  const getTranslatedSegment = (segment: string) => {
+    return pathTranslations[segment.toLowerCase()] || segment;
+  };
 
   return (
     <header className="sticky inset-x-0 top-0 w-full">
@@ -23,7 +34,7 @@ export default function Header() {
                     href={'/' + pathSegments.slice(0, index + 1).join('/')}
                     className="hover:underline capitalize inline-flex items-center"
                   >
-                    {segment}
+                    {getTranslatedSegment(segment)}
                   </Link>
                 </span>
               ))}
