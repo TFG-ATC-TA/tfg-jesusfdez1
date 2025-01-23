@@ -41,5 +41,46 @@ router.get('/list', verifyToken, async (req, res) => {
 })
 
 
+router.post('/', verifyToken, isAdmin, async (req, res) => {
+  try {
+    let { name, idname } = req.body;
+    
+    // Trim input fields
+    name = name ? name.trim() : '';
+    idname = idname ? idname.trim() : '';
+
+    if (!name || !idname) {
+      return res.status(400).json({ message: 'Nombre e ID de la granja son obligatorios' });
+    }
+
+    // Validate farm name (letters, numbers, and spaces, 2-50 characters)
+    const nameRegex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]{2,50}$/;
+    if (!nameRegex.test(name)) {
+      return res.status(400).json({ 
+        message: 'El nombre debe contener entre 2 y 50 caracteres y solo puede contener letras, números y espacios' 
+      });
+    }
+
+    // Validate farm ID (lowercase letters, numbers, and hyphens, 2-30 characters)
+    const idRegex = /^[a-z0-9-]{2,30}$/;
+    if (!idRegex.test(idname)) {
+      return res.status(400).json({ 
+        message: 'El ID debe contener entre 2 y 30 caracteres y solo puede contener letras minúsculas, números y guiones' 
+      });
+    }
+
+    const existingFarm = await Farm.findOne({ idname });
+    if (existingFarm) {
+      return res.status(409).json({ message: 'La granja con este ID ya existe' });
+    }
+
+    const newFarm = new Farm({ name, idname });
+    await newFarm.save();
+    res.status(201).json({ message: 'Granja creada con éxito', farm: newFarm });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al crear la granja: ' + error });
+  }
+});
+
   
 module.exports = router;

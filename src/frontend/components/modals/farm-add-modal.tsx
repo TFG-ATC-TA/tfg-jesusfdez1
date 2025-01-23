@@ -55,7 +55,12 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
             },
             body: JSON.stringify(farmInfo),
           });
-          if (!response.ok) throw new Error('Error al crear la granja');
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al crear la granja');
+          }
+          
           console.log('Granja creada con éxito');
           toast({
             description: "Granja creada con éxito",
@@ -68,6 +73,7 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
           console.error('Error al crear la granja:', error);
           toast({
             title: "Error al crear la granja",
+            description: error instanceof Error ? error.message : 'Error desconocido',
             variant: "destructive",
           });
         }

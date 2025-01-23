@@ -76,14 +76,40 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
     }
 
-    const { name, surname, email, password, role, farms } = req.body;
+    let { name, surname, email, password, role, farms } = req.body;
+    
+    // Trim all input fields
+    name = name ? name.trim() : '';
+    surname = surname ? surname.trim() : '';
+    email = email ? email.trim() : '';
+    
     if (!name || !email || !role || !password) { 
       return res.status(400).json({ message: 'Faltan campos obligatorios' });
     }
 
+    // Validate name and surname format
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{2,50}$/;
+    if (!nameRegex.test(name)) {
+      return res.status(400).json({ 
+        message: 'El nombre debe contener al menos 2 caracteres y solo puede contener letras' 
+      });
+    }
+
+    if (surname && !nameRegex.test(surname)) {
+      return res.status(400).json({ 
+        message: 'El apellido debe contener al menos 2 caracteres y solo puede contener letras' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'El formato del email no es válido' });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'El usuario ya existe' });
+      return res.status(400).json({ message: 'El email introducida ya está registrado en el sistema. Introduce otro distinto' });
     }
 
     const passwordHash = password;
@@ -105,31 +131,56 @@ router.put('/:userId', verifyToken, async (req, res) => {
 
     const { userId } = req.params;
 
-    // Evitar que un usuario se modifique a sí mismo por esta ruta
     if (userId === req.user.id) {
       return res.status(403).json({ message: 'No puedes modificarte a ti mismo por esta ruta. Usa /update-basic en su lugar' });
     }
 
-    const { name, surname, email, password, role, farms } = req.body;
+    let { name, surname, email, password, role, farms } = req.body;
+
+    // Trim all input fields
+    name = name ? name.trim() : '';
+    surname = surname ? surname.trim() : '';
+    email = email ? email.trim() : '';
+
+    if (!name || !email || !role) {
+      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    }
+
+    // Validate name and surname format
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{2,50}$/;
+    if (!nameRegex.test(name)) {
+      return res.status(400).json({ 
+        message: 'El nombre debe contener al menos 2 caracteres y solo puede contener letras' 
+      });
+    }
+
+    if (surname && !nameRegex.test(surname)) {
+      return res.status(400).json({ 
+        message: 'El apellido debe contener al menos 2 caracteres y solo puede contener letras' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'El formato del email no es válido' });
+    }
+
     const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    if (name && email && role) {
-      user.name = name;
-      user.email = email;
-      user.role = role;
-    } else {
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
-    }
-
-    if (password){ // Si se ha enviado una contraseña nueva, se actualiza 
-      user.passwordHash = password;
-    }
+    user.name = name;
+    user.email = email;
+    user.role = role;
     user.surname = surname;
     user.farms = farms;
+
+    if (password) {
+      user.passwordHash = password;
+    }
 
     await user.save();
 
