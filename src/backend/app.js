@@ -5,7 +5,10 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var userRouter = require('./routes/user');
-var farmRouter = require('./routes/farm'); // Asegúrate de que la ruta sea correcta
+var farmRouter = require('./routes/farm'); 
+var deviceRouter = require('./routes/device');
+var equipmentRouter = require('./routes/equipment');
+
 
 
 var app = express();
@@ -20,6 +23,8 @@ app.use(cookieParser());
 app.use('/', indexRouter);
 app.use('/user', userRouter);
 app.use('/farm', farmRouter); 
+app.use('/device', deviceRouter);
+app.use('/equipment', equipmentRouter);
 
 
 // Conectar a la base de datos
