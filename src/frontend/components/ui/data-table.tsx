@@ -52,12 +52,12 @@ function useDataTable<TData>({
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
-  const [pageIndex, setPageIndex] = React.useState(currentPage - 1)
+  const [pageIndex, setPageIndex] = React.useState((currentPage ?? 1) - 1)
   const [pageChangeTriggered, setPageChangeTriggered] = React.useState(false)
 
   // Actualizamos pageIndex cuando currentPage cambia
   React.useEffect(() => {
-    setPageIndex(currentPage - 1)
+    setPageIndex((currentPage ?? 1) - 1)
   }, [currentPage])
 
   // Detectamos cuando currentPage es mayor que totalPages y notificamos
@@ -66,10 +66,10 @@ function useDataTable<TData>({
     // 1. La página actual es mayor que el total de páginas
     // 2. Hay páginas disponibles (totalPages > 0)
     // 3. No estamos en medio de una actualización de página (evita bucles)
-    if (totalPages > 0 && currentPage > totalPages && !pageChangeTriggered) {
+    if ((totalPages ?? 0) > 0 && (currentPage ?? 1) > (totalPages ?? 0) && !pageChangeTriggered) {
       setPageChangeTriggered(true);
-      onPageChange?.(totalPages)
-    } else if (currentPage <= totalPages) {
+      onPageChange?.(totalPages ?? 1)
+    } else if ((currentPage ?? 1) <= (totalPages ?? 0)) {
       // Reseteamos el estado cuando la condición ya no aplica
       setPageChangeTriggered(false);
     }
