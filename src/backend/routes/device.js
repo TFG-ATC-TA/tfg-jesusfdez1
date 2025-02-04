@@ -17,7 +17,6 @@ router.get("/list", verifyToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
     const searchTerm = req.query.searchTerm || '';
     const types = req.query.types ? req.query.types.split(',') : [];
     const filters = req.query.filters ? JSON.parse(decodeURIComponent(req.query.filters)) : {};
@@ -36,15 +35,26 @@ router.get("/list", verifyToken, async (req, res) => {
           query[key] = { $in: filters[key] };
         }
       });
+      
       const totalItems = await Device.countDocuments(query);
+      const totalPages = Math.ceil(totalItems / limit);
+      
+      // Si la página solicitada excede el total, usar la primera página
+      const adjustedPage = page > totalPages ? 1 : page;
+      const skip = (adjustedPage - 1) * limit;
+
       const devices = await Device.find(query)
         .select("_id boardId type")
         .populate("farm", "name -_id")
         .skip(skip)
         .limit(limit);
-      const totalPages = Math.ceil(totalItems / limit);
 
-      res.json({ data: devices, totalItems, totalPages, currentPage: page });
+      res.json({ 
+        data: devices, 
+        totalItems, 
+        totalPages, 
+        currentPage: adjustedPage 
+      });
     } else {
       res.status(403).json({ message: 'No tienes permisos para esta acción' });
     }
@@ -144,7 +154,10 @@ router.post('/', verifyToken, async(req,res) => {
     if (!boardId || !type ) {
       return res.status(400).json({ message: 'Faltan campos obligatorios' });
     }
-
+    const existingDevice = await Device.findOne({ boardId });  
+    if (existingDevice) {
+      return res.status(400).json({ message: 'El identificador ya existe en la base de datos' });
+    }
     const device = new Device({ boardId, type, description, sensors, equipment, farm });
     if (!equipment) {
       device.equipment = null;

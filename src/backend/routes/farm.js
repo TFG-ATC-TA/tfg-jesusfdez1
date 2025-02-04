@@ -16,7 +16,6 @@ router.get('/list', verifyToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
-    const skip = (page - 1) * limit
     const searchTerm = req.query.searchTerm || ''
 
     let query = {}
@@ -27,13 +26,24 @@ router.get('/list', verifyToken, async (req, res) => {
       query.name = { $regex: searchTerm, $options: 'i' }
     }
 
-    // Ajustar el cálculo de totalItems para incluir el término de búsqueda
     const totalItems = await Farm.countDocuments(query)
-
-    const farms = await Farm.find(query).select('_id name idname').skip(skip).limit(limit)
     const totalPages = Math.ceil(totalItems / limit)
+    
+    // Si la página solicitada excede el total, usar la primera página
+    const adjustedPage = page > totalPages ? 1 : page;
+    const skip = (adjustedPage - 1) * limit
 
-    res.json({ data: farms, totalItems, totalPages, currentPage: page })
+    const farms = await Farm.find(query)
+      .select('_id name idname')
+      .skip(skip)
+      .limit(limit)
+
+    res.json({ 
+      data: farms, 
+      totalItems, 
+      totalPages, 
+      currentPage: adjustedPage 
+    })
     
   } catch (error) {
     res.status(500).json({ message: 'Error obteniendo datos de las granjas' })

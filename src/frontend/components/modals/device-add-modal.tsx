@@ -39,6 +39,11 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       const fetchFarms = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
+          toast({
+            title: "Error",
+            description: "No hay sesión iniciada",
+            variant: "destructive",
+          });
           return;
         }
         try {
@@ -49,11 +54,20 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
               'Authorization': `${session.accessToken}`,
             },
           });
-          if (!response.ok) throw new Error('Error al obtener granjas');
-          const fetchedFarms: Farm[] = await response.json();
-          setFarms(fetchedFarms);
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.message || 'Error al obtener las granjas');
+          }
+          setFarms(data);
         } catch (error) {
           console.error('Error al obtener granjas:', error);
+          toast({
+            title: "Error al cargar granjas",
+            description: error instanceof Error ? error.message : "Error al obtener el listado de granjas",
+            variant: "destructive",
+          });
         }
       };
       fetchFarms();
@@ -65,6 +79,11 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       const fetchEquipments = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
+          toast({
+            title: "Error",
+            description: "No hay sesión iniciada",
+            variant: "destructive",
+          });
           return;
         }
         try {
@@ -75,11 +94,20 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
               'Authorization': `${session.accessToken}`,
             },
           });
-          if (!response.ok) throw new Error('Error al obtener equipos');
-          const fetchedEquipments: any[] = await response.json();
-          setEquipments(fetchedEquipments);
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.message || 'Error al obtener los equipos');
+          }
+          setEquipments(data);
         } catch (error) {
           console.error('Error al obtener equipos:', error);
+          toast({
+            title: "Error al cargar equipos",
+            description: error instanceof Error ? error.message : "Error al obtener el listado de equipos",
+            variant: "destructive",
+          });
         }
       };
       fetchEquipments();
@@ -130,22 +158,47 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           },
           body: JSON.stringify(deviceInfo),
         });
-        if (!response.ok) throw new Error('Error al crear el dispositivo');
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Error al crear el dispositivo');
+        }
+
         toast({
           description: "Dispositivo creado con éxito",
           variant: "success",
         });
-        onClose();
+        handleClose();
         onRefresh();
       } catch (error) {
         console.error('Error al crear el dispositivo:', error);
         toast({
           title: "Error al crear el dispositivo",
+          description: error instanceof Error ? error.message : "Error desconocido",
           variant: "destructive",
         });
       }
     };
     createDevice();
+  };
+
+  const resetForm = () => {
+    setDeviceInfo({
+      boardId: '',
+      type: '',
+      farm: '',
+      description: '',
+      sensors: [{ sensorId: '', name: '' }],
+      equipment: '',
+    });
+    setFarmFilter('');
+    setEquipmentFilter('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   const filteredFarms = farms
@@ -162,7 +215,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
     deviceInfo.sensors.some(sensor => sensor.sensorId.trim() !== '');
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] h-[90vh] sm:h-[80vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
           <DialogTitle className="text-lg font-bold">Crear nuevo dispositivo</DialogTitle>

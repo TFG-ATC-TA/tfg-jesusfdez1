@@ -163,6 +163,33 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     setShowPassword(prevState => ({ ...prevState, [field]: !prevState[field] }));
   };
 
+  const resetForm = () => {
+    setPersonalInfo({
+      name: '',
+      surname: '',
+      email: ''
+    });
+    setPasswords({
+      new: '',
+      confirm: ''
+    });
+    setPasswordsMatch(true);
+    setRole('');
+    setSelectedFarms({});
+    setShowPassword({
+      new: false,
+      confirm: false
+    });
+    setPage(1);
+    setSearchTerm('');
+    setLoading(true);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const target = (e as React.FormEvent<HTMLFormElement> & { nativeEvent: SubmitEvent }).nativeEvent.submitter as HTMLButtonElement;
@@ -229,7 +256,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] h-[90vh] sm:h-[80vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
           <DialogTitle className="text-lg font-bold">Configuración del usuario seleccionado</DialogTitle>

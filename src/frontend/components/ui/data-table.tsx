@@ -46,11 +46,34 @@ function useDataTable<TData>({
   onRowSelectionChange,
   onPageChange,
   onSearchChange,
-  currentPage, // Añadido
+  currentPage,
+  totalPages,
   limit,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
+  const [pageIndex, setPageIndex] = React.useState(currentPage - 1)
+  const [pageChangeTriggered, setPageChangeTriggered] = React.useState(false)
+
+  // Actualizamos pageIndex cuando currentPage cambia
+  React.useEffect(() => {
+    setPageIndex(currentPage - 1)
+  }, [currentPage])
+
+  // Detectamos cuando currentPage es mayor que totalPages y notificamos
+  React.useEffect(() => {
+    // Solo realizamos la actualización si:
+    // 1. La página actual es mayor que el total de páginas
+    // 2. Hay páginas disponibles (totalPages > 0)
+    // 3. No estamos en medio de una actualización de página (evita bucles)
+    if (totalPages > 0 && currentPage > totalPages && !pageChangeTriggered) {
+      setPageChangeTriggered(true);
+      onPageChange?.(totalPages)
+    } else if (currentPage <= totalPages) {
+      // Reseteamos el estado cuando la condición ya no aplica
+      setPageChangeTriggered(false);
+    }
+  }, [currentPage, totalPages, onPageChange, pageChangeTriggered])
 
   const table = useReactTable({
     data,
@@ -74,29 +97,22 @@ function useDataTable<TData>({
       globalFilter,
       rowSelection,
       pagination: {
-        pageIndex: (currentPage ?? 1) - 1,
+        pageIndex,
         pageSize: limit ?? 10,
       },
     },
-    manualPagination: true, // Añadido para manejar la paginación manualmente
-    pageCount: undefined, // Opcionalmente puedes manejar el pageCount
+    manualPagination: true,
+    pageCount: undefined,
   })
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalFilter(event.target.value)
   }
 
-  // Eliminar el useEffect que causa el bucle infinito
-  /*
-  React.useEffect(() => {
-    onPageChange?.(table.getState().pagination.pageIndex + 1);
-  }, [table.getState().pagination.pageIndex]);
-  */
-
   React.useEffect(() => {
     // Avisar cuando cambie el filtro global
     onSearchChange?.(globalFilter)
-  }, [globalFilter])
+  }, [globalFilter, onSearchChange])
 
   return { table, handleSearch, globalFilter }
 }
@@ -128,11 +144,13 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const [maxTotalItems, setMaxTotalItems] = useState(0)
+  
   const numberColumn: ColumnDef<TData> = {
     id: "number",
     header: () => <div className="pl-4">#</div>,
     cell: ({ row }) => {
-      const rowNumber = (currentPage - 1) * (limit || 10) + (row.index + 1)
+      // Calculamos el número de fila basado en la página actual y el límite
+      const rowNumber = ((currentPage - 1) * (limit || 10)) + row.index + 1
       return <div className="pl-4">{rowNumber}</div>
     },
     size: 50,
@@ -171,6 +189,7 @@ export function DataTable<TData>({
     onPageChange,
     onSearchChange,
     currentPage,
+    totalPages,
     limit,
   })
 
@@ -203,27 +222,44 @@ export function DataTable<TData>({
   const memoizedHandleFilterChange = useCallback(
     (filters: Record<string, string[]>) => {
       setSelectedFiltersState(filters)
-      onPageChange?.(1)
     },
-    [onPageChange],
+    [],
   )
 
   const PageSelector = () => {
-    if (totalPages <= 1) return null
+    if (!totalPages || totalPages <= 1) return null
+
     return (
       <div className="flex items-center space-x-2 text-sm pb-4 justify-center sm:pb-0 sm:justify-start">
         <span>Página</span>
         <DropdownMenu>
-          <DropdownMenuTrigger className="w-[60px] bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700 flex items-center justify-between space-x-2 cursor-pointer rounded-md p-2 text-sm">
-            <span>{currentPage}</span>
-            <ChevronDown className="w-4 h-4" />
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              role="combobox" 
+              className="w-[60px] bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700 flex items-center justify-between"
+            >
+              {currentPage}
+              <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-[60px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <DropdownMenuItem key={i} onSelect={() => onPageChange?.(i + 1)}>
-                {i + 1}
-              </DropdownMenuItem>
-            ))}
+          <DropdownMenuContent 
+            align="center"
+            className="w-[60px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:hover:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:hover:bg-gray-500"
+            style={{ maxHeight: '200px', overflowY: 'auto' }}
+          >
+            {Array.from({ length: totalPages }, (_, i) => {
+              const pageNumber = i + 1;
+              return (
+                <DropdownMenuItem 
+                  key={i} 
+                  onSelect={() => onPageChange?.(pageNumber)}
+                  className={`justify-center ${pageNumber === currentPage ? 'bg-gray-100 dark:bg-gray-700' : ''} hover:bg-gray-100 dark:hover:bg-gray-700`}
+                >
+                  {pageNumber}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
         <span>de {totalPages}</span>

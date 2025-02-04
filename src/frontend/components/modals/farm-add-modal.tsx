@@ -31,6 +31,11 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     });
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const target = (e as React.FormEvent<HTMLFormElement> & { nativeEvent: SubmitEvent }).nativeEvent.submitter as HTMLButtonElement;
@@ -66,8 +71,7 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
             description: "Granja creada con éxito",
             variant: "success",
           });
-          resetForm();
-          onClose();
+          handleClose();
           onRefresh();
         } catch (error) {
           console.error('Error al crear la granja:', error);
@@ -85,7 +89,7 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
   const isFormValid = farmInfo.name && farmInfo.idname;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] h-[65vh] sm:h-[55vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
           <DialogTitle className="text-lg font-bold">Crear nueva granja</DialogTitle>

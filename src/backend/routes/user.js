@@ -21,7 +21,6 @@ router.get('/list', verifyToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
     const searchTerm = req.query.searchTerm || '';
     const roles = req.query.roles ? req.query.roles.split(',') : [];
     const filters = req.query.filters ? JSON.parse(decodeURIComponent(req.query.filters)) : {};
@@ -54,13 +53,18 @@ router.get('/list', verifyToken, async (req, res) => {
       });
 
       const totalItems = await User.countDocuments(query);
+      const totalPages = Math.ceil(totalItems / limit);
+      
+      // Si la página solicitada excede el total, usar la primera página
+      const adjustedPage = page > totalPages ? 1 : page;
+      const skip = (adjustedPage - 1) * limit;
+
       const users = await User.find(query)
         .select('_id name surname email role')
         .skip(skip)
         .limit(limit);
-      const totalPages = Math.ceil(totalItems / limit);
 
-      res.json({ data: users, totalItems, totalPages, currentPage: page });
+      res.json({ data: users, totalItems, totalPages, currentPage: adjustedPage });
     } else {
       res.status(401).json({ message: 'No tienes permisos para acceder a esta información' });
     }

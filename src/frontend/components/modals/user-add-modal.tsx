@@ -121,7 +121,19 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     });
     setPasswordsMatch(true);
     setRole('');
+    setRoleError(false);
     setSelectedFarms({});
+    setShowPassword({
+      new: false,
+      confirm: false
+    });
+    setPage(1);
+    setSearchTerm('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -200,7 +212,7 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] h-[90vh] sm:h-[80vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
           <DialogTitle className="text-lg font-bold">Crear nuevo usuario</DialogTitle>

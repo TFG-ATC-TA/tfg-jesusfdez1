@@ -40,6 +40,11 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       const fetchDeviceData = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
+          toast({
+            title: "Error",
+            description: "No hay sesión iniciada",
+            variant: "destructive",
+          });
           return;
         }
         try {
@@ -50,22 +55,33 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
               'Authorization': `${session.accessToken}`,
             },
           });
-          if (!response.ok) throw new Error('Error al obtener datos del dispositivo');
-          const fetchedDevice: Device = await response.json();
+
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.message || 'Error al obtener datos del dispositivo');
+          }
+
           setDeviceInfo({
-            boardId: fetchedDevice.boardId,
-            type: fetchedDevice.type,
-            farm: fetchedDevice.farm,
-            description: fetchedDevice.description,
-            sensors: fetchedDevice.sensors.map(sensor => ({
+            boardId: data.boardId,
+            type: data.type,
+            farm: data.farm,
+            description: data.description,
+            sensors: data.sensors.map((sensor: { sensorId: string; name: string }) => ({
               sensorId: sensor.sensorId,
               name: sensor.name,
             })),
-            equipment: fetchedDevice.equipment,
+            equipment: data.equipment,
           });
           setLoading(false);
         } catch (error) {
           console.error('Error al obtener datos del dispositivo:', error);
+          toast({
+            title: "Error al cargar el dispositivo",
+            description: error instanceof Error ? error.message : "Error desconocido al cargar los datos",
+            variant: "destructive",
+          });
+          onClose();
         }
       };
       fetchDeviceData();
@@ -77,6 +93,11 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       const fetchFarms = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
+          toast({
+            title: "Error",
+            description: "No hay sesión iniciada",
+            variant: "destructive",
+          });
           return;
         }
         try {
@@ -87,11 +108,20 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
               'Authorization': `${session.accessToken}`,
             },
           });
-          if (!response.ok) throw new Error('Error al obtener granjas');
-          const fetchedFarms: Farm[] = await response.json();
-          setFarms(fetchedFarms);
+
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.message || 'Error al obtener las granjas');
+          }
+          setFarms(data);
         } catch (error) {
           console.error('Error al obtener granjas:', error);
+          toast({
+            title: "Error al cargar granjas",
+            description: error instanceof Error ? error.message : "Error al obtener el listado de granjas",
+            variant: "destructive",
+          });
         }
       };
       fetchFarms();
@@ -103,6 +133,11 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       const fetchEquipments = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
+          toast({
+            title: "Error",
+            description: "No hay sesión iniciada",
+            variant: "destructive",
+          });
           return;
         }
         try {
@@ -113,11 +148,20 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
               'Authorization': `${session.accessToken}`,
             },
           });
-          if (!response.ok) throw new Error('Error al obtener equipos');
-          const fetchedEquipments: any[] = await response.json();
-          setEquipments(fetchedEquipments);
+
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.message || 'Error al obtener los equipos');
+          }
+          setEquipments(data);
         } catch (error) {
           console.error('Error al obtener equipos:', error);
+          toast({
+            title: "Error al cargar equipos",
+            description: error instanceof Error ? error.message : "Error al obtener el listado de equipos",
+            variant: "destructive",
+          });
         }
       };
       fetchEquipments();
@@ -168,7 +212,13 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
           },
           body: JSON.stringify(deviceInfo),
         });
-        if (!response.ok) throw new Error('Error al actualizar el dispositivo');
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Error al actualizar el dispositivo');
+        }
+
         console.log('Dispositivo actualizado con éxito');
         toast({
           description: "Dispositivo actualizado con éxito",
@@ -180,6 +230,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
         console.error('Error al actualizar el dispositivo:', error);
         toast({
           title: "Error al actualizar el dispositivo",
+          description: error instanceof Error ? error.message : "Error desconocido",
           variant: "destructive",
         });
       }
