@@ -17,6 +17,25 @@ dotenv.config();
 router.use(cors());
 router.use(express.json());
 
+// Función para validar la seguridad de la contraseña
+const validatePasswordStrength = (password) => {
+  const requirements = [
+    { regex: /.{8,}/, text: "Al menos 8 caracteres" },
+    { regex: /[0-9]/, text: "Al menos 1 número" },
+    { regex: /[a-z]/, text: "Al menos 1 letra minúscula" },
+    { regex: /[A-Z]/, text: "Al menos 1 letra mayúscula" },
+  ];
+
+  const failedRequirements = requirements
+    .filter(req => !req.regex.test(password))
+    .map(req => req.text);
+
+  return {
+    isValid: failedRequirements.length === 0,
+    failedRequirements
+  };
+};
+
 router.get('/list', verifyToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -116,6 +135,14 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'El email introducida ya está registrado en el sistema. Introduce otro distinto' });
     }
 
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        message: 'La contraseña no cumple con los requisitos de seguridad',
+        failedRequirements: passwordValidation.failedRequirements
+      });
+    }
+
     const passwordHash = password;
     const newUser = new User({ name, surname, email, passwordHash, role, farms: farms || [] });
 
@@ -183,6 +210,13 @@ router.put('/:userId', verifyToken, async (req, res) => {
     user.farms = farms;
 
     if (password) {
+      const passwordValidation = validatePasswordStrength(password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: 'La contraseña no cumple con los requisitos de seguridad',
+          failedRequirements: passwordValidation.failedRequirements
+        });
+      }
       user.passwordHash = password;
     }
 
@@ -326,9 +360,17 @@ router.post('/update-password', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Contraseña actual incorrecta' });
     }
 
-      user.passwordHash = newPassword;
-      await user.save();
-      res.json({ message: 'Contraseña actualizada correctamente' });
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        message: 'La nueva contraseña no cumple con los requisitos de seguridad',
+        failedRequirements: passwordValidation.failedRequirements
+      });
+    }
+
+    user.passwordHash = newPassword;
+    await user.save();
+    res.json({ message: 'Contraseña actualizada correctamente' });
     
 
   } catch (error) {

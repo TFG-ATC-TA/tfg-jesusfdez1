@@ -86,18 +86,131 @@ const config: Config = {
           }
         },
         aurora: {
-          from: {
-            backgroundPosition: '50% 50%, 50% 50%'
+          '0%': {
+            transform: 'translate(0%, 0%) rotate(0deg) scale(1)',
+            opacity: '0.4', 
+            filter: 'blur(40px) brightness(1)'
           },
-          to: {
-            backgroundPosition: '350% 50%, 350% 50%'
+          '20%': {
+            transform: 'translate(-2%, 1%) rotate(-1deg) scale(1.05)',
+            opacity: '0.5',
+            filter: 'blur(35px) brightness(1.2)'
+          },
+          '40%': {
+            transform: 'translate(2%, -1%) rotate(0.5deg) scale(0.98)',
+            opacity: '0.35',
+            filter: 'blur(45px) brightness(0.9)'
+          },
+          '60%': {
+            transform: 'translate(-3%, -2%) rotate(-0.5deg) scale(1.1)',
+            opacity: '0.45',
+            filter: 'blur(40px) brightness(1.1)'
+          },
+          '80%': {
+            transform: 'translate(1%, 3%) rotate(1deg) scale(0.95)',
+            opacity: '0.5',
+            filter: 'blur(30px) brightness(1.15)'
+          },
+          '100%': {
+            transform: 'translate(0%, 0%) rotate(0deg) scale(1)',
+            opacity: '0.4',
+            filter: 'blur(40px) brightness(1)'
+          }
+        },
+        'aurora-flow-1': {
+          '0%': {
+            transform: 'translate(-25%, 0%) scale(1.1)',
+            opacity: '0.3',
+            filter: 'blur(40px) brightness(1)'
+          },
+          '50%': {
+            transform: 'translate(25%, 0%) scale(1.1)',
+            opacity: '0.35',
+            filter: 'blur(40px) brightness(1.05)'
+          },
+          '100%': {
+            transform: 'translate(-25%, 0%) scale(1.1)',
+            opacity: '0.3',
+            filter: 'blur(40px) brightness(1)'
+          }
+        },
+        'aurora-flow-2': {
+          '0%': {
+            transform: 'translate(0%, -20%) scale(1.05)',
+            opacity: '0.35', 
+            filter: 'blur(45px) brightness(1.05)'
+          },
+          '50%': {
+            transform: 'translate(0%, 20%) scale(1.05)',
+            opacity: '0.3',
+            filter: 'blur(45px) brightness(1)'
+          },
+          '100%': {
+            transform: 'translate(0%, -20%) scale(1.05)',
+            opacity: '0.35', 
+            filter: 'blur(45px) brightness(1.05)'
+          }
+        },
+        'aurora-flow-3': {
+          '0%': {
+            transform: 'translate(20%, -15%) scale(1.1)',
+            opacity: '0.3', 
+            filter: 'blur(50px) brightness(0.9)'
+          },
+          '50%': {
+            transform: 'translate(-20%, 15%) scale(1.1)',
+            opacity: '0.35',
+            filter: 'blur(50px) brightness(1)'
+          },
+          '100%': {
+            transform: 'translate(20%, -15%) scale(1.1)',
+            opacity: '0.3', 
+            filter: 'blur(50px) brightness(0.9)'
+          }
+        },
+        'aurora-flow-4': {
+          '0%': {
+            transform: 'translate(-20%, -20%) scale(1.15)',
+            opacity: '0.25', 
+            filter: 'blur(35px) brightness(1.15)'
+          },
+          '50%': {
+            transform: 'translate(20%, 20%) scale(1.15)',
+            opacity: '0.3',
+            filter: 'blur(35px) brightness(1)'
+          },
+          '100%': {
+            transform: 'translate(-20%, -20%) scale(1.15)',
+            opacity: '0.25', 
+            filter: 'blur(35px) brightness(1.15)'
+          }
+        },
+        'aurora-flow-5': {
+          '0%': {
+            transform: 'translate(25%, 10%) scale(0.9)',
+            opacity: '0.25', 
+            filter: 'blur(45px) brightness(1)'
+          },
+          '50%': {
+            transform: 'translate(-25%, -10%) scale(0.9)',
+            opacity: '0.3',
+            filter: 'blur(45px) brightness(1.1)'
+          },
+          '100%': {
+            transform: 'translate(25%, 10%) scale(0.9)',
+            opacity: '0.25', 
+            filter: 'blur(45px) brightness(1)'
           }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        aurora: 'aurora 60s linear infinite'
+        aurora: 'aurora 25s ease-in-out infinite alternate',
+        'aurora-flow-1': 'aurora-flow-1 60s ease-in-out infinite',
+        'aurora-flow-2': 'aurora-flow-2 70s ease-in-out infinite',
+        'aurora-flow-3': 'aurora-flow-3 80s ease-in-out infinite',
+        'aurora-flow-5': 'aurora-flow-5 65s ease-in-out infinite'
       }
     }
   },

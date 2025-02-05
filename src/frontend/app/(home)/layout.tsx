@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
 import { MobileSidebar } from '@/components/layout/mobile-sidebar'
+import ThemeColorLoader from '@/components/layout/theme-color-loader'
 import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({
@@ -28,6 +29,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex">
+      <ThemeColorLoader />
       <div className={cn('hidden lg:block')}>
         <Sidebar />
       </div>

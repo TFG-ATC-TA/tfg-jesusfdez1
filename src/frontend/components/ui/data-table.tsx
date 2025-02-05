@@ -54,6 +54,7 @@ function useDataTable<TData>({
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [pageIndex, setPageIndex] = React.useState((currentPage ?? 1) - 1)
   const [pageChangeTriggered, setPageChangeTriggered] = React.useState(false)
+  const prevGlobalFilterRef = useRef(globalFilter);
 
   // Actualizamos pageIndex cuando currentPage cambia
   React.useEffect(() => {
@@ -74,6 +75,17 @@ function useDataTable<TData>({
       setPageChangeTriggered(false);
     }
   }, [currentPage, totalPages, onPageChange, pageChangeTriggered])
+
+  // Cuando cambia el filtro global, volvemos a la página 1
+  React.useEffect(() => {
+    if (prevGlobalFilterRef.current !== globalFilter) {
+      // Solo cambiamos de página si el filtro cambió y no estamos ya en la página 1
+      if ((currentPage ?? 1) !== 1) {
+        onPageChange?.(1);
+      }
+      prevGlobalFilterRef.current = globalFilter;
+    }
+  }, [globalFilter, currentPage, onPageChange]);
 
   const table = useReactTable({
     data,
