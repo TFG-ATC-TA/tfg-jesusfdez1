@@ -196,11 +196,12 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     }
   };
 
-  const handleClose = () => {
-    onClose();
-    
-    // Reset state when modal is closed
-    setActiveTab('');
+  const resetForm = () => {
+    setPersonalInfo({
+      name: '',
+      surname: '',
+      email: ''
+    });
     setPasswords({
       current: '',
       new: '',
@@ -212,6 +213,12 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       new: false,
       confirm: false
     });
+    setActiveTab('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   return (
