@@ -17,7 +17,7 @@ export default function NotFound() {
           <div className="relative w-full max-w-[10rem] aspect-square sm:max-w-[10rem] md:max-w-[12rem] lg:max-w-[24rem] landscape:max-w-[9rem] sm:landscape:max-w-[10rem] md:landscape:max-w-[12rem]">
             
             <Image
-              src="/error.png"
+              src="/img/error.png"
               alt="Error illustration"
               fill
               priority
