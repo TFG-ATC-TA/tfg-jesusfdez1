@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronRight, User, Lock, Eye, EyeOff, Check, X, AlertTriangle } from 'lucide-react';
+import { ChevronRight, User, Lock, Eye, EyeOff, Check, X, AlertTriangle, Palette } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -14,10 +14,14 @@ import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUserContext';
 import { notifyProfileUpdate, getUserLocalData } from '@/services/user-service';
+import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
+
 
 export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { data: session } = useSession();
   const { user } = useUser();
+  const { setTheme, theme } = useTheme();
   const [activeTab, setActiveTab] = useState('');
   const [personalInfo, setPersonalInfo] = useState({
     name: '',
@@ -29,6 +33,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     new: '',
     confirm: ''
   });
+  const [primaryColor, setPrimaryColor] = useState({ hue: 240, saturation: 100, lightness: 50 });
   const [passwordsMatch, setPasswordsMatch] = useState(true);
   const [showPassword, setShowPassword] = useState({
     current: false,
@@ -51,6 +56,23 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       text: req.text,
     }));
   };
+
+
+  const colorPresets = [
+    { name: "Azul", hue: 240, saturation: 100, lightness: 50 },
+    { name: "Cielo", hue: 199, saturation: 100, lightness: 70 },
+    { name: "Púrpura", hue: 253, saturation: 91, lightness: 58 },
+    { name: "Pino", hue: 160, saturation: 65, lightness: 35 },
+    { name: "Verde", hue: 141, saturation: 60, lightness: 50 },
+    { name: "Lima", hue: 90, saturation: 90, lightness: 40 },
+    { name: "Rojo", hue: 0, saturation: 100, lightness: 60 },
+    { name: "Fucsia", hue: 340, saturation: 100, lightness: 60 },
+    { name: "Naranja", hue: 16, saturation: 100, lightness: 65 },
+    { name: "Ámbar", hue: 39, saturation: 100, lightness: 50 },
+    { name: "Oro", hue: 45, saturation: 90, lightness: 55 }, 
+    { name: "Plata", hue: 210, saturation: 10, lightness: 70 },
+    { name: "Gris", hue: 210, saturation: 2, lightness: 58 },
+    { name: "Café", hue: 30, saturation: 50, lightness: 30 },  ];
 
   const strength = useMemo(() => 
     checkStrength(passwords.new), 
@@ -119,7 +141,20 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       
       // Establecer la pestaña activa por defecto
       if (!activeTab) {
-        setActiveTab("cuenta");
+        setActiveTab("apariencia");
+      }
+      
+      // Cargar configuración de color actual
+      const root = document.documentElement;
+      const cssVarValue = getComputedStyle(root).getPropertyValue('--primary').trim();
+      // Intenta extraer valores HSL de la variable CSS
+      const hslMatch = cssVarValue.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
+      if (hslMatch) {
+        setPrimaryColor({
+          hue: parseInt(hslMatch[1], 10),
+          saturation: parseInt(hslMatch[2], 10),
+          lightness: parseInt(hslMatch[3], 10)
+        });
       }
     }
   }, [isOpen, user, session, activeTab]);
@@ -137,6 +172,45 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
 
   const toggleShowPassword = (field: keyof typeof showPassword) => {
     setShowPassword(prevState => ({ ...prevState, [field]: !prevState[field] }));
+  };
+  
+  const handleColorPresetChange = (preset: typeof colorPresets[0]) => {
+    setPrimaryColor(preset);
+    applyThemeColor(preset);
+  };
+  
+  const handleHueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = { ...primaryColor, hue: parseInt(e.target.value, 10) };
+    setPrimaryColor(newColor);
+    applyThemeColor(newColor);
+  };
+  
+  const handleSaturationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = { ...primaryColor, saturation: parseInt(e.target.value, 10) };
+    setPrimaryColor(newColor);
+    applyThemeColor(newColor);
+  };
+  
+  const handleLightnessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = { ...primaryColor, lightness: parseInt(e.target.value, 10) };
+    setPrimaryColor(newColor);
+    applyThemeColor(newColor);
+  };
+  
+  const applyThemeColor = (color: { hue: number, saturation: number, lightness: number }) => {
+    const { hue, saturation, lightness } = color;
+    const hslValue = `${hue} ${saturation}% ${lightness}%`;
+    
+    // Aplicar el cambio a variables CSS en modo claro
+    document.documentElement.style.setProperty('--primary', hslValue);
+    document.documentElement.style.setProperty('--ring', hslValue);
+    
+    // Guardar preferencia en localStorage
+    localStorage.setItem('theme-primary-color', JSON.stringify(color));
+    
+    // Ajustes adicionales para elementos relacionados
+    // Foreground más claro para el texto sobre el color primario
+    document.documentElement.style.setProperty('--primary-foreground', `${hue} ${saturation}% 98%`);
   };
 
   const handlePersonalInfoSubmit = async (e: React.FormEvent) => {
@@ -280,25 +354,28 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
             <DialogTitle className="text-lg font-bold">Configuración</DialogTitle>
           </div>
           <div className="flex flex-col md:flex-row flex-grow overflow-hidden">
-            <div className="md:w-1/4 border-b md:border-b-0 md:border-r border-border bg-muted/30 md:overflow-y-auto md:pt-1 relative">
+            <div className="md:w-1/4 md:min-w-[200px] md:max-w-[200px] border-b md:border-b-0 md:border-r border-border bg-muted/30 relative">
               <ScrollArea className="h-full absolute inset-0 z-10">
-                <div className="p-2 md:pt-4">
-                  <TabsList className="flex flex-row md:flex-col items-stretch w-full bg-transparent space-y-0 space-x-1 md:space-x-0 md:space-y-2 p-1 md:p-2 md:pt-10">
+                <div className="p-2 md:p-4">
+                    <div className="pt-6 mb-4 hidden md:block">
+                    </div>
+                  <TabsList className="flex flex-row md:flex-col w-full bg-transparent space-y-0 space-x-1 md:space-x-0 md:space-y-2 p-1 md:p-2">
                     {[
+                      { value: "apariencia", label: "Apariencia", icon: Palette },
                       { value: "cuenta", label: "Cuenta", icon: User },
                       { value: "seguridad", label: "Seguridad", icon: Lock },
                     ].map((tab) => (
                       <TabsTrigger
                         key={tab.value}
                         value={tab.value}
-                        className="flex-1 md:flex-initial justify-center md:justify-between items-center px-3 py-4 md:py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground rounded-md transition-colors"
+                        className="flex-1 md:w-full h-9 justify-center md:justify-start items-center px-3 py-1.5 text-sm font-medium rounded-md border border-input hover:bg-primary hover:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground dark:data-[state=active]:border-primary dark:data-[state=active]:border-2 transition-colors bg-white dark:bg-gray-800 dark:text-white"
                         onClick={() => setActiveTab(tab.value)}
                       >
-                        <div className="flex items-center gap-2 md:gap-3 justify-center md:justify-start">
-                          <tab.icon className="h-4 w-4" />
-                          <span className="hidden md:inline">{tab.label}</span>
+                        <div className="flex items-center justify-center md:justify-start gap-2 md:gap-3 w-full">
+                          <tab.icon className="h-5 w-5 md:h-4 md:w-4 flex-shrink-0" />
+                          <span className="hidden md:block truncate">{tab.label}</span>
                         </div>
-                        <ChevronRight className="hidden md:block h-4 w-4 opacity-50" />
+                        <ChevronRight className="hidden md:ml-auto h-4 w-4 opacity-50 flex-shrink-0" />
                       </TabsTrigger>
                     ))}
                   </TabsList>
@@ -479,6 +556,248 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
                           Cambiar contraseña
                         </Button>
                       </form>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                <TabsContent value="apariencia" className="mt-0 space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Preferencia de tema</CardTitle>
+                      <CardDescription>Selecciona el modo de visualización de la aplicación</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4">
+                        {[
+                          { value: 'light', label: 'Claro', image: '/img/ui-light.png' },
+                          { value: 'dark', label: 'Oscuro', image: '/img/ui-dark.png' },
+                          { value: 'system', label: 'Sistema', image: '/img/ui-system.png' },
+                        ].map((option) => (
+                          <div key={option.value} className="flex flex-col items-center">
+                            <button
+                              onClick={() => {
+                                setTheme(option.value);
+                                // Guardar la preferencia de tema en localStorage para que persista después de cerrar sesión
+                                localStorage.setItem('user-theme-preference', option.value);
+                              }}
+                              className={`w-full p-1 rounded-xl border-2 transition-all ${
+                                theme === option.value
+                                  ? 'border-primary bg-accent/50'
+                                  : 'border-border hover:border-primary/50 hover:bg-accent/20'
+                              }`}
+                              aria-label={`Seleccionar tema ${option.label}`}
+                            >
+                              <div className="aspect-video w-full overflow-hidden rounded-lg bg-background">
+                                <img 
+                                  src={option.image} 
+                                  alt={`Vista previa del tema ${option.label}`} 
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </button>
+                            <span className="mt-2 text-sm font-medium">{option.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Personalización del tema</CardTitle>
+                      <CardDescription>Ajusta el color principal de la interfaz</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-medium mb-3">Color personalizado</h3>
+                        <div className="space-y-6">
+                          {/* Interactive color picker */}
+                          <div className="relative w-full h-48 rounded-lg overflow-hidden mb-4 shadow-inner border border-border">
+                            {/* Color field - saturation/lightness field */}
+                            <div 
+                              className="absolute inset-0 cursor-crosshair"
+                              style={{ 
+                                backgroundColor: `hsl(${primaryColor.hue}, 100%, 50%)`,
+                                backgroundImage: `
+                                  linear-gradient(to right, white, transparent),
+                                  linear-gradient(to top, black, transparent)
+                                `
+                              }}
+                              onClick={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+                                const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+                                
+                                const saturation = Math.round(x);
+                                const lightness = Math.round(100 - y);
+                                
+                                const newColor = { 
+                                  ...primaryColor, 
+                                  saturation, 
+                                  lightness: Math.min(lightness, 95) // Limitar brillo máximo a 95% para evitar blanco puro
+                                };
+                                
+                                setPrimaryColor(newColor);
+                                applyThemeColor(newColor);
+                              }}
+                            >
+                              {/* Selector point */}
+                              <div 
+                                className="w-4 h-4 rounded-full border-2 border-white shadow-md absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                                style={{ 
+                                  left: `${primaryColor.saturation}%`, 
+                                  top: `${100 - primaryColor.lightness}%`,
+                                  boxShadow: '0 0 0 1px rgba(0,0,0,0.3)'
+                                }}
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Hue slider */}
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <Label htmlFor="hue">Tono ({primaryColor.hue}°)</Label>
+                            </div>
+                            
+                            <div className="relative h-8 rounded-md overflow-hidden border border-border">
+                              {/* Colored bar */}
+                              <div 
+                                className="absolute inset-0"
+                                style={{
+                                  background: `linear-gradient(to right, 
+                                    hsl(0, 100%, 50%), 
+                                    hsl(60, 100%, 50%), 
+                                    hsl(120, 100%, 50%), 
+                                    hsl(180, 100%, 50%), 
+                                    hsl(240, 100%, 50%), 
+                                    hsl(300, 100%, 50%), 
+                                    hsl(360, 100%, 50%))`
+                                }}
+                                onClick={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const x = Math.max(0, Math.min(360, ((e.clientX - rect.left) / rect.width) * 360));
+                                  
+                                  const newColor = { ...primaryColor, hue: Math.round(x) };
+                                  setPrimaryColor(newColor);
+                                  applyThemeColor(newColor);
+                                }}
+                              />
+                              
+                              {/* Slider handle */}
+                              <div 
+                                className="absolute top-0 bottom-0 w-1 bg-white border border-gray-400 rounded-sm shadow-md -ml-[2px]"
+                                style={{ left: `${(primaryColor.hue / 360) * 100}%` }}
+                              />
+                              
+                              {/* Hidden input for accessibility */}
+                              <Input
+                                id="hue"
+                                type="range"
+                                min="0"
+                                max="360"
+                                step="1"
+                                value={primaryColor.hue}
+                                onChange={handleHueChange}
+                                className="opacity-0 absolute inset-0 cursor-pointer z-10"
+                                aria-label="Ajustar tono de color"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* HSL values with text inputs */}
+                          <div className="grid grid-cols-3 gap-4 mt-6">
+                            <div className="space-y-2">
+                              <Label htmlFor="hue-input" className="text-xs">Tono (H)</Label>
+                              <div className="flex">
+                                <Input
+                                  id="hue-input"
+                                  type="number"
+                                  min="0"
+                                  max="360"
+                                  value={primaryColor.hue}
+                                  onChange={(e) => {
+                                    const hue = Math.max(0, Math.min(360, parseInt(e.target.value) || 0));
+                                    const newColor = { ...primaryColor, hue };
+                                    setPrimaryColor(newColor);
+                                    applyThemeColor(newColor);
+                                  }}
+                                  className="text-sm bg-white dark:bg-gray-800 text-black dark:text-white"
+                                />
+                                <span className="ml-1 flex items-center text-sm text-muted-foreground">°</span>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="saturation-input" className="text-xs">Saturación (S)</Label>
+                              <div className="flex">
+                                <Input
+                                  id="saturation-input"
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={primaryColor.saturation}
+                                  onChange={(e) => {
+                                    const saturation = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                                    const newColor = { ...primaryColor, saturation };
+                                    setPrimaryColor(newColor);
+                                    applyThemeColor(newColor);
+                                  }}
+                                  className="text-sm bg-white dark:bg-gray-800 text-black dark:text-white"
+                                />
+                                <span className="ml-1 flex items-center text-sm text-muted-foreground">%</span>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="lightness-input" className="text-xs">Luminosidad (L)</Label>
+                              <div className="flex">
+                                <Input
+                                  id="lightness-input"
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={primaryColor.lightness}
+                                  onChange={(e) => {
+                                    const lightness = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                                    const newColor = { ...primaryColor, lightness };
+                                    setPrimaryColor(newColor);
+                                    applyThemeColor(newColor);
+                                  }}
+                                  className="text-sm bg-white dark:bg-gray-800 text-black dark:text-white"
+                                />
+                                <span className="ml-1 flex items-center text-sm text-muted-foreground">%</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div>
+                        <h3 className="text-sm font-medium mb-3">Colores predefinidos</h3>
+                        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-7 gap-2">
+                          {colorPresets.map((preset) => (
+                            <button
+                              key={preset.name}
+                              className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-all ${
+                                primaryColor.hue === preset.hue && 
+                                primaryColor.saturation === preset.saturation && 
+                                primaryColor.lightness === preset.lightness
+                                  ? 'ring-2 ring-primary bg-accent'
+                                  : 'hover:bg-accent'
+                              }`}
+                              onClick={() => handleColorPresetChange(preset)}
+                              aria-label={`Seleccionar color ${preset.name}`}
+                            >
+                              <div 
+                                className="w-8 h-8 rounded-full"
+                                style={{ backgroundColor: `hsl(${preset.hue}, ${preset.saturation}%, ${preset.lightness}%)` }}
+                              />
+                              <span className="text-xs truncate w-full text-center">{preset.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
