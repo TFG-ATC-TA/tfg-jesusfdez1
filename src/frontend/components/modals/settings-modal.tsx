@@ -201,7 +201,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     const { hue, saturation, lightness } = color;
     const hslValue = `${hue} ${saturation}% ${lightness}%`;
     
-    // Aplicar el cambio a variables CSS en modo claro
+    // Aplicar el cambio a variables CSS
     document.documentElement.style.setProperty('--primary', hslValue);
     document.documentElement.style.setProperty('--ring', hslValue);
     
@@ -211,6 +211,9 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     // Ajustes adicionales para elementos relacionados
     // Foreground más claro para el texto sobre el color primario
     document.documentElement.style.setProperty('--primary-foreground', `${hue} ${saturation}% 98%`);
+    
+    // Disparar un evento personalizado para notificar a otros componentes del cambio de color
+    window.dispatchEvent(new CustomEvent('theme-color-changed', { detail: color }));
   };
 
   const handlePersonalInfoSubmit = async (e: React.FormEvent) => {
