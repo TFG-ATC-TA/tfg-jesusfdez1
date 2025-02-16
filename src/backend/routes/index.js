@@ -70,7 +70,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).send('Error del servidor');
+    res.status(500).json({ message: 'Error del servidor' + err.message });
   }
 });
 

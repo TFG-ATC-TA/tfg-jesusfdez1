@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,8 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
   const [searchTerm, setSearchTerm] = useState('');
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const isFetchingRef = useRef(false);
+  const lastRequestedPageRef = useRef(1);
 
   // Password strength check logic
   const checkStrength = (pass: string) => {
@@ -90,6 +92,19 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     return passwords.new === passwords.confirm && strengthScore >= 3;
   }, [passwords, passwordsMatch, strengthScore]);
 
+  // Controlador de cambio de página separado para evitar actualizaciones conflictivas
+  const handlePageChange = useCallback((newPage: number) => {
+    lastRequestedPageRef.current = newPage;
+    setPage(newPage);
+  }, []);
+
+  // Controlador de cambio de búsqueda separado
+  const handleSearchChange = useCallback((term: string) => {
+    setSearchTerm(term);
+    lastRequestedPageRef.current = 1;
+    setPage(1);
+  }, []);
+
   const fetchUserData = async () => {
     if (!session?.accessToken) {
       console.error('No hay sesión iniciada');
@@ -134,31 +149,40 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     }
   };
 
-  const fetchFarms = async () => {
-    if (!session?.accessToken) {
-      console.error('No hay sesión iniciada');
+  const fetchFarms = useCallback(async () => {
+    if (!session?.accessToken || isFetchingRef.current) {
+      console.error('No hay sesión iniciada o ya se está realizando una petición');
       return;
     }
 
+    const currentPage = lastRequestedPageRef.current;
+    isFetchingRef.current = true;
+
     try {
       const response = await fetch(
-        `http://localhost:5001/farm/list?page=${page}&limit=10&searchTerm=${searchTerm}`,
+        `http://localhost:5001/farm/list?page=${currentPage}&limit=10&searchTerm=${searchTerm}`,
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `${session.accessToken}`,
           },
+          cache: 'no-store'
         }
       );
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Error al obtener granjas');
       }
+      
       const result = await response.json();
-      setFarms(result.data);
-      setTotalItems(result.totalItems);
-      setTotalPages(result.totalPages);
+      
+      // Verificamos que no haya habido un cambio de página posterior a esta solicitud
+      if (currentPage === lastRequestedPageRef.current) {
+        setFarms(result.data);
+        setTotalItems(result.totalItems);
+        setTotalPages(result.totalPages);
+      }
     } catch (error) {
       console.error('Error al obtener granjas:', error);
       toast({
@@ -166,24 +190,22 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
         description: error instanceof Error ? error.message : "Error al obtener las granjas",
         variant: "destructive",
       });
+    } finally {
+      isFetchingRef.current = false;
     }
-  };
+  }, [session, searchTerm]);
+
+  useEffect(() => {
+    if (isOpen && userId) {
+      fetchUserData();
+    }
+  }, [isOpen, session, userId]);
 
   useEffect(() => {
     if (isOpen) {
-      fetchUserData();
       fetchFarms();
     }
-  }, [isOpen, session, userId, page, searchTerm]);
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleSearchChange = (term: string) => {
-    setSearchTerm(term);
-    setPage(1);
-  };
+  }, [isOpen, fetchFarms, page]);
 
   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPersonalInfo({ ...personalInfo, [e.target.id]: e.target.value });
@@ -227,6 +249,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
       confirm: false
     });
     setPage(1);
+    lastRequestedPageRef.current = 1;
     setSearchTerm('');
     setLoading(true);
   };
