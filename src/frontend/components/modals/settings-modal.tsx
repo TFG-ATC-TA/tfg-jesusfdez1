@@ -671,20 +671,6 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
                             }}
                           />
 
-                          <div className="flex items-center gap-3 mb-4">
-                            <div 
-                              className="w-12 h-12 rounded-lg border border-border shadow-sm" 
-                              style={{ backgroundColor: selectedColorCSS }}
-                              aria-label="Vista previa del color seleccionado"
-                            />
-                            <div>
-                              <p className="text-sm font-medium mb-1">Color seleccionado</p>
-                              <code className="text-xs bg-muted px-2 py-1 rounded-md">
-                                {selectedColorCSS}
-                              </code>
-                            </div>
-                          </div>
-
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <Label htmlFor="hue">Tono ({primaryColor.hue}°)</Label>
@@ -700,7 +686,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
                             />
                           </div>
 
-                          <div className="grid grid-cols-3 gap-4 mt-6">
+                          <div className="grid grid-cols-4 gap-4 mt-6">
                             <div className="space-y-2">
                               <Label htmlFor="hue-input" className="text-xs">Tono (H)</Label>
                               <div className="flex">
@@ -762,6 +748,15 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
                                 />
                                 <span className="ml-1 flex items-center text-sm text-muted-foreground">%</span>
                               </div>
+                            </div>
+                            
+                            <div className="flex flex-col justify-center items-center">
+                              <Label htmlFor="color-preview" className="text-xs mb-3">Vista previa</Label>
+                              <div 
+                                className="w-12 h-12 rounded-lg border border-border shadow-sm mb-2" 
+                                style={{ backgroundColor: selectedColorCSS }}
+                                aria-label="Vista previa del color seleccionado"
+                              />
                             </div>
                           </div>
                         </div>
@@ -941,18 +936,63 @@ const HueSlider: React.FC<{
   onChange: (newHue: number) => void;
 }> = ({ hue, onChange }) => {
   const sliderRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  
+  const updateHue = useCallback((clientX: number) => {
+    if (sliderRef.current) {
+      const rect = sliderRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      onChange(Math.round(x * 360));
+    }
+  }, [onChange]);
   
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    onChange(Math.round(x * 360));
-  }, [onChange]);
+    // Solo procesar si es un clic directo, no después de un arrastre
+    if (!isDraggingRef.current) {
+      updateHue(e.clientX);
+    }
+  }, [updateHue]);
+  
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    updateHue(e.clientX);
+    
+    // Capturar eventos del mouse en el documento
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingRef.current) {
+        updateHue(e.clientX);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [updateHue]);
+  
+  // Detener el arrastre si el mouse sale de la ventana
+  useEffect(() => {
+    const handleWindowMouseUp = () => {
+      isDraggingRef.current = false;
+    };
+    
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, []);
   
   return (
     <div 
       ref={sliderRef}
       className="relative h-8 rounded-md overflow-hidden border border-border cursor-pointer"
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
     >
       <div
         className="absolute inset-0"
@@ -969,8 +1009,12 @@ const HueSlider: React.FC<{
       />
       
       <div
-        className="absolute top-0 bottom-0 w-1 bg-white border border-gray-400 rounded-sm shadow-md -ml-[2px]"
+        className="absolute top-0 bottom-0 w-1 bg-white border border-gray-400 rounded-sm shadow-md -ml-[2px] cursor-grab active:cursor-grabbing"
         style={{ left: `${(hue / 360) * 100}%` }}
+        onMouseDown={(e) => {
+          e.stopPropagation(); // Evitar que el evento llegue al div padre
+          handleMouseDown(e);
+        }}
       />
     </div>
   );

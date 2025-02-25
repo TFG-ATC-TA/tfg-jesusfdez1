@@ -2,6 +2,7 @@ import Providers from '@/components/layout/providers';
 import { Toaster } from '@/components/ui/toaster';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { SessionTimeoutProvider } from "@/providers/session-timeout-provider";
 
 import './globals.css';
 
@@ -21,8 +22,10 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <Providers>
-          {children}
-          <Toaster />
+          <SessionTimeoutProvider>
+            {children}
+            <Toaster />
+          </SessionTimeoutProvider>
         </Providers>
       </body>
     </html>

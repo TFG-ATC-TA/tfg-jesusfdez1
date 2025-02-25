@@ -110,3 +110,8 @@
     height: 100dvh;
   }
 }
+
+/* Hide close button on session modals */
+.DialogContent[data-state="open"] > button[data-state="open"] {
+  display: none !important;
+}
