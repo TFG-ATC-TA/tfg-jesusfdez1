@@ -1,4 +1,3 @@
-import ThemeToggle from '@/components/layout/theme-toggle';
 import { Home } from "lucide-react";
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -40,9 +39,6 @@ export default function Header() {
               ))}
             </>
           )}
-        </div>
-        <div className="flex items-center">
-          <ThemeToggle />
         </div>
       </nav>
     </header>
