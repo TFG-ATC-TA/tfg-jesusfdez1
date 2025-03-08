@@ -33,3 +33,20 @@ export interface Device {
     name: string;
   }[];
 }
+
+export interface MilkCollection {
+  _id: string;
+  collectionDate: Date;
+  cisternLicensePlate: string;
+  collectionCompany: string;
+  driver: string;
+  tankId: string;
+  sampleLabel: string;
+  milkTemperature: number;
+  inhibitorSampleTaken: boolean;
+  litersPerTank: {
+    tankId: string;
+    liters: number;
+    compartment: string;
+  }[];
+}

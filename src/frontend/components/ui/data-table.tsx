@@ -282,7 +282,7 @@ export function DataTable<TData>({
   return (
     <div className="space-y-4 lg:space-y-6 xl:space-y-7">
       <div className="flex flex-col gap-6 lg:flex-row lg:justify-between lg:items-center lg:gap-4">
-        <div className="flex flex-col gap-6 lg:flex-row lg:gap-4 w-full justify-center">
+        <div className="flex flex-row flex-wrap gap-4 w-full justify-center">
           {showSearchBar && <DataTableSearch value={globalFilter} onChange={handleSearch} />}
           <DataTableFilters
             filters={filters}

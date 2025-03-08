@@ -26,6 +26,10 @@ var collectionSchema = new Schema({
             compartment: String
         }
     ],
+    farmId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Farm'
+    }
    // sample: { type: Schema.Types.ObjectId, ref: 'Sample' }
 });
 

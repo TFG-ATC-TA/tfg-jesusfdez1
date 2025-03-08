@@ -11,14 +11,18 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable } from '@/components/ui/data-table'
-import { User } from '@/types'
+import { User, MilkCollection } from '@/types'
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { columnsAlternative } from '@/components/tables/user-tables/columns';
+import { columns as milkCollectionColumns } from '@/components/tables/milk-collection-tables/columns';
 import TemperatureProbeChart from '@/components/charts/temperature-gyroscope-chart';
 import { CalendarDateRangePicker, DateRange } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 import { PaperPlaneIcon } from "@radix-ui/react-icons"
-import  DairyTimeline  from "@/components/charts/dairy-timeline-chart"
+import DairyTimeline from "@/components/charts/dairy-timeline-chart"
+import MilkCollectionAddModal from "@/components/modals/milk-collection-add-modal"
+import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
 
 interface AdminViewProps {
   farmData: any;
@@ -26,17 +30,27 @@ interface AdminViewProps {
 
 export default function AdminView({ farmData }: AdminViewProps) {
   const { data: session } = useSession()
-  const [data, setData] = useState<User[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
+  // Users state
+  const [userData, setUserData] = useState<User[]>([]);
+  const [userPage, setUserPage] = useState(1);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userTotalItems, setUserTotalItems] = useState(0);
+  const [userTotalPages, setUserTotalPages] = useState(1);
+  
+  // Milk collections state
+  const [milkCollectionData, setMilkCollectionData] = useState<MilkCollection[]>([]);
+  const [showAddMilkCollectionModal, setShowAddMilkCollectionModal] = useState(false);
+  const [milkCollectionPage, setMilkCollectionPage] = useState(1);
+  const [milkCollectionSearchTerm, setMilkCollectionSearchTerm] = useState('');
+  const [milkCollectionTotalItems, setMilkCollectionTotalItems] = useState(0);
+  const [milkCollectionTotalPages, setMilkCollectionTotalPages] = useState(1);
+  
+  // Common state
   const [activeTab, setActiveTab] = useState("overview");
   const initialDateRange = { from: new Date(new Date().setHours(0, 0, 0, 0)), to: new Date(new Date().setHours(23, 59, 59, 999))};
   const [dateRange, setDateRange] = useState<DateRange | undefined>(initialDateRange);
   const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>(initialDateRange);
-  const [page, setPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const isFetchingRef = useRef(false);
+  const isFetchingRef = useRef<string | false>(false);
 
   const filterOptions = {
     role: ["Administrador", "Veterinario", "Industria", "Ganadero"],
@@ -46,17 +60,21 @@ export default function AdminView({ farmData }: AdminViewProps) {
     role: [...filterOptions.role],
   });
 
+  // Fetch users data
   const fetchUsers = useCallback(async () => {
-    if (!session?.accessToken || isFetchingRef.current) {
-      console.error('No hay sesión iniciada o ya se está realizando una petición');
+    if (!session?.accessToken) {
+      console.error('No hay sesión iniciada');
       return;
     }
 
-    isFetchingRef.current = true;
+    // Solo bloquear fetches paralelos para la misma función
+    if (isFetchingRef.current === 'users') return;
+    
     try {
+      isFetchingRef.current = 'users';
       const rolesQuery = selectedFilters['role'] ? selectedFilters['role'].join(',') : '';
       const filtersQuery = JSON.stringify(selectedFilters);
-      const response = await fetch(`http://localhost:5001/user/list?farmId=${farmData._id}&page=${page}&limit=10&searchTerm=${searchTerm}&roles=${rolesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
+      const response = await fetch(`http://localhost:5001/user/list?farmId=${farmData._id}&page=${userPage}&limit=10&searchTerm=${userSearchTerm}&roles=${rolesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -67,19 +85,58 @@ export default function AdminView({ farmData }: AdminViewProps) {
         throw new Error('Error al obtener usuarios');
       }
       const result = await response.json();
-      setData(result.data);
-      setTotalItems(result.totalItems);
-      setTotalPages(result.totalPages);
+      setUserData(result.data);
+      setUserTotalItems(result.totalItems);
+      setUserTotalPages(result.totalPages);
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
     } finally {
       isFetchingRef.current = false;
     }
-  }, [session, farmData._id, page, searchTerm, selectedFilters]);
+  }, [session, farmData._id, userPage, userSearchTerm, selectedFilters]);
 
+  // Fetch milk collections data
+  const fetchMilkCollections = useCallback(async () => {
+    if (!session?.accessToken) {
+      console.error('No hay sesión iniciada');
+      return;
+    }
+
+    // Solo bloquear fetches paralelos para la misma función
+    if (isFetchingRef.current === 'collections') return;
+    
+    try {
+      isFetchingRef.current = 'collections';
+      const response = await fetch(`http://localhost:5001/collection/list?farmId=${farmData._id}&page=${milkCollectionPage}&limit=10&searchTerm=${milkCollectionSearchTerm}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Error al obtener recogidas de leche');
+      }
+      const result = await response.json();
+      setMilkCollectionData(result.data);
+      setMilkCollectionTotalItems(result.totalItems);
+      setMilkCollectionTotalPages(result.totalPages);
+    } catch (error) {
+      console.error('Error al obtener recogidas de leche:', error);
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, [session, farmData._id, milkCollectionPage, milkCollectionSearchTerm]);
+
+  // Effect to fetch users data
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers, page, searchTerm, selectedFilters]);
+  }, [fetchUsers, userPage, userSearchTerm, selectedFilters]);
+
+  // Effect to fetch milk collections data
+  useEffect(() => {
+    fetchMilkCollections();
+  }, [fetchMilkCollections, milkCollectionPage, milkCollectionSearchTerm]);
 
   const handleFilterChange = (filters: Record<string, string[]>) => {
     setSelectedFilters(filters);
@@ -134,49 +191,92 @@ export default function AdminView({ farmData }: AdminViewProps) {
             )}
           </div>
           <TabsContent value="overview" className="space-y-4">
-          <Card className="w-full">
-            <CardHeader className="flex flex-col md:flex-row justify-between">
-              <div>
-                <CardTitle className="text-2xl font-bold">Usuarios con acceso</CardTitle>
-                <CardDescription>Lista de los usuarios que tienen acceso en esta granja</CardDescription>
+            <Card className="w-full">
+              <CardHeader className="flex flex-col md:flex-row justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold">Usuarios con acceso</CardTitle>
+                  <CardDescription>Lista de los usuarios que tienen acceso en esta granja</CardDescription>
+                </div>
+              </CardHeader>
+              <div className="space-y-4 px-6 pb-6">
+                <DataTable<User>
+                  columns={columnsAlternative}
+                  data={userData}
+                  enableColumnSelection={false}
+                  enableRowNumbering={true}
+                  showSearchBar={true}
+                  filters={["role"]}
+                  filterOptions={filterOptions}
+                  currentPage={userPage}
+                  totalPages={userTotalPages}
+                  onPageChange={(newPage) => setUserPage(newPage)}
+                  onSearchChange={(term) => setUserSearchTerm(term)}
+                  onFilterChange={handleFilterChange}
+                  containerClassName="w-full border rounded-md shadow-sm max-w-[77vw]"
+                />
               </div>
-            </CardHeader>
-            <div className="space-y-4 px-6 pb-6">
-            <DataTable<User>
-              columns={columnsAlternative}
-              data={data}
-              enableColumnSelection={false}
-              enableRowNumbering={true}
-              showSearchBar={true}
-              filters={["role"]}
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={(newPage) => setPage(newPage)}
-              onSearchChange={(term) => setSearchTerm(term)}
-              onFilterChange={handleFilterChange}
-              containerClassName="w-full border rounded-md shadow-sm max-w-[77vw]"
-            />
-          </div>
-        </Card>
-              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-
-            </div>
+            </Card>
+            
+            <Card className="w-full">
+              <CardHeader className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div className="max-w-[calc(100%-40px)] md:max-w-none">
+                  <CardTitle className="text-2xl font-bold">Recogidas de leche</CardTitle>
+                  <CardDescription className="mt-2">Registro de recogidas de leche en esta granja</CardDescription>
+                </div>
+                <Button
+                  className="text-xs md:text-sm flex items-center justify-center mt-2 md:mt-0"
+                  onClick={() => setShowAddMilkCollectionModal(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden md:inline ml-2">Añadir recogida</span>
+                </Button>
+              </CardHeader>
+              <div className="space-y-4 px-6 pb-6">
+                <DataTable<MilkCollection>
+                  columns={milkCollectionColumns.map(column => {
+                    if (column.id === 'actions') {
+                      return {
+                        ...column,
+                        cell: ({ row }) => <CellAction data={row.original} onRefresh={fetchMilkCollections} />
+                      };
+                    }
+                    return column;
+                  })}
+                  data={milkCollectionData}
+                  enableColumnSelection={false}
+                  enableRowNumbering={true}
+                  showSearchBar={true}
+                  currentPage={milkCollectionPage}
+                  totalPages={milkCollectionTotalPages}
+                  totalItems={milkCollectionTotalItems}
+                  onPageChange={(newPage) => setMilkCollectionPage(newPage)}
+                  onSearchChange={(term) => setMilkCollectionSearchTerm(term)}
+                  containerClassName="w-full border rounded-md shadow-sm max-w-[77vw]"
+                />
+              </div>
+            </Card>
           </TabsContent>
           <TabsContent value="analytics">
             <div className="col-span-2 grid grid-cols-1 gap-4 mb-5">
-                  <TemperatureProbeChart 
-                    key={`${appliedDateRange?.from}-${appliedDateRange?.to}`} 
-                    bucket={farmData.idname} 
-                    startDate={appliedDateRange?.from} 
-                    endDate={appliedDateRange?.to} 
-                  />
+              <TemperatureProbeChart 
+                key={`${appliedDateRange?.from}-${appliedDateRange?.to}`} 
+                bucket={farmData.idname} 
+                startDate={appliedDateRange?.from} 
+                endDate={appliedDateRange?.to} 
+              />
               <DairyTimeline/>
-                  
-              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
       <div className="h-11"></div>
+
+      <MilkCollectionAddModal 
+        isOpen={showAddMilkCollectionModal} 
+        onClose={() => setShowAddMilkCollectionModal(false)} 
+        farmId={farmData._id}
+        onRefresh={fetchMilkCollections} 
+      />
     </PageContainer>
   )
 }
