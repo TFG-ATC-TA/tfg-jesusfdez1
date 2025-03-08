@@ -373,7 +373,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
                     <Button 
                       type="button" 
                       onClick={handleAddSensor}  
-                      className="h-9 px-2.5 text-sm flex items-center justify-center" 
+                      className="h-9 w-9 px-2.5 text-sm flex items-center justify-center" 
                     >
                       <Plus className="h-3.5 w-3.5 mr-0.5 ml-0.5" />
                     </Button>
@@ -381,8 +381,8 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
                   {deviceInfo.sensors.map((sensor, index) => (
                     <div key={index} className="flex items-start gap-4">
                       <div className="flex-grow border p-4 rounded-md bg-gray-50 dark:bg-gray-900">
-                        <div className="flex gap-4">
-                          <div className="w-1/2 space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
                             <Label htmlFor={`sensorId-${index}`}>ID del sensor <span className="text-red-500">*</span></Label>
                             <Input 
                               id="sensorId" 
@@ -392,7 +392,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
                               className="bg-white dark:bg-gray-800 text-black dark:text-white" 
                             />
                           </div>
-                          <div className="w-1/2 space-y-2">
+                          <div className="space-y-2">
                             <Label htmlFor={`name-${index}`}>Nombre del sensor</Label>
                             <Input 
                               id="name" 

@@ -23,6 +23,7 @@ import { PaperPlaneIcon } from "@radix-ui/react-icons"
 import DairyTimeline from "@/components/charts/dairy-timeline-chart"
 import MilkCollectionAddModal from "@/components/modals/milk-collection-add-modal"
 import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
+import TicketAddModal from "@/components/modals/ticket-add-modal"
 
 interface AdminViewProps {
   farmData: any;
@@ -218,18 +219,30 @@ export default function AdminView({ farmData }: AdminViewProps) {
             </Card>
             
             <Card className="w-full">
-              <CardHeader className="flex flex-col md:flex-row justify-between items-start gap-4">
-                <div className="max-w-[calc(100%-40px)] md:max-w-none">
-                  <CardTitle className="text-2xl font-bold">Recogidas de leche</CardTitle>
+              <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl font-bold">Recogidas de leche</CardTitle>
+                    <div className="md:hidden ml-4">
+                      <Button
+                        className="text-xs flex items-center justify-center"
+                        onClick={() => setShowAddMilkCollectionModal(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                   <CardDescription className="mt-2">Registro de recogidas de leche en esta granja</CardDescription>
                 </div>
-                <Button
-                  className="text-xs md:text-sm flex items-center justify-center mt-2 md:mt-0"
-                  onClick={() => setShowAddMilkCollectionModal(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden md:inline ml-2">Añadir recogida</span>
-                </Button>
+                <div className="hidden md:block">
+                  <Button
+                    className="text-xs md:text-sm flex items-center justify-center"
+                    onClick={() => setShowAddMilkCollectionModal(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="ml-2">Añadir recogida</span>
+                  </Button>
+                </div>
               </CardHeader>
               <div className="space-y-4 px-6 pb-6">
                 <DataTable<MilkCollection>
@@ -276,6 +289,12 @@ export default function AdminView({ farmData }: AdminViewProps) {
         onClose={() => setShowAddMilkCollectionModal(false)} 
         farmId={farmData._id}
         onRefresh={fetchMilkCollections} 
+      />
+
+      <TicketAddModal 
+        isOpen={false} 
+        onClose={() => console.log('TicketAddModal closed')} 
+        onRefresh={() => console.log('TicketAddModal refreshed')} 
       />
     </PageContainer>
   )
