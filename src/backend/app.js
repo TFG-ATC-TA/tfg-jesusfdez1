@@ -8,6 +8,8 @@ var userRouter = require('./routes/user');
 var farmRouter = require('./routes/farm'); 
 var deviceRouter = require('./routes/device');
 var equipmentRouter = require('./routes/equipment');
+var influxdbRouter = require('./routes/influxdb');
+
 
 
 
@@ -25,6 +27,7 @@ app.use('/user', userRouter);
 app.use('/farm', farmRouter); 
 app.use('/device', deviceRouter);
 app.use('/equipment', equipmentRouter);
+app.use('/history', influxdbRouter);
 
 
 // Conectar a la base de datos

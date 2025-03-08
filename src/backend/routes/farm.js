@@ -108,4 +108,23 @@ router.get('/listName', verifyToken, async (req, res) => {
 });
 
   
+router.get('/:farmId/access', verifyToken, async (req, res) => {
+  try {
+    const { farmId } = req.params;
+    const farm = await Farm.findOne({ idname: farmId });
+    if (!farm) {
+      return res.status(404).json({ message: 'Granja no encontrada' });
+    }
+
+    const hasAccess =  req.user.role === 'Administrador' || farm.users.includes(req.user.id) ;
+    if (hasAccess) {
+      res.json(farm);
+    } else {
+      res.status(403).json({ message: 'No tienes acceso a esta granja' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error verificando acceso a la granja' });
+  }
+});
+
 module.exports = router;

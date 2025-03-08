@@ -35,7 +35,7 @@ export default function Sidebar({ className }: SidebarProps) {
           ? "justify-center px-3 pt-7 pb-3" 
           : "justify-between px-6 pt-7 pb-4"
       )}>
-        <Link href="/dashboard" className={cn("flex items-center justify-center", isMinimized ? "w-full ml-1" : "")}>
+        <Link href="/" className={cn("flex items-center justify-center", isMinimized ? "w-full ml-1" : "")}>
           <Image
             src="/logo.svg"
             alt="LactoKeeper Logo"
