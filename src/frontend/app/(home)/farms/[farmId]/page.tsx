@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react'
-import AdminView from './adminview'
+import AdminView from './admin'
 
 // import UserView from './userview'
 

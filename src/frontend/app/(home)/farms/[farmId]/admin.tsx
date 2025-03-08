@@ -14,11 +14,11 @@ import { DataTable } from '@/components/ui/data-table'
 import { User } from '@/types'
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { columnsAlternative } from '@/components/tables/user-tables/columns';
-import UserAddModal from '@/components/modals/user-add-modal';
-import TemperatureProbeChart from '@/components/charts/temperature-gyroscope';
+import TemperatureProbeChart from '@/components/charts/temperature-gyroscope-chart';
 import { CalendarDateRangePicker, DateRange } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
 import { PaperPlaneIcon } from "@radix-ui/react-icons"
+import  DairyTimeline  from "@/components/charts/dairy-timeline-chart"
 
 interface AdminViewProps {
   farmData: any;
@@ -157,7 +157,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
               containerClassName="w-full border rounded-md shadow-sm max-w-[77vw]"
             />
           </div>
-          <UserAddModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onRefresh={fetchUsers} />
         </Card>
               <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
 
@@ -171,7 +170,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
                     startDate={appliedDateRange?.from} 
                     endDate={appliedDateRange?.to} 
                   />
-
+              <DairyTimeline/>
                   
               </div>
           </TabsContent>

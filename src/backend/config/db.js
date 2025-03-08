@@ -7,26 +7,6 @@ const User = require('../models/User');
 // MongoDB connection URI
 const mongoURI = 'mongodb://127.0.0.1:27017/lactokeeper';
 
-// Function to start MongoDB
-const startMongoDB = () => {
-  return new Promise((resolve, reject) => {
-    const mongodCommand = `"C:\\Program Files\\MongoDB\\Server\\8.0\\bin\\mongod.exe" --dbpath "${dbPath}"`;
-
-    exec(mongodCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error starting MongoDB: ${error.message}`);
-        reject(error);
-        return;
-      }
-      if (stderr) {
-        console.error(`MongoDB stderr: ${stderr}`);
-      }
-      console.log(`MongoDB started: ${stdout}`);
-      resolve();
-    });
-  });
-};
-
 
 // Function to connect to MongoDB
 const connectDB = async () => {
@@ -40,8 +20,7 @@ const connectDB = async () => {
     if (error.name === 'MongooseServerSelectionError') {
       console.log('MongoDB is not running. Attempting to start...');
       try {
-        await startMongoDB();
-        // Retry connection after starting MongoDB
+   
         await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
         await connectDB();
       } catch (startError) {

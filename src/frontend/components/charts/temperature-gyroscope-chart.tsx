@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { ChartContainer } from "@/components/ui/chart"
 import { useTheme } from 'next-themes'
 import { Checkbox } from "@/components/ui/checkbox"
-import { Filter, ChevronDown, Thermometer, AlertTriangle } from "lucide-react"
+import { Filter, ChevronDown, AlertTriangle, ThermometerSun, ThermometerSnowflake } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -336,38 +336,56 @@ const TemperatureProbeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, s
                 <div ref={chartContainerRef} className="h-[355px] w-full" />
               </ChartContainer>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <Card className="bg-white bg-opacity-50 text-black dark:bg-gray-800 dark:bg-opacity-50 dark:text-white border border-gray-300 dark:border-gray-700 md:my-2 md:mx-2 p-2 h-24">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pl-4">
-                <CardTitle className="text-base font-bold">Temperatura de superficie</CardTitle>
-                <Thermometer className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-base font-semibold text-center">
-                    Mín: <span className="text-xl font-bold text-blue-700 break-words">{surfaceStats.min?.toFixed(2)}°C</span>
-                  </div>
-                  <div className="text-base font-semibold text-center">
-                    Máx: <span className="text-xl font-bold text-red-600 break-words">{surfaceStats.max?.toFixed(2)}°C</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white bg-opacity-50 text-black dark:bg-gray-800 dark:bg-opacity-50 dark:text-white border border-gray-300 dark:border-gray-700 md:my-2 md:mx-2 p-2 h-24">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-2 pl-4">
-                <CardTitle className="text-base font-bold">Temperatura sobre superficie</CardTitle>
-                <Thermometer className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-base font-semibold text-center">
-                    Mín: <span className="text-xl font-bold text-blue-700 break-words">{overSurfaceStats.min?.toFixed(2)}°C</span>
-                  </div>
-                  <div className="text-base font-semibold text-center">
-                    Máx: <span className="text-xl font-bold text-red-600 break-words">{overSurfaceStats.max?.toFixed(2)}°C</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                <Card className="bg-white/50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow md:my-2 md:mx-2 overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between p-3 pb-0">
+                    <CardTitle className="text-base font-bold">
+                      Temperatura de superficie
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2">
+                        <div className="flex items-center mb-1">
+                          <ThermometerSnowflake className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-300" />
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-300">Mínima</span>
+                        </div>
+                        <span className="text-xl font-bold text-blue-700 dark:text-blue-300">{surfaceStats.min?.toFixed(2)}°C</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center bg-red-100 dark:bg-red-900/30 rounded-lg p-2">
+                        <div className="flex items-center mb-1">
+                          <ThermometerSun className="h-4 w-4 mr-1 text-red-600 dark:text-red-300" />
+                          <span className="text-xs font-medium text-red-600 dark:text-red-300">Máxima</span>
+                        </div>
+                        <span className="text-xl font-bold text-red-600 dark:text-red-300">{surfaceStats.max?.toFixed(2)}°C</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-white/50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow md:my-2 md:mx-2 overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between p-3 pb-0">
+                    <CardTitle className="text-base font-bold">
+                      Temperatura sobre superficie
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2">
+                        <div className="flex items-center mb-1">
+                          <ThermometerSnowflake className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-300" />
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-300">Mínima</span>
+                        </div>
+                        <span className="text-xl font-bold text-blue-700 dark:text-blue-300">{overSurfaceStats.min?.toFixed(2)}°C</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center bg-red-100 dark:bg-red-900/30 rounded-lg p-2">
+                        <div className="flex items-center mb-1">
+                          <ThermometerSun className="h-4 w-4 mr-1 text-red-600 dark:text-red-300" />
+                          <span className="text-xs font-medium text-red-600 dark:text-red-300">Máxima</span>
+                        </div>
+                        <span className="text-xl font-bold text-red-600 dark:text-red-300">{overSurfaceStats.max?.toFixed(2)}°C</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </>
