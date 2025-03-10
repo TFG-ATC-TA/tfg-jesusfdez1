@@ -11,10 +11,11 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable } from '@/components/ui/data-table'
-import { User, MilkCollection } from '@/types'
+import { User, MilkCollection, Equipment } from '@/types'
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { columnsAlternative } from '@/components/tables/user-tables/columns';
 import { columns as milkCollectionColumns } from '@/components/tables/milk-collection-tables/columns';
+import { columns as equipmentColumns } from '@/components/tables/equipment-tables/columns';
 import TemperatureProbeChart from '@/components/charts/temperature-gyroscope-chart';
 import { CalendarDateRangePicker, DateRange } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,7 @@ import DairyTimeline from "@/components/charts/dairy-timeline-chart"
 import MilkCollectionAddModal from "@/components/modals/milk-collection-add-modal"
 import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
 import TicketAddModal from "@/components/modals/ticket-add-modal"
+import EquipmentAddModal from "@/components/modals/equipment-add-modal"
 
 interface AdminViewProps {
   farmData: any;
@@ -46,6 +48,15 @@ export default function AdminView({ farmData }: AdminViewProps) {
   const [milkCollectionTotalItems, setMilkCollectionTotalItems] = useState(0);
   const [milkCollectionTotalPages, setMilkCollectionTotalPages] = useState(1);
   
+  // Equipment state
+  const [equipmentData, setEquipmentData] = useState<Equipment[]>([]);
+  const [showAddEquipmentModal, setShowAddEquipmentModal] = useState(false);
+  const [equipmentModalLoading, setEquipmentModalLoading] = useState(false);
+  const [equipmentPage, setEquipmentPage] = useState(1);
+  const [equipmentSearchTerm, setEquipmentSearchTerm] = useState('');
+  const [equipmentTotalItems, setEquipmentTotalItems] = useState(0);
+  const [equipmentTotalPages, setEquipmentTotalPages] = useState(1);
+
   // Common state
   const [activeTab, setActiveTab] = useState("overview");
   const initialDateRange = { from: new Date(new Date().setHours(0, 0, 0, 0)), to: new Date(new Date().setHours(23, 59, 59, 999))};
@@ -129,6 +140,39 @@ export default function AdminView({ farmData }: AdminViewProps) {
     }
   }, [session, farmData._id, milkCollectionPage, milkCollectionSearchTerm]);
 
+  // Fetch equipment data
+  const fetchEquipment = useCallback(async () => {
+    if (!session?.accessToken) {
+      console.error('No hay sesión iniciada');
+      return;
+    }
+
+    // Solo bloquear fetches paralelos para la misma función
+    if (isFetchingRef.current === 'equipment') return;
+    
+    try {
+      isFetchingRef.current = 'equipment';
+      const response = await fetch(`http://localhost:5001/equipment/list?farmId=${farmData._id}&page=${equipmentPage}&limit=10&searchTerm=${equipmentSearchTerm}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Error al obtener equipos');
+      }
+      const result = await response.json();
+      setEquipmentData(result.data);
+      setEquipmentTotalItems(result.totalItems);
+      setEquipmentTotalPages(result.totalPages);
+    } catch (error) {
+      console.error('Error al obtener equipos:', error);
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, [session, farmData._id, equipmentPage, equipmentSearchTerm]);
+
   // Effect to fetch users data
   useEffect(() => {
     fetchUsers();
@@ -138,6 +182,11 @@ export default function AdminView({ farmData }: AdminViewProps) {
   useEffect(() => {
     fetchMilkCollections();
   }, [fetchMilkCollections, milkCollectionPage, milkCollectionSearchTerm]);
+
+  // Effect to fetch equipment data
+  useEffect(() => {
+    fetchEquipment();
+  }, [fetchEquipment, equipmentPage, equipmentSearchTerm]);
 
   const handleFilterChange = (filters: Record<string, string[]>) => {
     setSelectedFilters(filters);
@@ -149,6 +198,22 @@ export default function AdminView({ farmData }: AdminViewProps) {
 
   const handleApplyDateRange = () => {
     setAppliedDateRange(dateRange);
+  };
+
+  const handleOpenAddEquipmentModal = async () => {
+    setEquipmentModalLoading(true);
+    setShowAddEquipmentModal(true);
+    try {
+      await fetchEquipment(); // Asegurarse de que los datos se cargan antes de abrir el modal
+    } catch (error) {
+      console.error('Error al cargar datos para el modal de añadir equipo:', error);
+    } finally {
+      setEquipmentModalLoading(false);
+    }
+  };
+
+  const handleCloseAddEquipmentModal = () => {
+    setShowAddEquipmentModal(false);
   };
 
   return (
@@ -268,6 +333,51 @@ export default function AdminView({ farmData }: AdminViewProps) {
                 />
               </div>
             </Card>
+
+            <Card className="w-full">
+              <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl font-bold">Equipos</CardTitle>
+                    <div className="md:hidden ml-4">
+                      <Button
+                        className="text-xs flex items-center justify-center"
+                        onClick={handleOpenAddEquipmentModal}
+                        disabled={equipmentModalLoading}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <CardDescription className="mt-2">Lista de equipos en esta granja</CardDescription>
+                </div>
+                <div className="hidden md:block">
+                  <Button
+                    className="text-xs md:text-sm flex items-center justify-center"
+                    onClick={handleOpenAddEquipmentModal}
+                    disabled={equipmentModalLoading}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="ml-2">Añadir equipo</span>
+                  </Button>
+                </div>
+              </CardHeader>
+              <div className="space-y-4 px-6 pb-6">
+                <DataTable<Equipment>
+                  columns={equipmentColumns}
+                  data={equipmentData}
+                  enableColumnSelection={false}
+                  enableRowNumbering={true}
+                  showSearchBar={true}
+                  currentPage={equipmentPage}
+                  totalPages={equipmentTotalPages}
+                  totalItems={equipmentTotalItems}
+                  onPageChange={(newPage) => setEquipmentPage(newPage)}
+                  onSearchChange={(term) => setEquipmentSearchTerm(term)}
+                  containerClassName="w-full border rounded-md shadow-sm max-w-[77vw]"
+                />
+              </div>
+            </Card>
           </TabsContent>
           <TabsContent value="analytics">
             <div className="col-span-2 grid grid-cols-1 gap-4 mb-5">
@@ -295,6 +405,15 @@ export default function AdminView({ farmData }: AdminViewProps) {
         isOpen={false} 
         onClose={() => console.log('TicketAddModal closed')} 
         onRefresh={() => console.log('TicketAddModal refreshed')} 
+      />
+
+      <EquipmentAddModal 
+        isOpen={showAddEquipmentModal} 
+        onClose={handleCloseAddEquipmentModal} 
+        farmId={farmData._id}
+        onRefresh={fetchEquipment}
+        isLoading={equipmentModalLoading}
+        setIsLoading={setEquipmentModalLoading}
       />
     </PageContainer>
   )

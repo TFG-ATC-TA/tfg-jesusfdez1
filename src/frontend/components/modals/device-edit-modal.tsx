@@ -141,7 +141,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
           return;
         }
         try {
-          const response = await fetch('http://localhost:5001/equipment/list', {
+          const response = await fetch('http://localhost:5001/equipment/listName', {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',

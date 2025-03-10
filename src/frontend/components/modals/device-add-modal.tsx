@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,63 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
   const [equipmentFilter, setEquipmentFilter] = useState('');
 
   const { toast } = useToast();
+
+  const filterOptions = {
+    type: ["Monitor de leche", "Monitor de tanque", "Monitor de estación de lavado"],
+  };
+
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
+    type: [...filterOptions.type],
+  });
+
+  const handleFilterChange = (filters: Record<string, string[]>) => {
+    setSelectedFilters(filters);
+  };
+
+  const fetchDevices = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '') => {
+    if (!session?.accessToken || !farmId) {
+      return;
+    }
+
+    try {
+      const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
+      const filtersQuery = JSON.stringify(selectedFilters);
+      const searchParams = new URLSearchParams();
+      searchParams.append('farmId', farmId);
+      searchParams.append('page', page.toString());
+      searchParams.append('limit', '10');
+      searchParams.append('types', typesQuery);
+      searchParams.append('filters', encodeURIComponent(filtersQuery));
+      if (searchTerm) {
+        searchParams.append('searchTerm', searchTerm);
+      }
+
+      const response = await fetch(
+        `http://localhost:5001/device/list?${searchParams.toString()}`, 
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `${session.accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Error al obtener dispositivos');
+      }
+
+      const result = await response.json();
+      console.log(result);
+    } catch (error) {
+      console.error('Error al obtener dispositivos:', error);
+      toast({
+        title: "Error al cargar dispositivos",
+        description: error instanceof Error ? error.message : "Error al obtener dispositivos",
+        variant: "destructive",
+      });
+    }
+  }, [session, selectedFilters]);
 
   useEffect(() => {
     if (isOpen && farms.length === 0) {
@@ -87,7 +144,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           return;
         }
         try {
-          const response = await fetch('http://localhost:5001/equipment/list', {
+          const response = await fetch('http://localhost:5001/equipment/listName', {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -100,7 +157,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           if (!response.ok) {
             throw new Error(data.message || 'Error al obtener los equipos');
           }
-          setEquipments(data);
+          setEquipments(data || []);
         } catch (error) {
           console.error('Error al obtener equipos:', error);
           toast({
@@ -236,9 +293,9 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
                           <SelectValue placeholder="Seleccione un tipo de dispositivo" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Monitor de leche">Monitor de leche</SelectItem>
-                          <SelectItem value="Monitor de tanque">Monitor de tanque</SelectItem>
-                          <SelectItem value="Monitor de estación de lavado">Monitor de estación de lavado</SelectItem>
+                          {filterOptions.type.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

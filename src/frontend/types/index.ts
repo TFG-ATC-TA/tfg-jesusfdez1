@@ -34,6 +34,16 @@ export interface Device {
   }[];
 }
 
+export interface Equipment {
+  _id: string;
+  name: string;
+  type: string;
+  farm: string;
+  device: string[];
+  associatedTanks?: string[];
+  deviceCount?: number;
+}
+
 export interface MilkCollection {
   _id: string;
   collectionDate: Date;
