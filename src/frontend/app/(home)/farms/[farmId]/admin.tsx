@@ -15,7 +15,7 @@ import { User, MilkCollection, Equipment } from '@/types'
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { columnsAlternative } from '@/components/tables/user-tables/columns';
 import { columns as milkCollectionColumns } from '@/components/tables/milk-collection-tables/columns';
-import { columns as equipmentColumns } from '@/components/tables/equipment-tables/columns';
+import { getColumns as getEquipmentColumns } from '@/components/tables/equipment-tables/columns';
 import TemperatureProbeChart from '@/components/charts/temperature-gyroscope-chart';
 import { CalendarDateRangePicker, DateRange } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
@@ -65,10 +65,15 @@ export default function AdminView({ farmData }: AdminViewProps) {
 
   const filterOptions = {
     role: ["Administrador", "Veterinario", "Industria", "Ganadero"],
+    type: ["Tanque de leche", "Estación de lavado"]
   };
 
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     role: [...filterOptions.role],
+  });
+  
+  const [selectedEquipmentFilters, setSelectedEquipmentFilters] = useState<Record<string, string[]>>({
+    type: [...filterOptions.type],
   });
 
   // Fetch users data
@@ -151,16 +156,29 @@ export default function AdminView({ farmData }: AdminViewProps) {
     
     try {
       isFetchingRef.current = 'equipment';
-      const response = await fetch(`http://localhost:5001/equipment/list?farmId=${farmData._id}&page=${equipmentPage}&limit=10&searchTerm=${equipmentSearchTerm}`, {
+      const typesQuery = selectedEquipmentFilters['type'] ? selectedEquipmentFilters['type'].join(',') : '';
+      const filtersQuery = JSON.stringify(selectedEquipmentFilters);
+      
+      const searchParams = new URLSearchParams();
+      searchParams.append('farmId', farmData._id);
+      searchParams.append('page', equipmentPage.toString());
+      searchParams.append('limit', '10');
+      searchParams.append('searchTerm', equipmentSearchTerm);
+      searchParams.append('types', typesQuery);
+      searchParams.append('filters', encodeURIComponent(filtersQuery));
+      
+      const response = await fetch(`http://localhost:5001/equipment/list?${searchParams.toString()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `${session.accessToken}`,
         },
       });
+      
       if (!response.ok) {
         throw new Error('Error al obtener equipos');
       }
+      
       const result = await response.json();
       setEquipmentData(result.data);
       setEquipmentTotalItems(result.totalItems);
@@ -170,7 +188,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
     } finally {
       isFetchingRef.current = false;
     }
-  }, [session, farmData._id, equipmentPage, equipmentSearchTerm]);
+  }, [session, farmData._id, equipmentPage, equipmentSearchTerm, selectedEquipmentFilters]);
 
   // Effect to fetch users data
   useEffect(() => {
@@ -329,11 +347,14 @@ export default function AdminView({ farmData }: AdminViewProps) {
               </CardHeader>
               <div className="space-y-4 px-6 pb-6">
                 <DataTable<Equipment>
-                  columns={equipmentColumns}
+                  columns={getEquipmentColumns(fetchEquipment)}
                   data={equipmentData}
                   enableColumnSelection={false}
                   enableRowNumbering={true}
                   showSearchBar={true}
+                  filters={["type"]}
+                  filterOptions={{type: filterOptions.type}}
+                  onFilterChange={(filters) => setSelectedEquipmentFilters(filters)}
                   currentPage={equipmentPage}
                   totalPages={equipmentTotalPages}
                   totalItems={equipmentTotalItems}

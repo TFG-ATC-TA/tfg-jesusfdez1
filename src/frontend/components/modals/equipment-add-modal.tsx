@@ -424,7 +424,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
         },
         body: JSON.stringify({
           ...equipmentInfo,
-          device: selectedDeviceIds,
+          devices: selectedDeviceIds,
           associatedTanks: equipmentInfo.type === "Estación de lavado" ? selectedTankIds : [],
         }),
       });

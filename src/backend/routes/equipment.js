@@ -84,13 +84,19 @@ router.get('/list', verifyToken, async (req, res) => {
     sortOptions[sortField] = sortOrder;
 
     const equipments = await Equipment.find(query)
-      .select('_id name type')
+      .select('_id name type devices')
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);
 
+    // Enviar también la longitud de devices
+    const equipmentsWithDeviceCount = equipments.map(equipment => ({
+      ...equipment.toObject(),
+      deviceCount: equipment.devices.length
+    }));
+
     res.json({ 
-      data: equipments, 
+      data: equipmentsWithDeviceCount, 
       totalItems, 
       totalPages, 
       currentPage: adjustedPage 
@@ -139,7 +145,7 @@ router.get('/listTanks', verifyToken, async (req, res) => {
 // Crear nuevo equipo
 router.post('/', verifyToken, async (req, res) => {
   try {
-    let { name, type, description, farm } = req.body;
+    let { name, type, description, farm, devices, associatedTanks } = req.body;
     
     // Trim input fields
     name = name ? name.trim() : '';
@@ -172,7 +178,9 @@ router.post('/', verifyToken, async (req, res) => {
       name,
       type,
       description,
-      farm
+      farm,
+      devices: devices || [], // Guardar los dispositivos asociados
+      associatedTanks: type === "Estación de lavado" ? (associatedTanks || []) : [] // Guardar tanques sólo para estaciones de lavado
     });
     
     await newEquipment.save();

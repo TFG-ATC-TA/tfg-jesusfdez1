@@ -38,10 +38,10 @@ export interface Equipment {
   _id: string;
   name: string;
   type: string;
-  farm: string;
-  device: string[];
+  deviceCount: number;
+  farm?: string;
+  device?: string[];
   associatedTanks?: string[];
-  deviceCount?: number;
 }
 
 export interface MilkCollection {
