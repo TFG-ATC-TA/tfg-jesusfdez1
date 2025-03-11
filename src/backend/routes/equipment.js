@@ -84,8 +84,7 @@ router.get('/list', verifyToken, async (req, res) => {
     sortOptions[sortField] = sortOrder;
 
     const equipments = await Equipment.find(query)
-      .select('_id name type description farm createdAt')
-      .populate('farm', 'name')
+      .select('_id name type')
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);

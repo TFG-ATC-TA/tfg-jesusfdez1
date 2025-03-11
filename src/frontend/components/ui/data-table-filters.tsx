@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import { Filter, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -14,22 +14,33 @@ interface FilterSelectorProps {
   selectedFilters: Record<string, string[]>;
   onFilterChange: (filters: Record<string, string[]>) => void;
   options: string[];
+  key?: string; // Added key prop for re-rendering
 }
 
 const FilterSelector = memo(({ filter, data, selectedFilters, onFilterChange, options }: FilterSelectorProps) => {
   const uniqueValues = options.length > 0 ? options : Array.from(new Set(data.map((item) => (item as Record<string, any>)[filter])));
   const filterName = columnNames[filter] || filter;
+  
+  // Local state to track what's currently selected
+  const [localSelectedValues, setLocalSelectedValues] = useState<string[]>(selectedFilters[filter] || []);
+  
+  // Update local state when selectedFilters changes from parent
+  useEffect(() => {
+    setLocalSelectedValues(selectedFilters[filter] || []);
+  }, [selectedFilters, filter]);
 
   const handleCheckboxChange = useCallback((value: string) => {
-    const currentFilters = selectedFilters[filter] || [];
-    const updatedFilters = currentFilters.includes(value)
-      ? currentFilters.filter(v => v !== value)
-      : [...currentFilters, value];
+    const updatedFilters = localSelectedValues.includes(value)
+      ? localSelectedValues.filter(v => v !== value)
+      : [...localSelectedValues, value];
+    
+    setLocalSelectedValues(updatedFilters);
+    
     onFilterChange({
       ...selectedFilters,
       [filter]: updatedFilters
     });
-  }, [filter, selectedFilters, onFilterChange]);
+  }, [filter, selectedFilters, onFilterChange, localSelectedValues]);
 
   return (
     <DropdownMenu>
@@ -54,7 +65,7 @@ const FilterSelector = memo(({ filter, data, selectedFilters, onFilterChange, op
           >
             <div onClick={(e) => e.stopPropagation()} className="flex items-center">
               <Checkbox
-                checked={selectedFilters[filter]?.includes(value) || false}
+                checked={localSelectedValues.includes(value)}
                 onCheckedChange={() => handleCheckboxChange(value)}
               />
               <span className="pointer-events-none ml-2">{value}</span>
@@ -75,11 +86,19 @@ interface DataTableFiltersProps {
 }
 
 export function DataTableFilters({ filters, data, selectedFilters, onFilterChange, filterOptions }: DataTableFiltersProps) {
+  // Unique key to force re-render when selectedFilters changes
+  const [filterKey, setFilterKey] = useState(0);
+  
+  // Update key when selectedFilters changes to force re-render
+  useEffect(() => {
+    setFilterKey(prev => prev + 1);
+  }, [JSON.stringify(selectedFilters)]);
+
   return (
     <div className="flex space-x-2">
       {filters.map((filter) => (
         <FilterSelector
-          key={filter}
+          key={`${filter}-${filterKey}`}
           filter={filter}
           data={data}
           selectedFilters={selectedFilters}

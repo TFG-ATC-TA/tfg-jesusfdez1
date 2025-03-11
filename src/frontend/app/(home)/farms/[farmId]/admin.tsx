@@ -51,7 +51,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
   // Equipment state
   const [equipmentData, setEquipmentData] = useState<Equipment[]>([]);
   const [showAddEquipmentModal, setShowAddEquipmentModal] = useState(false);
-  const [equipmentModalLoading, setEquipmentModalLoading] = useState(false);
   const [equipmentPage, setEquipmentPage] = useState(1);
   const [equipmentSearchTerm, setEquipmentSearchTerm] = useState('');
   const [equipmentTotalItems, setEquipmentTotalItems] = useState(0);
@@ -200,16 +199,8 @@ export default function AdminView({ farmData }: AdminViewProps) {
     setAppliedDateRange(dateRange);
   };
 
-  const handleOpenAddEquipmentModal = async () => {
-    setEquipmentModalLoading(true);
+  const handleOpenAddEquipmentModal = () => {
     setShowAddEquipmentModal(true);
-    try {
-      await fetchEquipment(); // Asegurarse de que los datos se cargan antes de abrir el modal
-    } catch (error) {
-      console.error('Error al cargar datos para el modal de añadir equipo:', error);
-    } finally {
-      setEquipmentModalLoading(false);
-    }
   };
 
   const handleCloseAddEquipmentModal = () => {
@@ -258,10 +249,10 @@ export default function AdminView({ farmData }: AdminViewProps) {
           </div>
           <TabsContent value="overview" className="space-y-4">
             <Card className="w-full">
-              <CardHeader className="flex flex-col md:flex-row justify-between">
-                <div>
+              <CardHeader className="flex flex-row justify-between items-start gap-4">
+                <div className="flex-1 overflow-hidden">
                   <CardTitle className="text-2xl font-bold">Usuarios con acceso</CardTitle>
-                  <CardDescription>Lista de los usuarios que tienen acceso en esta granja</CardDescription>
+                  <CardDescription className="mt-2 line-clamp-2">Lista de los usuarios que tienen acceso en esta granja</CardDescription>
                 </div>
               </CardHeader>
               <div className="space-y-4 px-6 pb-6">
@@ -284,30 +275,18 @@ export default function AdminView({ farmData }: AdminViewProps) {
             </Card>
             
             <Card className="w-full">
-              <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-2xl font-bold">Recogidas de leche</CardTitle>
-                    <div className="md:hidden ml-4">
-                      <Button
-                        className="text-xs flex items-center justify-center"
-                        onClick={() => setShowAddMilkCollectionModal(true)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <CardDescription className="mt-2">Registro de recogidas de leche en esta granja</CardDescription>
+              <CardHeader className="flex flex-row justify-between items-start gap-4">
+                <div className="flex-1 overflow-hidden">
+                  <CardTitle className="text-2xl font-bold">Recogidas de leche</CardTitle>
+                  <CardDescription className="mt-2 line-clamp-2">Registro de recogidas de leche en esta granja</CardDescription>
                 </div>
-                <div className="hidden md:block">
-                  <Button
-                    className="text-xs md:text-sm flex items-center justify-center"
-                    onClick={() => setShowAddMilkCollectionModal(true)}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span className="ml-2">Añadir recogida</span>
-                  </Button>
-                </div>
+                <Button
+                  className="text-xs md:text-sm flex items-center justify-center shrink-0"
+                  onClick={() => setShowAddMilkCollectionModal(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="ml-2 hidden md:inline">Añadir recogida</span>
+                </Button>
               </CardHeader>
               <div className="space-y-4 px-6 pb-6">
                 <DataTable<MilkCollection>
@@ -335,32 +314,18 @@ export default function AdminView({ farmData }: AdminViewProps) {
             </Card>
 
             <Card className="w-full">
-              <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-2xl font-bold">Equipos</CardTitle>
-                    <div className="md:hidden ml-4">
-                      <Button
-                        className="text-xs flex items-center justify-center"
-                        onClick={handleOpenAddEquipmentModal}
-                        disabled={equipmentModalLoading}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <CardDescription className="mt-2">Lista de equipos en esta granja</CardDescription>
+              <CardHeader className="flex flex-row justify-between items-start gap-4">
+                <div className="flex-1 overflow-hidden">
+                  <CardTitle className="text-2xl font-bold">Equipos</CardTitle>
+                  <CardDescription className="mt-2 line-clamp-2">Lista de equipos en esta granja</CardDescription>
                 </div>
-                <div className="hidden md:block">
-                  <Button
-                    className="text-xs md:text-sm flex items-center justify-center"
-                    onClick={handleOpenAddEquipmentModal}
-                    disabled={equipmentModalLoading}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span className="ml-2">Añadir equipo</span>
-                  </Button>
-                </div>
+                <Button
+                  className="text-xs md:text-sm flex items-center justify-center shrink-0"
+                  onClick={handleOpenAddEquipmentModal}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="ml-2 hidden md:inline">Añadir equipo</span>
+                </Button>
               </CardHeader>
               <div className="space-y-4 px-6 pb-6">
                 <DataTable<Equipment>
@@ -412,8 +377,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
         onClose={handleCloseAddEquipmentModal} 
         farmId={farmData._id}
         onRefresh={fetchEquipment}
-        isLoading={equipmentModalLoading}
-        setIsLoading={setEquipmentModalLoading}
       />
     </PageContainer>
   )

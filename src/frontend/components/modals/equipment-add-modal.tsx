@@ -31,17 +31,13 @@ interface EquipmentAddModalProps {
   onClose: () => void;
   farmId: string;
   onRefresh: () => void;
-  isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
 }
 
 const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({ 
   isOpen, 
   onClose, 
   farmId, 
-  onRefresh,
-  isLoading,
-  setIsLoading 
+  onRefresh 
 }) => {
   const { data: session } = useSession();
   const { toast } = useToast();
@@ -96,6 +92,9 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
       setTanksPage(1);
       setDevicesSearchTerm('');
       setTanksSearchTerm('');
+      
+      // Initialize data when opening modal
+      initData();
     }
   }, [isOpen, farmId]);
 
@@ -115,10 +114,15 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     // Actualizar filtros basados en el tipo de equipo
     const deviceTypes = getDeviceTypesByEquipmentType(value);
     setSelectedFilters({ type: deviceTypes });
+    // Clear devices and reset pagination to force a fresh fetch
+    setDevices([]);
+    setDevicesPage(1);
     // Limpiar selección de tanques asociados si no es estación de lavado
     if (value !== "Estación de lavado") {
       setSelectedTanks({});
     }
+    // Clear selected devices when type changes
+    setSelectedDevices({});
   };
 
   // Asegurar que los filtros se establecen correctamente al cambiar el tipo
@@ -198,8 +202,6 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
         searchParams.append('searchTerm', searchTerm);
       }
 
-      console.log("Realizando petición con params:", searchParams.toString());
-
       const response = await fetch(
         `http://localhost:5001/device/list?${searchParams.toString()}`, 
         {
@@ -218,7 +220,6 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
       }
       
       const result = await response.json();
-      console.log("Dispositivos recibidos:", result);
       
       if (!mountedRef.current) return;
       
@@ -240,24 +241,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
         isFetchingRef.current = false;
       }
     }
-  }, [session, selectedFilters]);
-
-  // Modificar el efecto que maneja la carga inicial
-  useEffect(() => {
-    if (isOpen && farmId) {
-      const initializeData = async () => {
-        try {
-          setLoading(true);
-          await fetchDevices(farmId, 1, '');
-        } catch (error) {
-          console.error('Error al inicializar datos:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      initializeData();
-    }
-  }, [isOpen, farmId, fetchDevices]);
+  }, [session, selectedFilters, toast]);
 
   // Asegurar que los datos no se borren al cambiar filtros o paginación
   useEffect(() => {
@@ -274,11 +258,6 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
 
     try {
       setLoading(true);
-      console.log("Cargando tanques con parámetros:", {
-        farmId,
-        page,
-        searchTerm
-      });
 
       const searchParams = new URLSearchParams();
       searchParams.append('farmId', farmId);
@@ -306,7 +285,6 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
       }
       
       const result = await response.json();
-      console.log("Tanques cargados:", result);
       
       if (!mountedRef.current) return;
       
@@ -319,7 +297,6 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
         setTanksTotalItems(result.totalItems || result.data.length);
         setTanksTotalPages(result.totalPages || Math.ceil(result.data.length / 10));
       } else {
-        console.error("La respuesta no contiene datos de tanques válidos:", result);
         setAssociatedTanks([]);
         setTanksTotalItems(0);
         setTanksTotalPages(1);
@@ -363,17 +340,9 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     } finally {
       if (mountedRef.current) {
         setInitialLoading(false);
-        setIsLoading(false); // Indicar que la carga inicial ha terminado
       }
     }
-  }, [isOpen, farmId, session, fetchDevices, fetchTanks, devicesSearchTerm, tanksSearchTerm, setIsLoading]);
-
-  // Cargar datos cuando se abre el modal
-  useEffect(() => {
-    if (isOpen && farmId && isLoading) {
-      initData();
-    }
-  }, [isOpen, farmId, initData, isLoading]);
+  }, [isOpen, farmId, session, fetchDevices, fetchTanks, devicesSearchTerm, tanksSearchTerm]);
 
   // Manejar cambios de paginación y búsqueda para dispositivos con useCallback para evitar re-renderizados innecesarios
   const handleDevicesPageChange = useCallback((newPage: number) => {
@@ -493,7 +462,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     equipmentInfo.type !== '';
 
   return (
-    <Dialog open={isOpen && !isLoading} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] h-[90vh] sm:h-[80vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
           <DialogTitle className="text-lg font-bold">Crear nuevo equipamiento</DialogTitle>
@@ -533,32 +502,40 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
                     </div>
                   </div>
                   
-                  <Separator />
-                  
-                  <div>
-                    <CardTitle className="mb-4">Dispositivos asociados</CardTitle>
-                  </div>
-                  <div className="space-y-4">
-                    <DataTable<Device>
-                      columns={deviceColumns}
-                      data={devices}
-                      enableColumnSelection={true}
-                      rowSelection={selectedDevices}
-                      onRowSelectionChange={handleDeviceSelectionChange}
-                      onPageChange={handleDevicesPageChange}
-                      onSearchChange={handleDevicesSearchChange}
-                      currentPage={devicesPage}
-                      totalPages={devicesTotalPages}
-                      limit={10}
-                      totalItems={devicesTotalItems} 
-                      containerClassName="w-full border rounded-md shadow-sm"
-                      showSearchBar={true}
-                      filters={["type"]}
-                      filterOptions={deviceTypeFilterOptions}
-                      onFilterChange={handleFilterChange}
-                      loading={loading}
-                    />
-                  </div>
+                  {equipmentInfo.type && (
+                    <>
+                      <Separator />
+                      <div>
+                        <CardTitle className="mb-4">Dispositivos asociados</CardTitle>
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="w-full overflow-x-auto pb-2 -mx-4 sm:mx-0">
+                          <div className="min-w-full px-4 sm:px-0">
+                            <DataTable<Device>
+                              columns={deviceColumns}
+                              data={devices}
+                              enableColumnSelection={true}
+                              rowSelection={selectedDevices}
+                              onRowSelectionChange={handleDeviceSelectionChange}
+                              onPageChange={handleDevicesPageChange}
+                              onSearchChange={handleDevicesSearchChange}
+                              currentPage={devicesPage}
+                              totalPages={devicesTotalPages}
+                              limit={10}
+                              totalItems={devicesTotalItems} 
+                              containerClassName="w-full border rounded-md shadow-sm max-w-[90vw]"
+                              showSearchBar={true}
+                              filters={["type"]}
+                              filterOptions={deviceTypeFilterOptions}
+                              onFilterChange={handleFilterChange}
+                              loading={loading}
+                              key={`device-table-${equipmentInfo.type}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   
                   {equipmentInfo.type === "Estación de lavado" && (
                     <>
@@ -567,22 +544,26 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
                         <CardTitle className="mb-4">Tanques asociados</CardTitle>
                         <p className="text-sm text-gray-500 mb-4">Seleccione los tanques que serán limpiados por esta estación de lavado</p>
                       </div>
-                      <div className="space-y-2">
-                        <DataTable<AssociatedTank>
-                          columns={tankColumns}
-                          data={associatedTanks}
-                          enableColumnSelection={true}
-                          rowSelection={selectedTanks}
-                          onRowSelectionChange={handleTankSelectionChange}
-                          onPageChange={handleTanksPageChange}
-                          onSearchChange={handleTanksSearchChange}
-                          currentPage={tanksPage}
-                          totalPages={tanksTotalPages}
-                          limit={10}
-                          totalItems={tanksTotalItems} 
-                          containerClassName="w-full border rounded-md shadow-sm"
-                          showSearchBar={true}
-                        />
+                      <div className="overflow-hidden">
+                        <div className="w-full overflow-x-auto pb-2 -mx-4 sm:mx-0">
+                          <div className="min-w-full px-4 sm:px-0">
+                            <DataTable<AssociatedTank>
+                              columns={tankColumns}
+                              data={associatedTanks}
+                              enableColumnSelection={true}
+                              rowSelection={selectedTanks}
+                              onRowSelectionChange={handleTankSelectionChange}
+                              onPageChange={handleTanksPageChange}
+                              onSearchChange={handleTanksSearchChange}
+                              currentPage={tanksPage}
+                              totalPages={tanksTotalPages}
+                              limit={10}
+                              totalItems={tanksTotalItems} 
+                              containerClassName="w-full border rounded-md shadow-sm"
+                              showSearchBar={true}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </>
                   )}
