@@ -33,7 +33,6 @@ router.get('/list', verifyToken, async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const searchTerm = req.query.searchTerm || '';
     const sortField = req.query.sortField || 'name';
-    const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1;
     const types = req.query.types ? req.query.types.split(',') : [];
     const filters = req.query.filters ? JSON.parse(decodeURIComponent(req.query.filters)) : {};
 
@@ -79,13 +78,10 @@ router.get('/list', verifyToken, async (req, res) => {
     const adjustedPage = page > totalPages && totalPages > 0 ? totalPages : page;
     const skip = (adjustedPage - 1) * limit;
 
-    // Construir el objeto de ordenamiento
-    const sortOptions = {};
-    sortOptions[sortField] = sortOrder;
 
     const equipments = await Equipment.find(query)
       .select('_id name type devices')
-      .sort(sortOptions)
+      .sort({ name: 1 })
       .skip(skip)
       .limit(limit);
 
@@ -193,7 +189,9 @@ router.post('/', verifyToken, async (req, res) => {
 // Obtener un equipo específico
 router.get('/:id', verifyToken, async (req, res) => {
   try {
-    const equipment = await Equipment.findById(req.params.id).populate('farm', 'name');
+    // Primero obtenemos los datos básicos del equipo
+    const equipment = await Equipment.findById(req.params.id)
+                                    .populate('farm', 'name');
     
     if (!equipment) {
       return res.status(404).json({ message: 'Equipo no encontrado' });
@@ -207,7 +205,15 @@ router.get('/:id', verifyToken, async (req, res) => {
       return res.status(403).json({ message: 'No tienes acceso a este equipo' });
     }
     
-    res.json(equipment);
+    // En lugar de cargar todos los datos de los dispositivos y tanques,
+    // simplemente enviamos sus IDs para optimizar la carga
+    const equipmentData = {
+      ...equipment.toObject(),
+      devices: equipment.devices,
+      associatedTanks: equipment.associatedTanks
+    };
+    
+    res.json(equipmentData);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener el equipo: ' + error });
   }
@@ -216,7 +222,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 // Actualizar un equipo existente
 router.put('/:id', verifyToken, async (req, res) => {
   try {
-    const { name, type, description } = req.body;
+    const { name, type, description, devices, associatedTanks } = req.body;
     
     // Verificar que el equipo existe
     const equipment = await Equipment.findById(req.params.id);
@@ -236,6 +242,19 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (name) equipment.name = name.trim();
     if (type) equipment.type = type;
     if (description !== undefined) equipment.description = description.trim();
+    
+    // Actualizar dispositivos asociados si se proporcionan
+    if (devices && Array.isArray(devices)) {
+      equipment.devices = devices;
+    }
+    
+    // Actualizar tanques asociados si se proporcionan y el tipo es "Estación de lavado"
+    if (type === "Estación de lavado" && associatedTanks && Array.isArray(associatedTanks)) {
+      equipment.associatedTanks = associatedTanks;
+    } else if (type !== "Estación de lavado") {
+      // Si no es estación de lavado, limpiar los tanques asociados
+      equipment.associatedTanks = [];
+    }
     
     // Validar nombre si se proporciona
     if (name) {

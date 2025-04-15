@@ -36,6 +36,7 @@ router.get('/list', verifyToken, async (req, res) => {
     const farms = await Farm.find(query)
       .select('_id name idname')
       .skip(skip)
+      .sort({ name: 1 })
       .limit(limit)
 
     res.json({ 

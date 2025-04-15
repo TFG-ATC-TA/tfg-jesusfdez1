@@ -15,7 +15,7 @@ var collectionRouter = require('./routes/collection');
 
 
 var app = express();
-const connectDB = require('./config/db'); // Ruta hacia el archivo de conexión de la base de datos
+const connectDB = require('./config/mongodb'); // Ruta hacia el archivo de conexión de la base de datos
 
 
 app.use(logger('dev'));

@@ -28,7 +28,7 @@ import { Trash2, Plus, Trash } from 'lucide-react';
 
 // Define un tipo para un tanque en la recogida
 interface TankCollection {
-  tankId: string;
+  tankId: { _id: string };
   liters: number;
   compartment: string;
 }
@@ -164,7 +164,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     }
   };
 
-  const handleTankChange = (index: number, field: keyof TankCollection, value: string | number) => {
+  const handleTankChange = (index: number, field: keyof TankCollection, value: any) => {
     const updatedTanks = [...collectionInfo.litersPerTank];
     updatedTanks[index] = { 
       ...updatedTanks[index], 
@@ -179,7 +179,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
         ...collectionInfo,
         litersPerTank: [
           ...collectionInfo.litersPerTank,
-          { tankId: tanks[0]._id, liters: 0, compartment: 'Único' }
+          { tankId: { _id: tanks[0]._id }, liters: 0, compartment: 'Único' }
         ]
       });
     }
@@ -429,15 +429,20 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
                               <div className="space-y-2">
                                 <Label>Tanque <span className="text-red-500">*</span></Label>
                                 <Select 
-                                  value={tank.tankId} 
-                                  onValueChange={(value) => handleTankChange(index, 'tankId', value)}
+                                  value={tank.tankId._id} 
+                                  onValueChange={(value) => handleTankChange(index, 'tankId', { _id: value })}
                                 >
                                   <SelectTrigger className="bg-white dark:bg-gray-800 text-black dark:text-white">
                                     <SelectValue placeholder="Seleccionar tanque" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {tanks.map(t => (
-                                      <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
+                                      <SelectItem 
+                                        key={t._id} 
+                                        value={t._id}
+                                      >
+                                        {t.name}
+                                      </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>

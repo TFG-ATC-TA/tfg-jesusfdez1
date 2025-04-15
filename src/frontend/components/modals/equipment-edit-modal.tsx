@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,6 @@ interface AssociatedTank {
 interface EquipmentEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  farmId: string;
   equipmentId: string;
   onRefresh: () => void;
 }
@@ -37,26 +36,22 @@ interface EquipmentEditModalProps {
 const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({ 
   isOpen, 
   onClose, 
-  farmId, 
   equipmentId,
   onRefresh 
 }) => {
   const { data: session } = useSession();
   const { toast } = useToast();
   
-  // Estados básicos
-  const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
+  const isFetchingRef = useRef(false);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   
-  const [equipmentInfo, setEquipmentInfo] = useState<{
-    name: string;
-    type: string;
-    farm: string;
-    description?: string;
-  }>({
+  const [equipmentInfo, setEquipmentInfo] = useState({
     name: '',
     type: '',
-    farm: farmId,
-    description: '',
+    farm: '',
+    description: ''
   });
   
   const [devices, setDevices] = useState<Device[]>([]);
@@ -74,14 +69,16 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
   const [tanksSearchTerm, setTanksSearchTerm] = useState('');
   const [tanksTotalItems, setTanksTotalItems] = useState(0);
   const [tanksTotalPages, setTanksTotalPages] = useState(1);
-  
-  // Estado para filtros
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
-    type: [],
-  });
 
-  // Obtener los tipos de dispositivos según el tipo de equipo
-  const getDeviceTypesByEquipmentType = (equipmentType: string) => {
+  // Reset state on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Helper to get device types based on equipment type
+  function getDeviceTypesByEquipmentType(equipmentType: string): string[] {
     switch (equipmentType) {
       case "Tanque de leche":
         return ["Monitor de leche", "Monitor de tanque"];
@@ -90,109 +87,35 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       default:
         return ["Monitor de leche", "Monitor de tanque", "Monitor de estación de lavado"];
     }
+  }
+
+  const deviceTypeFilterOptions = {
+    type: getDeviceTypesByEquipmentType(equipmentInfo.type),
   };
+  
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
+    type: [...deviceTypeFilterOptions.type],
+  });
 
-  // Efecto para cargar datos cuando se abre el modal
-  useEffect(() => {
-    if (isOpen && equipmentId) {
-      const fetchEquipmentData = async () => {
-        if (!session?.accessToken) {
-          toast({
-            title: "Error",
-            description: "No hay sesión iniciada",
-            variant: "destructive",
-          });
-          onClose();
-          return;
-        }
-        
-        setLoading(true);
-        try {
-          // 1. Obtener datos del equipo
-          const response = await fetch(`http://localhost:5001/equipment/${equipmentId}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `${session.accessToken}`,
-            },
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al obtener datos del equipamiento');
-          }
-          
-          const equipmentData = await response.json();
-          console.log("Datos del equipamiento:", equipmentData);
-          
-          // 2. Actualizar estado con los datos del equipo
-          setEquipmentInfo({
-            name: equipmentData.name || '',
-            type: equipmentData.type || '',
-            farm: equipmentData.farm || farmId,
-            description: equipmentData.description || '',
-          });
-          
-          // 3. Establecer filtros basados en el tipo de equipo
-          const deviceTypes = getDeviceTypesByEquipmentType(equipmentData.type);
-          setSelectedFilters({ type: deviceTypes });
-          
-          // 4. Preparar selección de dispositivos
-          if (Array.isArray(equipmentData.devices)) {
-            const deviceSelection: Record<string, boolean> = {};
-            equipmentData.devices.forEach((deviceId: string) => {
-              deviceSelection[deviceId] = true;
-            });
-            setSelectedDevices(deviceSelection);
-          }
-          
-          // 5. Preparar selección de tanques si es estación de lavado
-          if (equipmentData.type === "Estación de lavado" && Array.isArray(equipmentData.associatedTanks)) {
-            const tankSelection: Record<string, boolean> = {};
-            equipmentData.associatedTanks.forEach((tankId: string) => {
-              tankSelection[tankId] = true;
-            });
-            setSelectedTanks(tankSelection);
-          }
-          
-          // 6. Cargar datos de dispositivos
-          await fetchDevicesData(equipmentData.farm || farmId, deviceTypes);
-          
-          // 7. Cargar datos de tanques si es necesario
-          if (equipmentData.type === "Estación de lavado") {
-            await fetchTanksData(equipmentData.farm || farmId);
-          }
-        } catch (error) {
-          console.error('Error al obtener datos del equipamiento:', error);
-          toast({
-            title: "Error al cargar el equipamiento",
-            description: error instanceof Error ? error.message : "Error desconocido",
-            variant: "destructive",
-          });
-          onClose();
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      fetchEquipmentData();
+  // Define fetchDevicesAndMark and fetchTanksAndMark first to avoid circular references  // Optimized fetchDevices para marcar los dispositivos seleccionados
+  const fetchDevicesAndMark = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '', selectedDeviceIds: string[] = []) => {
+    if (!session?.accessToken || !farmId || isFetchingRef.current) {
+      return;
     }
-  }, [isOpen, equipmentId, session, farmId]);
 
-  // Función para cargar dispositivos
-  const fetchDevicesData = async (farmId: string, deviceTypes: string[] = []) => {
-    if (!session?.accessToken) return;
-    
+    isFetchingRef.current = true;
     try {
-      const typesQuery = deviceTypes.length > 0 ? deviceTypes.join(',') : '';
-      const filtersQuery = JSON.stringify({ type: deviceTypes });
-      
+      const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
+      const filtersQuery = JSON.stringify(selectedFilters);
       const searchParams = new URLSearchParams();
       searchParams.append('farmId', farmId);
-      searchParams.append('page', '1');
-      searchParams.append('limit', '10');
+      searchParams.append('page', page.toString());
+      searchParams.append('limit', '10'); // Mantenemos la paginación original de 10 elementos
       searchParams.append('types', typesQuery);
       searchParams.append('filters', encodeURIComponent(filtersQuery));
+      if (searchTerm) {
+        searchParams.append('searchTerm', searchTerm);
+      }
 
       const response = await fetch(
         `http://localhost:5001/device/list?${searchParams.toString()}`, 
@@ -205,36 +128,57 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
         }
       );
       
+      if (!mountedRef.current) return;
+      
       if (!response.ok) {
         throw new Error('Error al obtener dispositivos');
       }
       
       const result = await response.json();
       
+      if (!mountedRef.current) return;
+      
+      console.log("Dispositivos obtenidos:", result.data);
+      console.log("Dispositivos seleccionados a marcar:", selectedDeviceIds);
+      
       if (Array.isArray(result.data)) {
         setDevices(result.data);
         setDevicesTotalItems(result.totalItems || result.data.length);
         setDevicesTotalPages(result.totalPages || Math.ceil(result.data.length / 10));
       }
+      
     } catch (error) {
+      if (!mountedRef.current) return;
       console.error('Error al obtener dispositivos:', error);
       toast({
         title: "Error al cargar dispositivos",
         description: error instanceof Error ? error.message : "Error al obtener dispositivos",
         variant: "destructive",
       });
+    } finally {
+      if (mountedRef.current) {
+        isFetchingRef.current = false;
+      }
     }
-  };
+  }, [session, selectedFilters, toast]);  // Optimized fetchTanks para marcar los tanques seleccionados
+  const fetchTanksAndMark = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '', selectedTankIds: string[] = []) => {
+    if (!session?.accessToken || !farmId || !mountedRef.current) {
+      return;
+    }
 
-  // Función para cargar tanques
-  const fetchTanksData = async (farmId: string) => {
-    if (!session?.accessToken) return;
-    
     try {
-      console.log("Obteniendo tanques para farmId:", farmId);
+      setLoading(true);
+
+      const searchParams = new URLSearchParams();
+      searchParams.append('farmId', farmId);
+      searchParams.append('page', page.toString());
+      searchParams.append('limit', '10'); // Mantenemos la paginación original de 10 elementos
+      if (searchTerm) {
+        searchParams.append('searchTerm', searchTerm);
+      }
       
       const response = await fetch(
-        `http://localhost:5001/equipment/listTanks?farmId=${farmId}`, 
+        `http://localhost:5001/equipment/listTanks?${searchParams.toString()}`, 
         {
           method: 'GET',
           headers: {
@@ -244,25 +188,34 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
         }
       );
       
+      if (!mountedRef.current) return;
+      
       if (!response.ok) {
-        throw new Error(`Error al obtener tanques: ${response.status}`);
+        throw new Error('Error al obtener tanques');
       }
       
       const result = await response.json();
-      console.log("Respuesta API tanques:", result);
       
-      // El endpoint devuelve directamente un array de tanques
+      if (!mountedRef.current) return;
+      
+      console.log("Tanques obtenidos:", result);
+      console.log("Tanques seleccionados a marcar:", selectedTankIds);
+      
       if (Array.isArray(result)) {
         setAssociatedTanks(result);
         setTanksTotalItems(result.length);
         setTanksTotalPages(Math.ceil(result.length / 10));
+      } else if (result && typeof result === 'object' && result.data) {
+        setAssociatedTanks(result.data);
+        setTanksTotalItems(result.totalItems || result.data.length);
+        setTanksTotalPages(result.totalPages || Math.ceil(result.data.length / 10));
       } else {
-        console.warn('Formato de respuesta de tanques inesperado:', result);
         setAssociatedTanks([]);
         setTanksTotalItems(0);
         setTanksTotalPages(1);
       }
     } catch (error) {
+      if (!mountedRef.current) return;
       console.error('Error al obtener tanques:', error);
       toast({
         title: "Error al cargar tanques",
@@ -272,11 +225,200 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       setAssociatedTanks([]);
       setTanksTotalItems(0);
       setTanksTotalPages(1);
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [session, toast]);  // Inicializar carga de datos cuando se abre el modal
+  const initData = useCallback(async (farmId: string, selectedDeviceIds: string[] = [], selectedTankIds: string[] = []) => {
+    if (!isOpen || !farmId || !session?.accessToken || !mountedRef.current) {
+      return;
+    }
+    
+    try {
+      setInitialLoading(true);
+      
+      console.log("Iniciando carga de datos con:");
+      console.log("- FarmId:", farmId);
+      console.log("- DeviceIds:", selectedDeviceIds);
+      console.log("- TankIds:", selectedTankIds);
+      
+      // Create initial selection maps based on the IDs
+      const initialDeviceSelections: Record<string, boolean> = {};
+      selectedDeviceIds.forEach(id => {
+        initialDeviceSelections[id] = true;
+      });
+      
+      const initialTankSelections: Record<string, boolean> = {};
+      selectedTankIds.forEach(id => {
+        initialTankSelections[id] = true;
+      });
+      
+      // Set selection states
+      setSelectedDevices(initialDeviceSelections);
+      setSelectedTanks(initialTankSelections);
+      
+      // Cargar dispositivos y tanques en paralelo
+      await Promise.all([
+        fetchDevicesAndMark(farmId, 1, '', selectedDeviceIds),
+        fetchTanksAndMark(farmId, 1, '', selectedTankIds)
+      ]);
+      
+      // Verificar las selecciones después de cargar los datos
+      console.log("Estado de selección de dispositivos después de cargar:", initialDeviceSelections);
+      console.log("Estado de selección de tanques después de cargar:", initialTankSelections);
+      
+    } catch (error) {
+      if (!mountedRef.current) return;
+      console.error("Error al cargar datos iniciales:", error);
+    } finally {
+      if (mountedRef.current) {
+        setInitialLoading(false);
+      }
+    }
+  }, [isOpen, session, fetchDevicesAndMark, fetchTanksAndMark]);// Reset states when modal opens and fetch equipment data
+  useEffect(() => {
+    if (isOpen && equipmentId) {
+      console.log("Modal abierto para equipamiento:", equipmentId);
+      mountedRef.current = true;
+      setInitialLoading(true);
+      
+      // Reset values
+      setDevicesPage(1);
+      setTanksPage(1);
+      setDevicesSearchTerm('');
+      setTanksSearchTerm('');
+      
+      // Limpiar completamente las selecciones anteriores antes de cargar nuevos datos
+      setSelectedDevices({});
+      setSelectedTanks({});
+      
+      // Resetear información del equipo
+      setEquipmentInfo({
+        name: '',
+        type: '',
+        farm: '',
+        description: ''
+      });
+      
+      // Fetch equipment data
+      fetchEquipmentData();
+    } else if (!isOpen) {
+      // Si el modal se cierra, asegurarse de que loading se resetee
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  }, [isOpen, equipmentId]);// Fetch equipment data
+  const fetchEquipmentData = async () => {
+    if (!session?.accessToken || !equipmentId) {
+      return;
+    }
+
+    try {
+      setInitialLoading(true);
+      
+      const response = await fetch(`http://localhost:5001/equipment/${equipmentId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+      
+      if (!mountedRef.current) return;
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener datos del equipamiento');
+      }
+      
+      const data = await response.json();
+      
+      if (!mountedRef.current) return;
+      
+      console.log("Equipamiento obtenido (respuesta completa):", JSON.stringify(data));
+      
+      // Set equipment info
+      setEquipmentInfo({
+        name: data.name || '',
+        type: data.type || '',
+        farm: data.farm._id || data.farm || '',
+        description: data.description || ''
+      });
+
+      // Set initial filters based on equipment type
+      const deviceTypes = getDeviceTypesByEquipmentType(data.type);
+      setSelectedFilters({ type: deviceTypes });
+
+      // Prepara los arrays de IDs para dispositivos y tanques
+      // Manejar diferentes formatos de respuesta del API
+      let deviceIds: string[] = [];
+      if (Array.isArray(data.devices)) {
+        deviceIds = data.devices.map((device: any) => typeof device === 'string' ? device : device._id);
+      }
+      
+      let tankIds: string[] = [];
+      if (Array.isArray(data.associatedTanks)) {
+        tankIds = data.associatedTanks.map((tank: any) => typeof tank === 'string' ? tank : tank._id);
+      }
+      
+      console.log("DeviceIds a marcar:", deviceIds);
+      console.log("TankIds a marcar:", tankIds);
+
+      // Crear diccionarios para IDs seleccionados:
+      // En lugar de inicializar solo con los elementos visibles,
+      // creamos un mapa completo con todos los IDs seleccionados
+      const initialDeviceSelection: Record<string, boolean> = {};
+      deviceIds.forEach(id => { initialDeviceSelection[id] = true; });
+      setSelectedDevices(initialDeviceSelection);
+      
+      const initialTankSelection: Record<string, boolean> = {};
+      tankIds.forEach(id => { initialTankSelection[id] = true; });
+      setSelectedTanks(initialTankSelection);
+
+      // Cargar datos para la primera página de cada tabla
+      await initData(data.farm._id || data.farm, deviceIds, tankIds);
+      
+    } catch (error) {
+      if (!mountedRef.current) return;
+      console.error('Error al obtener datos del equipamiento:', error);
+      toast({
+        title: "No se pueden modificar los datos",
+        description: "No se ha podido obtener la información del equipamiento para su modificación",
+        variant: "destructive",
+      });
+      handleClose();
+    } finally {
+      if (mountedRef.current) {
+        setInitialLoading(false);
+      }
     }
   };
 
-  // Columnas para la tabla de dispositivos
-  const deviceColumns = [
+  const handleTypeChange = (value: string) => {
+    setEquipmentInfo({ ...equipmentInfo, type: value });
+    // Actualizar filtros basados en el tipo de equipo
+    const deviceTypes = getDeviceTypesByEquipmentType(value);
+    setSelectedFilters({ type: deviceTypes });
+    // Clear devices and reset pagination to force a fresh fetch
+    setDevices([]);
+    setDevicesPage(1);
+    // Limpiar selección de tanques asociados si no es estación de lavado
+    if (value !== "Estación de lavado") {
+      setSelectedTanks({});
+    }
+    // Clear selected devices when type changes
+    setSelectedDevices({});
+  };
+
+  // Asegurar que los filtros se establecen correctamente al cambiar el tipo
+  useEffect(() => {
+    if (isOpen) {
+      const deviceTypes = getDeviceTypesByEquipmentType(equipmentInfo.type);
+      setSelectedFilters({ type: deviceTypes });
+    }
+  }, [isOpen, equipmentInfo.type]);
+const deviceColumns = [
     {
       id: "boardId",
       header: "ID del Dispositivo",
@@ -310,255 +452,105 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     }
   ];
 
-  const deviceTypeFilterOptions = {
-    type: equipmentInfo.type ? getDeviceTypesByEquipmentType(equipmentInfo.type) : [],
-  };
+  // Evitar re-renderizados innecesarios al manejar los filtros
+  const handleFilterChange = useCallback((filters: Record<string, string[]>) => {
+    setSelectedFilters(filters);
+    // Avoid resetting the page when filters are applied
+    const selectedDeviceIds = Object.entries(selectedDevices)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([deviceId, _]) => deviceId);
+    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm, selectedDeviceIds);
+  }, [selectedDevices, equipmentInfo.farm, devicesPage, devicesSearchTerm, fetchDevicesAndMark]);
 
-  // Función para cambiar el tipo de equipo
-  const handleTypeChange = (value: string) => {
-    setEquipmentInfo({ ...equipmentInfo, type: value });
-    // Actualizar filtros basados en el tipo de equipo
-    const deviceTypes = getDeviceTypesByEquipmentType(value);
-    setSelectedFilters({ type: deviceTypes });
-    // Refrescar dispositivos con nuevos filtros
-    fetchDevicesData(equipmentInfo.farm, deviceTypes);
-    // Limpiar selección de dispositivos
-    setSelectedDevices({});
-    // Limpiar selección de tanques si no es estación de lavado
-    if (value !== "Estación de lavado") {
-      setSelectedTanks({});
-    } else {
-      // Cargar tanques si es estación de lavado
-      fetchTanksData(equipmentInfo.farm);
+  // Asegurar que los datos no se borren al cambiar filtros o paginación
+  useEffect(() => {
+    if (isOpen && equipmentInfo.farm) {
+      // Obtener IDs seleccionados para mantener la selección al recargar
+      const selectedDeviceIds = Object.entries(selectedDevices)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([deviceId, _]) => deviceId);
+        
+      fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm, selectedDeviceIds);
     }
-  };
-
-  // Funciones para manejar cambios en la paginación y búsqueda
-  const handleDevicesPageChange = (newPage: number) => {
+  }, [devicesPage, devicesSearchTerm, isOpen, equipmentInfo.farm, fetchDevicesAndMark, selectedDevices]);
+  // Manejar cambios de paginación y búsqueda para dispositivos
+  const handleDevicesPageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= devicesTotalPages) {
       setDevicesPage(newPage);
-      handleDevicesLoadMore(newPage);
+      
+      // Obtener IDs seleccionados actuales
+      const selectedDeviceIds = Object.entries(selectedDevices)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([deviceId, _]) => deviceId);
+        
+      // Cargar la nueva página manteniendo los dispositivos seleccionados
+      fetchDevicesAndMark(equipmentInfo.farm, newPage, devicesSearchTerm, selectedDeviceIds);
     }
-  };
-
-  const handleDevicesLoadMore = async (page: number) => {
-    if (!session?.accessToken) return;
-    
-    setLoading(true);
-    try {
-      const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
-      const filtersQuery = JSON.stringify(selectedFilters);
-      
-      const searchParams = new URLSearchParams();
-      searchParams.append('farmId', equipmentInfo.farm);
-      searchParams.append('page', page.toString());
-      searchParams.append('limit', '10');
-      searchParams.append('types', typesQuery);
-      searchParams.append('filters', encodeURIComponent(filtersQuery));
-      if (devicesSearchTerm) {
-        searchParams.append('searchTerm', devicesSearchTerm);
-      }
-
-      const response = await fetch(
-        `http://localhost:5001/device/list?${searchParams.toString()}`, 
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${session.accessToken}`,
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error('Error al obtener dispositivos');
-      }
-      
-      const result = await response.json();
-      
-      if (Array.isArray(result.data)) {
-        setDevices(result.data);
-      }
-    } catch (error) {
-      console.error('Error al cargar más dispositivos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDevicesSearchChange = (term: string) => {
+  }, [devicesTotalPages, selectedDevices, equipmentInfo.farm, devicesSearchTerm, fetchDevicesAndMark]);
+  const handleDevicesSearchChange = useCallback((term: string) => {
     setDevicesSearchTerm(term);
-    setDevicesPage(1);
-    handleDevicesSearch(term);
-  };
+    // Avoid resetting the page when search term changes
+    const selectedDeviceIds = Object.entries(selectedDevices)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([deviceId, _]) => deviceId);
+    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, term, selectedDeviceIds);
+  }, [selectedDevices, equipmentInfo.farm, devicesPage, fetchDevicesAndMark]);
 
-  const handleDevicesSearch = async (term: string) => {
-    if (!session?.accessToken) return;
-    
-    setLoading(true);
-    try {
-      const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
-      const filtersQuery = JSON.stringify(selectedFilters);
-      
-      const searchParams = new URLSearchParams();
-      searchParams.append('farmId', equipmentInfo.farm);
-      searchParams.append('page', '1');
-      searchParams.append('limit', '10');
-      searchParams.append('types', typesQuery);
-      searchParams.append('filters', encodeURIComponent(filtersQuery));
-      if (term) {
-        searchParams.append('searchTerm', term);
-      }
-
-      const response = await fetch(
-        `http://localhost:5001/device/list?${searchParams.toString()}`, 
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${session.accessToken}`,
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error('Error al buscar dispositivos');
-      }
-      
-      const result = await response.json();
-      
-      if (Array.isArray(result.data)) {
-        setDevices(result.data);
-        setDevicesTotalItems(result.totalItems || result.data.length);
-        setDevicesTotalPages(result.totalPages || Math.ceil(result.data.length / 10));
-      }
-    } catch (error) {
-      console.error('Error al buscar dispositivos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTanksPageChange = (newPage: number) => {
+  const handleTanksPageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= tanksTotalPages) {
       setTanksPage(newPage);
-      handleTanksLoadMore(newPage);
+      
+      // Obtener IDs seleccionados para pasar a la siguiente función de carga
+      const selectedTankIds = Object.entries(selectedTanks)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([tankId, _]) => tankId);
+        
+      // Cargar la nueva página manteniendo los tanques seleccionados
+      fetchTanksAndMark(equipmentInfo.farm, newPage, tanksSearchTerm, selectedTankIds);
     }
-  };
+  }, [tanksTotalPages, selectedTanks, equipmentInfo.farm, tanksSearchTerm, fetchTanksAndMark]);
 
-  const handleTanksLoadMore = async (page: number) => {
-    if (!session?.accessToken || equipmentInfo.type !== "Estación de lavado") return;
-    
-    setLoading(true);
-    try {
-      console.log("Cargando más tanques, página:", page);
-      
-      const response = await fetch(
-        `http://localhost:5001/equipment/listTanks?farmId=${equipmentInfo.farm}&page=${page}&limit=10${tanksSearchTerm ? `&searchTerm=${tanksSearchTerm}` : ''}`, 
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${session.accessToken}`,
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Error al obtener tanques: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      console.log("Respuesta paginación tanques:", result);
-      
-      // El endpoint devuelve directamente un array
-      if (Array.isArray(result)) {
-        setAssociatedTanks(result);
-      } else {
-        console.warn('Formato de respuesta de tanques inesperado:', result);
-        setAssociatedTanks([]);
-      }
-    } catch (error) {
-      console.error('Error al cargar más tanques:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTanksSearchChange = (term: string) => {
+  const handleTanksSearchChange = useCallback((term: string) => {
     setTanksSearchTerm(term);
-    setTanksPage(1);
-    handleTanksSearch(term);
-  };
+    // Avoid resetting the page when search term changes
+    const selectedTankIds = Object.entries(selectedTanks)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([tankId, _]) => tankId);
+    fetchTanksAndMark(equipmentInfo.farm, tanksPage, term, selectedTankIds);
+  }, [selectedTanks, equipmentInfo.farm, tanksPage, fetchTanksAndMark]);
 
-  const handleTanksSearch = async (term: string) => {
-    if (!session?.accessToken || equipmentInfo.type !== "Estación de lavado") return;
-    
-    setLoading(true);
-    try {
-      console.log("Buscando tanques con término:", term);
-      
-      const response = await fetch(
-        `http://localhost:5001/equipment/listTanks?farmId=${equipmentInfo.farm}&searchTerm=${term}`, 
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${session.accessToken}`,
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Error al buscar tanques: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      console.log("Respuesta búsqueda tanques:", result);
-      
-      // El endpoint devuelve directamente un array
-      if (Array.isArray(result)) {
-        setAssociatedTanks(result);
-        setTanksTotalItems(result.length);
-        setTanksTotalPages(Math.ceil(result.length / 10));
-      } else {
-        console.warn('Formato de respuesta de tanques inesperado:', result);
-        setAssociatedTanks([]);
-        setTanksTotalItems(0);
-        setTanksTotalPages(1);
-      }
-    } catch (error) {
-      console.error('Error al buscar tanques:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Manejar cambios en los filtros
-  const handleFilterChange = (filters: Record<string, string[]>) => {
-    setSelectedFilters(filters);
-    setDevicesPage(1);
-    const deviceTypes = filters['type'] || [];
-    fetchDevicesData(equipmentInfo.farm, deviceTypes);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEquipmentInfo({ ...equipmentInfo, [e.target.id]: e.target.value });
-  };
-
+  };  
+  
+  // Simplificando los manejadores de selección para evitar re-renderizados innecesarios
   const handleDeviceSelectionChange = (selectedRowIds: Record<string, boolean>) => {
+    // Simplificamos para imitar comportamiento de user-edit-modal
     setSelectedDevices(selectedRowIds);
   };
 
   const handleTankSelectionChange = (selectedRowIds: Record<string, boolean>) => {
+    // Simplificamos para imitar comportamiento de user-edit-modal
     setSelectedTanks(selectedRowIds);
   };
-
+  
   const handleClose = () => {
+    // Resetear estados antes de cerrar
+    setLoading(false);
+    setInitialLoading(false);
+    setDevicesTotalItems(0);
+    setDevicesTotalPages(1);
+    setDevices([]);
+    setSelectedDevices({});
+    setSelectedTanks({});
+    setDevicesPage(1);
+    setTanksPage(1);
+    setDevicesSearchTerm('');
+    setTanksSearchTerm('');
+    
+    // Cerrar el modal
     onClose();
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  };  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!session?.accessToken) {
@@ -573,6 +565,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     try {
       setLoading(true);
       
+      // Recuperar todos los IDs seleccionados de dispositivos y tanques
       const selectedDeviceIds = Object.entries(selectedDevices)
         .filter(([_, isSelected]) => isSelected)
         .map(([deviceId, _]) => deviceId);
@@ -581,7 +574,9 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
         .filter(([_, isSelected]) => isSelected)
         .map(([tankId, _]) => tankId);
       
-      // PUT request para actualizar el equipamiento
+      console.log("Dispositivos seleccionados para enviar:", selectedDeviceIds);
+      console.log("Tanques seleccionados para enviar:", selectedTankIds);
+      
       const response = await fetch(`http://localhost:5001/equipment/${equipmentId}`, {
         method: 'PUT',
         headers: {
@@ -595,6 +590,9 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
         }),
       });
       
+      // Si el componente se desmontó durante la solicitud, salir sin hacer más cambios
+      if (!mountedRef.current) return;
+      
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Error al actualizar el equipamiento');
@@ -604,16 +602,23 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
         description: "Equipo actualizado con éxito",
         variant: "success",
       });
+      
+      // Resetear el estado de carga antes de cerrar el modal
+      setLoading(false);
       handleClose();
       onRefresh();
     } catch (error) {
+      // Si el componente se desmontó durante la solicitud, salir sin hacer más cambios
+      if (!mountedRef.current) return;
+      
       console.error('Error al actualizar el equipamiento:', error);
       toast({
         title: "Error al actualizar el equipamiento",
         description: error instanceof Error ? error.message : 'Error desconocido',
         variant: "destructive",
       });
-    } finally {
+      
+      // Asegurarse de resetear el estado de carga incluso si hay un error
       setLoading(false);
     }
   };
@@ -621,30 +626,19 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
   const isFormValid = 
     equipmentInfo.name.trim() !== '' && 
     equipmentInfo.type !== '';
-
-  // Renderizar un indicador de carga mientras los datos se están cargando
-  if (loading) {
-    return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[800px] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
-          <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
-            <DialogTitle className="text-lg font-bold">Editar equipamiento</DialogTitle>
-          </div>
-          <div className="p-6 flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
+    
+  // Don't render anything while loading
+  if (initialLoading && isOpen) {
+    return null;
   }
 
-  // Renderizar el formulario cuando los datos están cargados
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] h-[90vh] sm:h-[80vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
           <DialogTitle className="text-lg font-bold">Editar equipamiento</DialogTitle>
         </div>
+        
         <ScrollArea className="flex-grow">
           <div className="p-4 md:p-6 space-y-6">
             <Card>
@@ -662,12 +656,17 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
                         onChange={handleInputChange} 
                         placeholder="Nombre del equipamiento" 
                         className="bg-white dark:bg-gray-800 text-black dark:text-white" 
+                        disabled={loading}
                         required 
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="type">Tipo <span className="text-red-500">*</span></Label>
-                      <Select value={equipmentInfo.type} onValueChange={handleTypeChange}>
+                      <Select 
+                        value={equipmentInfo.type} 
+                        onValueChange={handleTypeChange} 
+                        disabled={loading}
+                      >
                         <SelectTrigger className="bg-white dark:bg-gray-800 text-black dark:text-white">
                           <SelectValue placeholder="Seleccione un tipo" />
                         </SelectTrigger>
@@ -678,19 +677,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
                       </Select>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descripción</Label>
-                    <textarea 
-                      id="description" 
-                      value={equipmentInfo.description || ""} 
-                      onChange={handleInputChange} 
-                      placeholder="Ingrese una descripción" 
-                      className="bg-white dark:bg-gray-800 text-black dark:text-white w-full h-32 p-2 rounded-md resize-none text-sm" 
-                    />
-                  </div>
-                  
-                  {equipmentInfo.type && (
+                    {equipmentInfo.type && (
                     <>
                       <Separator />
                       <div>
@@ -717,6 +704,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
                               filterOptions={deviceTypeFilterOptions}
                               onFilterChange={handleFilterChange}
                               loading={loading}
+                              key={`device-table-${equipmentInfo.type}`}
                             />
                           </div>
                         </div>
@@ -733,8 +721,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
                       </div>
                       <div className="overflow-hidden">
                         <div className="w-full overflow-x-auto pb-2 -mx-4 sm:mx-0">
-                          <div className="min-w-full px-4 sm:px-0">
-                            <DataTable<AssociatedTank>
+                          <div className="min-w-full px-4 sm:px-0">                            <DataTable<AssociatedTank>
                               columns={tankColumns}
                               data={associatedTanks}
                               enableColumnSelection={true}
@@ -748,6 +735,8 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
                               totalItems={tanksTotalItems} 
                               containerClassName="w-full border rounded-md shadow-sm"
                               showSearchBar={true}
+                              loading={loading}
+                              key="tank-table"
                             />
                           </div>
                         </div>
@@ -758,9 +747,14 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
                   <Button 
                     id="submit-equipment-button" 
                     type="submit" 
-                    disabled={!isFormValid}
+                    disabled={!isFormValid || loading}
                   >
-                    Guardar cambios
+                    {loading ? (
+                      <div className="flex items-center">
+                        <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
+                        Actualizando...
+                      </div>
+                    ) : "Actualizar equipamiento"}
                   </Button>
                 </form>
               </CardContent>
