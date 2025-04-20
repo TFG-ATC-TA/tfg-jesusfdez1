@@ -22,9 +22,9 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { PaperPlaneIcon } from "@radix-ui/react-icons"
 import DairyTimeline from "@/components/charts/dairy-timeline-chart"
+import AirQualityChart from "@/components/charts/air-quality-chart"
 import MilkCollectionAddModal from "@/components/modals/milk-collection-add-modal"
 import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
-import TicketAddModal from "@/components/modals/ticket-add-modal"
 import EquipmentAddModal from "@/components/modals/equipment-add-modal"
 
 interface AdminViewProps {
@@ -374,6 +374,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
                 endDate={appliedDateRange?.to} 
               />
               <DairyTimeline/>
+              <AirQualityChart bucket={farmData.idname} />
             </div>
           </TabsContent>
         </Tabs>
@@ -385,12 +386,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
         onClose={() => setShowAddMilkCollectionModal(false)} 
         farmId={farmData._id}
         onRefresh={fetchMilkCollections} 
-      />
-
-      <TicketAddModal 
-        isOpen={false} 
-        onClose={() => console.log('TicketAddModal closed')} 
-        onRefresh={() => console.log('TicketAddModal refreshed')} 
       />
 
       <EquipmentAddModal 

@@ -95,29 +95,36 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={onDelete} className="bg-red-600 text-white hover:bg-red-700">Borrar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+          </AlertDialogFooter>        </AlertDialogContent>
       </AlertDialog>
 
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-4 w-12 p-0 flex items-center">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/equipment/${data._id}`)}>
-            <ExternalLink className="mr-2 h-4 w-4" /> Dashboard
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowEditModal(true)}>
-            <Edit className="mr-2 h-4 w-4" /> Actualizar
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowDeleteAlert(true)}>
-            <Trash className="mr-2 h-4 w-4" /> Borrar
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-2">
+        <Button  
+          className="h-6 w-12 p-0 flex items-center"   
+          onClick={() => router.push(`/equipment/${data._id}`)}
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+
+        {session?.user?.role === 'Administrador' && (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-4 w-12 p-0 flex items-center">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setShowEditModal(true)}>
+                <Edit className="mr-2 h-4 w-4" /> Actualizar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowDeleteAlert(true)}>
+                <Trash className="mr-2 h-4 w-4" /> Borrar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
     </>
   );
 };

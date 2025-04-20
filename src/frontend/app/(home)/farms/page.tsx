@@ -5,14 +5,13 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from '@/components/tables/farm-tables/columns';
 import { Plus } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Farm } from '@/types/index';
 import PageContainer from '@/components/layout/page-container';
 import FarmAddModal from '@/components/modals/farm-add-modal';
+import {CellAction} from '@/components/tables/farm-tables/cell-action';
 
 const UserClient: React.FC = () => {
-  const router = useRouter();
   const { data: session } = useSession();
   const [data, setData] = useState<Farm[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -82,6 +81,16 @@ const UserClient: React.FC = () => {
     fetchFarms();
   }, [fetchFarms, page]); // Añadimos page explícitamente para que se ejecute cuando cambie
   
+  const updatedColumns = columns.map(column => {
+    if (column.id === 'actions') {
+      return {
+        ...column,
+        cell: ({ row }: { row: { original: Farm } }) => <CellAction data={row.original} onRefresh={fetchFarms} />
+      };
+    }
+    return column;
+  });
+
   return (
     <>    
     <PageContainer scrollable={true}>
@@ -104,9 +113,8 @@ const UserClient: React.FC = () => {
         )}
       </div>
 
-      <div className="my-4"></div>
-      <DataTable<Farm>
-        columns={columns}
+      <div className="my-4"></div>      <DataTable<Farm>
+        columns={updatedColumns}
         data={data}
         enableColumnSelection={false}
         enableRowNumbering={true}
