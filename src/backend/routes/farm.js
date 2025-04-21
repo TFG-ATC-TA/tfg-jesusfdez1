@@ -202,12 +202,12 @@ router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
 router.get('/:farmId/access', verifyToken, async (req, res) => {
   try {
     const { farmId } = req.params;
-    const farm = await Farm.findOne({ idname: farmId });
+    const farm = await Farm.findOne({ idname: farmId }).select('_id name idname');
     if (!farm) {
       return res.status(404).json({ message: 'Granja no encontrada' });
     }
 
-    const hasAccess =  req.user.role === 'Administrador' || farm.users.includes(req.user.id) ;
+    const hasAccess = req.user.role === 'Administrador' || (farm.users && farm.users.includes(req.user.id));
     if (hasAccess) {
       res.json(farm);
     } else {

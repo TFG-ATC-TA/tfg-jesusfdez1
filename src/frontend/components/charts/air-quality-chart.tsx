@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RotateCw, AlertTriangle, Thermometer, Droplets, Gauge, Activity, BarChart3, Zap } from 'lucide-react'
 import { Button } from "@/components/ui/button"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useSession } from 'next-auth/react'
 
 
@@ -204,7 +203,7 @@ export default function AirQualityChart({ bucket }: { bucket: string }){
           <span className="sr-only">Recargar datos</span>
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3 md:space-y-4">
+      <CardContent className="px-6 space-y-3 md:space-y-4">
         {airData ? (
           <>
             {/* Layout responsivo mejorado para tablets */}
@@ -282,15 +281,11 @@ export default function AirQualityChart({ bucket }: { bucket: string }){
                 Última actualización: {airData.time}
               </p>
             </div>
-          </>
-        ) : (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Datos no disponibles</AlertTitle>
-            <AlertDescription>
-              No se pudieron obtener los datos del sensor en este momento.
-            </AlertDescription>
-          </Alert>
+          </>        ) : (
+          <div className="px-4 py-3 rounded-md bg-destructive dark:bg-red-900 border border-destructive dark:border-red-800 text-white flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 inline-block flex-shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium">No se pudieron obtener los datos del sensor en este momento.</span>
+          </div>
         )}
       </CardContent>
     </Card>

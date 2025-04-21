@@ -6,7 +6,8 @@ import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { createPortal } from 'react-dom'
-import { Activity, Repeat, Milk, Droplet, RefreshCw, Thermometer, Clock } from 'lucide-react'
+import { Activity, Repeat, Milk, Droplet, RefreshCw, Thermometer, Clock, AlertTriangle } from 'lucide-react'
+import { Skeleton } from "@/components/ui/skeleton"
 
 const hours = Array.from({ length: 24 }, (_, i) => 
   `${String(i).padStart(2, '0')}:00`
@@ -249,9 +250,32 @@ export default function DairyTimeline() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Actividades de la granja</CardTitle>
         </CardHeader>
-        <CardContent className="pt-2">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-lg">Cargando datos...</div>
+        <CardContent className="px-6 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="bg-white bg-opacity-50 text-black dark:bg-gray-800 dark:bg-opacity-50 dark:text-white border border-gray-300 dark:border-gray-700 h-24 flex flex-col">
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 p-2 flex-none">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-5 w-5" />
+                </CardHeader>
+                <CardContent className="p-2 flex-1 flex items-end">
+                  <Skeleton className="h-6 w-20" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <Skeleton className="h-[402px] w-full" />
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between mt-4">
+            <div className="flex items-center space-x-2">
+              <span>Página</span>
+              <Skeleton className="h-10 w-[70px]" />
+              <span>de 1</span>
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-10" />
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -264,9 +288,10 @@ export default function DairyTimeline() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Actividades de la granja</CardTitle>
         </CardHeader>
-        <CardContent className="pt-2">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-lg text-red-500">Error al cargar datos: {error}</div>
+        <CardContent className="px-6 pt-2">
+          <div className="mb-4 max-w-[calc(100%-2rem)] px-4 py-3 rounded-md bg-destructive dark:bg-red-900 border border-destructive dark:border-red-800 text-white flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 inline-block flex-shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium">No hay datos disponibles en este momento. Por favor, vuelva a intentarlo más tarde.</span>
           </div>
         </CardContent>
       </Card>
@@ -288,7 +313,7 @@ export default function DairyTimeline() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-2"> 
+      <CardContent className="px-6 pt-2"> 
         {/* Grid de tarjetas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
           <Card 

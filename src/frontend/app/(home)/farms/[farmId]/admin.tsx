@@ -25,6 +25,7 @@ import DairyTimeline from "@/components/charts/dairy-timeline-chart"
 import AirQualityChart from "@/components/charts/air-quality-chart"
 import MilkCollectionAddModal from "@/components/modals/milk-collection-add-modal"
 import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
+import AccelerometerChart from "@/components/charts/accelerometer-chart"
 import EquipmentAddModal from "@/components/modals/equipment-add-modal"
 
 interface AdminViewProps {
@@ -37,7 +38,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
   const [userData, setUserData] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
   const [userSearchTerm, setUserSearchTerm] = useState('');
-  const [userTotalItems, setUserTotalItems] = useState(0);
+  const [setUserTotalItems] = useState(0);
   const [userTotalPages, setUserTotalPages] = useState(1);
   
   // Milk collections state
@@ -102,7 +103,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
       }
       const result = await response.json();
       setUserData(result.data);
-      setUserTotalItems(result.totalItems);
       setUserTotalPages(result.totalPages);
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
@@ -375,6 +375,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
               />
               <DairyTimeline/>
               <AirQualityChart bucket={farmData.idname} />
+              <AccelerometerChart bucket={farmData.idname} />
             </div>
           </TabsContent>
         </Tabs>

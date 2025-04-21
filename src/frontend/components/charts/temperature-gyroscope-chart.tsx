@@ -8,7 +8,6 @@ import { useTheme } from 'next-themes'
 import { Checkbox } from "@/components/ui/checkbox"
 import { Filter, ChevronDown, AlertTriangle, ThermometerSun, ThermometerSnowflake } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import React from 'react';
 import { useSession } from 'next-auth/react'
@@ -286,20 +285,13 @@ const TemperatureProbeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, s
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-      </CardHeader>
-      {fetchError && (
-        <Alert variant="destructive" className="mb-4 mx-4 max-w-[calc(100%-2rem)] flex items-start space-x-3">
-          <AlertTriangle className="mr-2  h-6 w-6" />
-          <div>
-          <AlertTitle className="font-semibold mt-1">Datos no disponibles</AlertTitle>
-          <AlertDescription>
-            No hay datos disponibles en este momento. Por favor, vuelva a intentarlo más tarde.
-          </AlertDescription>
-          </div>
-        </Alert>
-      )}
-      {isLoading ? (
-        <CardContent className="flex flex-col items-center justify-center h-[375px]">
+      </CardHeader>      {fetchError && (
+        <div className="mb-4 mx-4 max-w-[calc(100%-2rem)] px-4 py-3 rounded-md bg-destructive dark:bg-red-900 border border-destructive dark:border-red-800 text-white flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 inline-block flex-shrink-0" aria-hidden="true" />
+          <span className="text-sm font-medium">No hay datos disponibles en este momento. Por favor, vuelva a intentarlo más tarde.</span>
+        </div>
+      )}      {isLoading ? (
+        <CardContent className="px-6 flex flex-col items-center justify-center h-[375px]">
           <Skeleton className="h-[375px] w-full" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 w-full">
             <Card className="bg-white bg-opacity-50 text-black dark:bg-gray-800 dark:bg-opacity-50 dark:text-white border border-gray-300 dark:border-gray-700 my-3 md:my-3 md:mx-2">
@@ -328,10 +320,9 @@ const TemperatureProbeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, s
             </Card>
           </div>
         </CardContent>
-      ) : (
-        !fetchError && (
+      ) : (        !fetchError && (
           <>
-            <CardContent className="flex flex-col">
+            <CardContent className="px-6 flex flex-col">
               <ChartContainer className="h-[355px] w-full" config={{ /* your config here */ }}>
                 <div ref={chartContainerRef} className="h-[355px] w-full" />
               </ChartContainer>

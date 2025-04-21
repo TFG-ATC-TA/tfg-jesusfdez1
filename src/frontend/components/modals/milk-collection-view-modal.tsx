@@ -18,15 +18,14 @@ interface MilkCollectionViewModalProps {
   collectionId: string;
 }
 
-export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = ({ isOpen, onClose, collectionId }) => {
-  const { data: session } = useSession();
+export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = ({ isOpen, onClose, collectionId }) => {  const { data: session } = useSession();
   const [collection, setCollection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const [totalLiters, setTotalLiters] = useState<number>(0);
 
-  const ticketColor = theme === 'dark' ? '#111827' : '#ffffff';
+  const ticketColor = resolvedTheme === 'dark' ? '#111827' : '#ffffff';
 
   useEffect(() => {
     if (isOpen && collectionId) {
