@@ -1,42 +1,19 @@
-const express = require('express');
-const mqtt = require('mqtt');
 const WebSocket = require('ws');
 const url = require('url');
+const express = require('express');
 const { verifyToken } = require('../middleware/auth');
+const Farm = require('../models/Farm');
+const { connectMQTT } = require('../config/connection');
 
 require('dotenv').config();
 
 module.exports = function(wss) {
   const router = express.Router();
-
-  const client = mqtt.connect(`${process.env.MQTT_PROTOCOL}://${process.env.MQTT_HOST}`, {
-    username: process.env.MQTT_USERNAME,
-    password: process.env.MQTT_PASSWORD,
-  });
-  client.on('connect', function () {
-    console.log('Cliente MQTT conectado');
-  });
-  client.on('error', function (error) {
-    console.error('Error del cliente MQTT:', error);
-  });
-  // Función para manejar suscripciones MQTT
-  function handleMqttSubscription(from, info) {
-    const mqttTopic = `${from}/${info}`;
-    client.subscribe(mqttTopic, function (err) {
-      if (!err) {
-        console.log(`Suscripción MQTT a ${mqttTopic} exitosa`);
-      } else {
-        console.error(`Suscripción MQTT a ${mqttTopic} falló:`, err);
-      }
-    });
-  }
+  const client = connectMQTT();
+  
   // Manejar mensajes MQTT y transmitir a clientes WebSocket relevantes
   client.on('message', function (topic, message) {
-    const payload = JSON.parse(message.toString().replace(/\\\\/g, '\\')); // Convertir el string JSON a objeto JavaScript
-
-    console.log(`Mensaje MQTT recibido en el tema ${topic}:`, payload);
-
-    // Extraer 'from' e 'info' del tema MQTT
+    const payload = JSON.parse(message.toString().replace(/\\\\/g, '\\'));
     const [from, info] = topic.split('/');
 
     // Transmitir mensaje a clientes WebSocket relevantes
@@ -45,52 +22,64 @@ module.exports = function(wss) {
         ws.send(JSON.stringify({ topic, payload }));
       }
     });
-  });  // Configurar manejo de conexiones WebSocket
+  });  
+  // Función auxiliar para cerrar conexión con error
+  function closeWithError(ws, message) {
+    ws.close(1008, message);
+  }
+
+  // Función auxiliar para verificar acceso a granja
+  async function checkFarmAccess(user, farmIdname) {
+    if (user.role === 'Administrador') return true;
+    
+    const farm = await Farm.findOne({ idname: farmIdname });
+    if (!farm) return false;
+    
+    return user.farms.some(farmId => farmId.toString() === farm._id.toString());
+  }
+
+  // Configurar manejo de conexiones WebSocket
   wss.on('connection', async function(ws, req) {
     const { query } = url.parse(req.url, true);
-    console.log(query);
-    const from = query.from;
-    const info = query.info;
-    const token = query.token;    // Verificar token antes de proceder
-    if (!token) {
-      console.log('Conexión WebSocket rechazada: No se proporcionó token');
-      ws.close(1008, 'Token requerido');
-      return;
-    }    // Verificar validez del token usando el middleware existente
-    const mockReq = { headers: { authorization: token } };
-    let user = null;
-    let tokenValid = false;
+    const { from, info, token } = query;
 
+    // Verificar token
+    if (!token) {
+      return closeWithError(ws, 'Token requerido');
+    }
+
+    // Verificar validez del token
+    const mockReq = { headers: { authorization: token } };
     try {
       await verifyToken(mockReq, null, () => {
-        tokenValid = true;
-        user = mockReq.user;
+        ws.user = mockReq.user;
       });
     } catch (error) {
-      tokenValid = false;
+      return closeWithError(ws, 'Token inválido');
     }
 
-    if (!tokenValid || !user) {
-      console.log('Conexión WebSocket rechazada: Token inválido');
-      ws.close(1008, 'Token inválido');
-      return;
+    if (!ws.user) {
+      return closeWithError(ws, 'Token inválido');
     }
-    
-    // Añadir información del usuario al WebSocket
-    ws.user = user;
-    console.log(`WebSocket autenticado para el usuario: ${user.id || user.email}`);
 
+    // Verificar acceso a la granja si se especifica
+    if (from) {
+      try {
+        const hasAccess = await checkFarmAccess(ws.user, from);
+        if (!hasAccess) {
+          return closeWithError(ws, 'Acceso denegado a la granja');
+        }
+      } catch (error) {
+        console.error('Error verificando acceso a granja:', error);
+        return closeWithError(ws, 'Error interno del servidor');
+      }
+    }
+
+    // Suscribirse al topic MQTT si se proporcionan ambos parámetros
     if (from && info) {
-      handleMqttSubscription(from, info);
+      client.subscribe(`${from}/${info}`);
     }    ws.from = from;
     ws.info = info;
-
-    console.log(`Cliente WebSocket conectado para from: ${from}, info: ${info}`);
-
-    ws.on('message', function (message) {
-      console.log('Mensaje recibido:', message);
-      // Manejar mensaje entrante aquí
-    });
   });
 
   return router;

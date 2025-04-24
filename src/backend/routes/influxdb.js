@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const { InfluxDB } = require('@influxdata/influxdb-client');
+const { connectInfluxDB } = require('../config/connection');
 const cors = require('cors');
 const { verifyToken } = require('../middleware/auth');
 
@@ -66,8 +66,7 @@ function constructQuery(req) {
 router.get('/data', verifyToken, async function(req, res, next) {
     try {
     const query = constructQuery(req); // Call the function to get the query string
-    const client = new InfluxDB({ url: process.env.INFLUXDB_URL, token: process.env.INFLUXDB_TOKEN });
-    const result = await client.getQueryApi(process.env.INFLUXDB_ORG).collectRows(query);
+    const result = await connectInfluxDB.getQueryApi(process.env.INFLUXDB_ORG).collectRows(query);
     res.send(JSON.stringify(result));
     } catch (error) {
         console.error('Error constructing query:', error);

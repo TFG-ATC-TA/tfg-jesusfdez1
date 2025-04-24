@@ -15,7 +15,7 @@ var collectionRouter = require('./routes/collection');
 
 
 var app = express();
-const connectDB = require('./config/mongodb'); // Ruta hacia el archivo de conexión de la base de datos
+const connectDB = require('./config/connection'); // Ruta hacia el archivo de conexión de la base de datos
 
 
 app.use(logger('dev'));
@@ -34,7 +34,7 @@ app.use('/collection', collectionRouter);
 
 
 // Conectar a la base de datos
-connectDB();
+connectDB.connectMongoDB();
 // Catch 404 and forward to error handler
 app.use((req, res, next) => next(createError(404)));
 
