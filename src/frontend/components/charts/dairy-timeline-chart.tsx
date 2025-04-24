@@ -95,7 +95,13 @@ function Tooltip({ text, isVisible, x, y }: TooltipProps) {
   );
 }
 
-export default function DairyTimeline() {
+interface DairyTimelineProps {
+  bucket: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export default function DairyTimeline({ bucket, startDate, endDate }: DairyTimelineProps) {
   const [currentPage, setCurrentPage] = useState(0)
   const [pendingPage, setPendingPage] = useState<number | null>(null) // Para manejar transiciones suaves
   const [tooltip, setTooltip] = useState({ show: false, text: '', x: 0, y: 0 });
@@ -136,12 +142,10 @@ export default function DairyTimeline() {
   // Función para cargar datos de una página específica
   const fetchPageData = async (page: number, isInitialLoad = false) => {
     let loadingTimer: NodeJS.Timeout | null = null;
-    
     try {
       if (!isInitialLoad) {
         setPageLoading(true);
         setPendingPage(page);
-        
         // Mostrar overlay solo después de 1 segundo
         loadingTimer = setTimeout(() => {
           setShowLoadingOverlay(true);
@@ -149,11 +153,12 @@ export default function DairyTimeline() {
       } else {
         setLoading(true);
       }
-      
-      const url = new URL('http://localhost:5001/postgres/farm-activities');
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/postgres/farm-activities`);
       url.searchParams.append('page', page.toString());
       url.searchParams.append('daysPerPage', DAYS_PER_PAGE.toString());
-      
+      url.searchParams.append('bucket', bucket);
+      if (startDate) url.searchParams.append('startDate', startDate.toISOString());
+      if (endDate) url.searchParams.append('endDate', endDate.toISOString());
       const response = await fetch(url.toString());
       
       if (!response.ok) {
@@ -190,10 +195,10 @@ export default function DairyTimeline() {
     }
   };
 
-  // Cargar datos iniciales
+  // Cargar datos iniciales y cuando cambian las props
   useEffect(() => {
     fetchPageData(0, true);
-  }, []);
+  }, [bucket, startDate, endDate]);
 
   const PageSelector = () => {
     const currentPageNumber = currentPage + 1

@@ -48,7 +48,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5001/collection/${data._id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collection/${data._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

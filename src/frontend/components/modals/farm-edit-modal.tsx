@@ -34,7 +34,7 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
         }
 
         try {
-          const response = await fetch(`http://localhost:5001/farm/${farmId}`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/${farmId}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -99,7 +99,7 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
         }
         
         try {
-          const response = await fetch(`http://localhost:5001/farm/${farmId}`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/${farmId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',

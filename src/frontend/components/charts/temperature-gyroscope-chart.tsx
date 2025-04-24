@@ -25,7 +25,7 @@ interface TemperatureProbeChartProps {
   endDate?: Date;
 }
 
-const TemperatureProbeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, startDate, endDate }) => {
+const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, startDate, endDate }) => {
   const [data, setData] = useState<DataPoint[]>([])
   const [showSurfaceTemp, setShowSurfaceTemp] = useState(true)
   const [showOverSurfaceTemp, setShowOverSurfaceTemp] = useState(true)
@@ -52,12 +52,12 @@ const TemperatureProbeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, s
         const stop = endDate?.toISOString() 
 
         const [probeResponse, gyroResponse] = await Promise.all([
-          fetch(`http://localhost:5001/history/data?bucket=${bucket}&start=${start}&stop=${stop}&_measurement=temperature_probe&fields=fields_surface_temperature,fields_over_surface_temperature&every=1m0s&fn=last&createEmpty=false&yieldName=last`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/data?bucket=${bucket}&start=${start}&stop=${stop}&_measurement=temperature_probe&fields=fields_surface_temperature,fields_over_surface_temperature&every=1m0s&fn=last&createEmpty=false&yieldName=last`, {
             headers: {
               'Authorization': `${session.accessToken}`,
             },
           }),
-          fetch(`http://localhost:5001/history/data?bucket=${bucket}&start=${start}&stop=${stop}&_measurement=6_dof_imu&fields=fields_gyro_x&every=15s&fn=last&createEmpty=false&yieldName=last`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/data?bucket=${bucket}&start=${start}&stop=${stop}&_measurement=6_dof_imu&fields=fields_gyro_x&every=15s&fn=last&createEmpty=false&yieldName=last`, {
             headers: {
               'Authorization': `${session.accessToken}`,
             },
@@ -386,4 +386,4 @@ const TemperatureProbeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, s
   )
 }
 
-export default TemperatureProbeChart;
+export default TemperatureGyrocopeChart;

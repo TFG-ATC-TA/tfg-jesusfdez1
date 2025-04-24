@@ -44,9 +44,24 @@ router.get('/farm-activities', async (req, res) => {
         // Obtener parámetros de paginación de la query string
         const page = parseInt(req.query.page) || 0;
         const daysPerPage = parseInt(req.query.daysPerPage) || 4;
-        
-        const query = 'SELECT * FROM tank_state_intervals ORDER BY start_time';
-        const result = await pool.query(query);
+        const startTime = req.query.startDate ? new Date(req.query.startDate) : null;
+        const endTime = req.query.endDate ? new Date(req.query.endDate) : null;
+
+        // Construir la consulta SQL con filtros de fecha si se proporcionan
+        let query = 'SELECT * FROM tank_state_intervals';
+        const queryParams = [];
+        if (startTime && endTime) {
+            query += ' WHERE start_time >= $1 AND end_time <= $2';
+            queryParams.push(startTime.toISOString(), endTime.toISOString());
+        } else if (startTime) {
+            query += ' WHERE start_time >= $1';
+            queryParams.push(startTime.toISOString());
+        } else if (endTime) {
+            query += ' WHERE end_time <= $1';
+            queryParams.push(endTime.toISOString());
+        }
+        query += ' ORDER BY start_time';
+        const result = await pool.query(query, queryParams);
         
         // Procesar los datos para generar estadísticas y timeline
         const data = result.rows;

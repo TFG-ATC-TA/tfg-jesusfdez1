@@ -61,7 +61,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
         }
 
         try {
-          const response = await fetch(`http://localhost:5001/equipment/listTanks?farmId=${farmId}`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?farmId=${farmId}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
           collectionDate: new Date(collectionInfo.collectionDate).toISOString()
         };
         
-        const response = await fetch(`http://localhost:5001/collection`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collection`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

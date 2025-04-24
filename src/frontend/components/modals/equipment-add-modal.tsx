@@ -203,7 +203,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
       }
 
       const response = await fetch(
-        `http://localhost:5001/device/list?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/device/list?${searchParams.toString()}`, 
         {
           method: 'GET',
           headers: {
@@ -268,7 +268,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
       }
       
       const response = await fetch(
-        `http://localhost:5001/equipment/listTanks?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?${searchParams.toString()}`, 
         {
           method: 'GET',
           headers: {
@@ -416,7 +416,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
         .filter(([_, isSelected]) => isSelected)
         .map(([tankId, _]) => tankId);
       
-      const response = await fetch(`http://localhost:5001/equipment`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

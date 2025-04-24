@@ -79,7 +79,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
 
         setLoading(true);
         try {
-          const response = await fetch(`http://localhost:5001/collection/${collectionId}`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collection/${collectionId}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
 
   const fetchTanks = async (farmId: string) => {
     try {
-      const response = await fetch(`http://localhost:5001/equipment/listTanks?farmId=${farmId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?farmId=${farmId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -211,7 +211,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
           collectionDate: new Date(collectionInfo.collectionDate).toISOString()
         };
         
-        const response = await fetch(`http://localhost:5001/collection/${collectionId}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collection/${collectionId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     }
     
     try {
-      const response = await fetch(`http://localhost:5001/collection/${collectionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collection/${collectionId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

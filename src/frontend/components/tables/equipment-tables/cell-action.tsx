@@ -48,7 +48,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5001/equipment/${data._id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/${data._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -99,12 +99,12 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
       </AlertDialog>
 
       <div className="flex items-center gap-2">
-        <Button  
+        {/* <Button  
           className="h-6 w-12 p-0 flex items-center"   
           onClick={() => router.push(`/equipment/${data._id}`)}
         >
           <ExternalLink className="h-4 w-4" />
-        </Button>
+        </Button> */}
 
         {session?.user?.role === 'Administrador' && (
           <DropdownMenu modal={false}>

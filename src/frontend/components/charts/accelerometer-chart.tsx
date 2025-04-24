@@ -46,9 +46,10 @@ export default function AccelerometerChart({ bucket }: { bucket: string }){
     }
 
     setConnectionStatus("Conectando...")
-    wsRef.current = new WebSocket(`ws://localhost:5001/realtime/data?from=${bucket}&info=6_dof_imu&token=${session.accessToken}`)
+    wsRef.current = new WebSocket(
+      `${process.env.NEXT_PUBLIC_WSS_URL}/realtime/data?from=${bucket}&info=6_dof_imu&token=${session.accessToken}`
+    )
     wsRef.current.onopen = () => {
-      console.log("WebSocket conectado")
       setConnectionStatus("Conectado")
       setError(null)
     }
@@ -80,7 +81,7 @@ export default function AccelerometerChart({ bucket }: { bucket: string }){
 
     wsRef.current.onerror = (event) => {
       console.error("Error de WebSocket:", event)
-      setError("Error de conexión WebSocket")
+      setError("Error de conexión recibiendo datos en tiempo real. Por favor, vuelva a intentarlo más tarde.")
       setConnectionStatus("Error")    }
 
     wsRef.current.onclose = (event) => {

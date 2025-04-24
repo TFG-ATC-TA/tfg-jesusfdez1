@@ -312,9 +312,15 @@ interface CalendarDateRangePickerProps {
   start?: Date;
   end?: Date;
   onDateRangeChange?: (dateRange: DateRange | undefined) => void;
+  onApply?: () => void; // Nueva prop para manejar el evento de aplicar
 }
 
-export function CalendarDateRangePicker({
+// Ref interface para exponer funciones
+export interface CalendarDateRangePickerRef {
+  applyChanges: () => void;
+}
+
+export const CalendarDateRangePicker = React.forwardRef<CalendarDateRangePickerRef, CalendarDateRangePickerProps>(({
   className,
   start = (() => {
     const date = subDays(new Date(), 1);
@@ -327,39 +333,59 @@ export function CalendarDateRangePicker({
     return date;
   })(),
   onDateRangeChange,
-}: CalendarDateRangePickerProps) {
+  onApply,
+}, ref) => {
   const [date, setDate] = React.useState<DateRange | undefined>({ from: start, to: end });
   const [fromInput, setFromInput] = React.useState<string>(format(start, 'dd/MM/yyyy'));
   const [toInput, setToInput] = React.useState<string>(format(end, 'dd/MM/yyyy'));
   const [fromTime, setFromTime] = React.useState<string>('00:00:00');
   const [toTime, setToTime] = React.useState<string>('23:59:59');
-  const [isEditing, setIsEditing] = React.useState<boolean>(false);
-
-  const handleFromInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isEditing, setIsEditing] = React.useState<boolean>(false);  const handleFromInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsEditing(true);
+    setFromInput(e.target.value);
     const newFromDate = parse(e.target.value, 'dd/MM/yyyy', new Date());
     if (!isNaN(newFromDate.getTime()) && newFromDate <= new Date()) {
-      setDate((prev) => ({ ...prev, from: newFromDate } as DateRange));
+      // Preservar la hora actual si ya existe
+      if (date?.from) {
+        newFromDate.setHours(
+          date.from.getHours(),
+          date.from.getMinutes(),
+          date.from.getSeconds(),
+          date.from.getMilliseconds()
+        );
+      }
+      const newRange = { ...date, from: newFromDate } as DateRange;
+      setDate(newRange);
+      // No notificar cambios automáticamente - solo cuando se presione el botón
     }
-    setFromInput(e.target.value);
   };
-
   const handleToInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsEditing(true);
+    setToInput(e.target.value);
     const newToDate = parse(e.target.value, 'dd/MM/yyyy', new Date());
     if (!isNaN(newToDate.getTime()) && newToDate <= new Date()) {
-      setDate((prev) => ({ ...prev, from: prev?.from ?? new Date(), to: newToDate } as DateRange));
+      // Preservar la hora actual si ya existe
+      if (date?.to) {
+        newToDate.setHours(
+          date.to.getHours(),
+          date.to.getMinutes(),
+          date.to.getSeconds(),
+          date.to.getMilliseconds()
+        );
+      }
+      const newRange = { from: date?.from ?? new Date(), to: newToDate } as DateRange;
+      setDate(newRange);
+      // No notificar cambios automáticamente - solo cuando se presione el botón
     }
-    setToInput(e.target.value);
-  };
-
-  const handleFromTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  };  const handleFromTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFromTime(e.target.value);
     if (date?.from) {
       const newFromDate = new Date(date.from);
       const [hours, minutes, seconds] = e.target.value.split(':').map(Number);
       newFromDate.setHours(hours, minutes, seconds);
-      setDate((prev) => ({ ...prev, from: newFromDate } as DateRange));
+      const newRange = { ...date, from: newFromDate } as DateRange;
+      setDate(newRange);
+      // No notificar cambios automáticamente - solo cuando se presione el botón
     }
   };
 
@@ -369,7 +395,9 @@ export function CalendarDateRangePicker({
       const newToDate = new Date(date.to);
       const [hours, minutes, seconds] = e.target.value.split(':').map(Number);
       newToDate.setHours(hours, minutes, seconds);
-      setDate((prev) => ({ ...prev, to: newToDate } as DateRange));
+      const newRange = { ...date, to: newToDate } as DateRange;
+      setDate(newRange);
+      // No notificar cambios automáticamente - solo cuando se presione el botón
     }
   };
 
@@ -389,40 +417,80 @@ export function CalendarDateRangePicker({
   const handleBlur = () => {
     setIsEditing(false);
   };
+  // Función para enviar los datos cuando se presione el botón del avión
+  const handleApplyChanges = () => {
+    if (onDateRangeChange) {
+      onDateRangeChange(date);
+    }
+    if (onApply) {
+      onApply();
+    }
+  };
+
+  // Exponer la función para que el componente padre pueda llamarla
+  React.useImperativeHandle(ref, () => ({
+    applyChanges: handleApplyChanges,
+  }));
 
   const handleDateSelect = (selectedDate: DateRange | undefined) => {
     if (!selectedDate && date?.from) {
       const clickedDate = new Date(date.from);
       const endDate = new Date(clickedDate);
-      clickedDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
+      
+      // Preservar las horas existentes o usar valores por defecto
+      if (date?.from) {
+        clickedDate.setHours(date.from.getHours(), date.from.getMinutes(), date.from.getSeconds());
+      } else {
+        clickedDate.setHours(0, 0, 0, 0);
+      }
+      
+      if (date?.to) {
+        endDate.setHours(date.to.getHours(), date.to.getMinutes(), date.to.getSeconds());
+      } else {
+        endDate.setHours(23, 59, 59, 999);
+      }
+      
       const newRange = { from: clickedDate, to: endDate };
       setDate(newRange);
-      if (onDateRangeChange) {
-        onDateRangeChange(newRange);
-      }
+      // No notificar cambios automáticamente - solo cuando se presione el botón
       return;
     }
 
     if (selectedDate?.from) {
       const from = new Date(selectedDate.from);
-      from.setHours(0, 0, 0, 0);
+      
+      // Preservar la hora de inicio existente o usar 00:00:00
+      if (date?.from) {
+        from.setHours(date.from.getHours(), date.from.getMinutes(), date.from.getSeconds());
+      } else {
+        from.setHours(0, 0, 0, 0);
+      }
       
       const to = selectedDate.to ? new Date(selectedDate.to) : new Date(from);
-      to.setHours(23, 59, 59, 999);
+      
+      // Preservar la hora de fin existente o usar 23:59:59
+      if (selectedDate.to) {
+        if (date?.to) {
+          to.setHours(date.to.getHours(), date.to.getMinutes(), date.to.getSeconds());
+        } else {
+          to.setHours(23, 59, 59, 999);
+        }
+      } else {
+        // Si es el mismo día, copiar las horas del inicio pero asegurar que sea posterior
+        to.setHours(from.getHours(), from.getMinutes(), from.getSeconds());
+        if (to.getTime() <= from.getTime()) {
+          to.setHours(23, 59, 59, 999);
+        }
+      }
 
       const newRange = { from, to };
       setDate(newRange);
-      if (onDateRangeChange) {
-        onDateRangeChange(newRange);
-      }
+      // No notificar cambios automáticamente - solo cuando se presione el botón
       return;
     }
 
     setDate(selectedDate);
-    if (onDateRangeChange) {
-      onDateRangeChange(selectedDate);
-    }
+    // No notificar cambios automáticamente - solo cuando se presione el botón
   };
 
   return (
@@ -524,13 +592,16 @@ export function CalendarDateRangePicker({
               day_hidden: "invisible",
             }}
           />
-          <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-border">
-            <div className="p-4 flex-1">
+          <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-border">            <div className="p-4 flex-1">
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">Escriba hora inicial</Label>
                 <TimePicker 
                   date={date?.from} 
-                  setDate={(newDate) => setDate((prev) => ({ ...prev, from: newDate } as DateRange))} 
+                  setDate={(newDate) => {
+                    const newRange = { ...date, from: newDate } as DateRange;
+                    setDate(newRange);
+                    // No notificar cambios automáticamente - solo cuando se presione el botón
+                  }} 
                 />
               </div>
             </div>
@@ -539,13 +610,18 @@ export function CalendarDateRangePicker({
                 <Label className="text-xs font-medium text-muted-foreground">Escriba hora final</Label>
                 <TimePicker 
                   date={date?.to} 
-                  setDate={(newDate) => setDate((prev) => ({ ...prev, to: newDate } as DateRange))} 
+                  setDate={(newDate) => {
+                    const newRange = { ...date, to: newDate } as DateRange;
+                    setDate(newRange);
+                    // No notificar cambios automáticamente - solo cuando se presione el botón
+                  }} 
                 />
-              </div>
-            </div>
+              </div>            </div>
           </div>
         </PopoverContent>
       </Popover>
     </div>
   );
-}
+});
+
+CalendarDateRangePicker.displayName = "CalendarDateRangePicker";

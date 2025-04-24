@@ -96,7 +96,7 @@ export default function AirQualityChart({ bucket }: { bucket: string }){
 
     try {
       const start = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-      const response = await fetch(`http://localhost:5001/history/data?bucket=${bucket}&start=${start}&_measurement=air_quality&fields=fields_iaq,fields_heat_compensated_temperature,fields_heat_compensated_humidity,fields_co2_equivalent,fields_breath_voc_equivalent,fields_gas_percentage,fields_raw_pressure,fields_raw_gas&tags_board_id=01&every=1m0s&fn=%20last&createEmpty=false&yieldName=last`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/data?bucket=${bucket}&start=${start}&_measurement=air_quality&fields=fields_iaq,fields_heat_compensated_temperature,fields_heat_compensated_humidity,fields_co2_equivalent,fields_breath_voc_equivalent,fields_gas_percentage,fields_raw_pressure,fields_raw_gas&tags_board_id=01&every=1m0s&fn=%20last&createEmpty=false&yieldName=last`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `${session.accessToken}`,
@@ -284,7 +284,7 @@ export default function AirQualityChart({ bucket }: { bucket: string }){
           </>        ) : (
           <div className="px-4 py-3 rounded-md bg-destructive dark:bg-red-900 border border-destructive dark:border-red-800 text-white flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 inline-block flex-shrink-0" aria-hidden="true" />
-            <span className="text-sm font-medium">No se pudieron obtener los datos del sensor en este momento.</span>
+            <span className="text-sm font-medium">No se pudieron obtener los datos del sensor en este momento. Por favor, vuelva a intentarlo más tarde.</span>
           </div>
         )}
       </CardContent>

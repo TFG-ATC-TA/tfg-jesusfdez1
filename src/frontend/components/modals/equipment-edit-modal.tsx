@@ -118,7 +118,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       }
 
       const response = await fetch(
-        `http://localhost:5001/device/list?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/device/list?${searchParams.toString()}`, 
         {
           method: 'GET',
           headers: {
@@ -178,7 +178,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       }
       
       const response = await fetch(
-        `http://localhost:5001/equipment/listTanks?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?${searchParams.toString()}`, 
         {
           method: 'GET',
           headers: {
@@ -318,7 +318,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     try {
       setInitialLoading(true);
       
-      const response = await fetch(`http://localhost:5001/equipment/${equipmentId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/${equipmentId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -577,7 +577,7 @@ const deviceColumns = [
       console.log("Dispositivos seleccionados para enviar:", selectedDeviceIds);
       console.log("Tanques seleccionados para enviar:", selectedTankIds);
       
-      const response = await fetch(`http://localhost:5001/equipment/${equipmentId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/${equipmentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

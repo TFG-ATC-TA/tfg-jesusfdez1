@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react'
-import AdminView from './admin'
+import AdminView from './administrator'
 
 // import UserView from './userview'
 
@@ -30,7 +30,7 @@ export default function FarmViewPage() {
       }
 
       try {
-        const response = await fetch(`http://localhost:5001/farm/${farmId}/access`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/${farmId}/access`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

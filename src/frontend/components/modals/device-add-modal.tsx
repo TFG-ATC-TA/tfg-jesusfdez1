@@ -65,7 +65,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       }
 
       const response = await fetch(
-        `http://localhost:5001/device/list?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/device/list?${searchParams.toString()}`, 
         {
           method: 'GET',
           headers: {
@@ -104,7 +104,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           return;
         }
         try {
-          const response = await fetch('http://localhost:5001/farm/listName', {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -144,7 +144,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           return;
         }
         try {
-          const response = await fetch('http://localhost:5001/equipment/listName', {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/listName`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -207,7 +207,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       }
       
       try {
-        const response = await fetch('http://localhost:5001/device', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/device`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

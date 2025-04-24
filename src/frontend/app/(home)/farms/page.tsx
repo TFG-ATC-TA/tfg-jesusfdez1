@@ -45,7 +45,7 @@ const UserClient: React.FC = () => {
     
     try {
       const response = await fetch(
-        `http://localhost:5001/farm/list?page=${currentPage}&limit=10&searchTerm=${searchTerm}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/farm/list?page=${currentPage}&limit=10&searchTerm=${searchTerm}`,
         {
           method: 'GET',
           headers: {

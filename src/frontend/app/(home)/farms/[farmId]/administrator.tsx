@@ -16,17 +16,12 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { columnsAlternative } from '@/components/tables/user-tables/columns';
 import { columns as milkCollectionColumns } from '@/components/tables/milk-collection-tables/columns';
 import { getColumns as getEquipmentColumns } from '@/components/tables/equipment-tables/columns';
-import TemperatureProbeChart from '@/components/charts/temperature-gyroscope-chart';
-import { CalendarDateRangePicker, DateRange } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
-import { PaperPlaneIcon } from "@radix-ui/react-icons"
-import DairyTimeline from "@/components/charts/dairy-timeline-chart"
-import AirQualityChart from "@/components/charts/air-quality-chart"
 import MilkCollectionAddModal from "@/components/modals/milk-collection-add-modal"
 import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
-import AccelerometerChart from "@/components/charts/accelerometer-chart"
 import EquipmentAddModal from "@/components/modals/equipment-add-modal"
+import Statistics from "./farm-statistics"
 
 interface AdminViewProps {
   farmData: any;
@@ -34,11 +29,11 @@ interface AdminViewProps {
 
 export default function AdminView({ farmData }: AdminViewProps) {
   const { data: session } = useSession()
+  
   // Users state
   const [userData, setUserData] = useState<User[]>([]);
   const [userPage, setUserPage] = useState(1);
   const [userSearchTerm, setUserSearchTerm] = useState('');
-  const [setUserTotalItems] = useState(0);
   const [userTotalPages, setUserTotalPages] = useState(1);
   
   // Milk collections state
@@ -59,9 +54,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
 
   // Common state
   const [activeTab, setActiveTab] = useState("overview");
-  const initialDateRange = { from: new Date(new Date().setHours(0, 0, 0, 0)), to: new Date(new Date().setHours(23, 59, 59, 999))};
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(initialDateRange);
-  const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>(initialDateRange);
   const isFetchingRef = useRef<string | false>(false);
 
   const filterOptions = {
@@ -91,7 +83,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
       isFetchingRef.current = 'users';
       const rolesQuery = selectedFilters['role'] ? selectedFilters['role'].join(',') : '';
       const filtersQuery = JSON.stringify(selectedFilters);
-      const response = await fetch(`http://localhost:5001/user/list?farmId=${farmData._id}&page=${userPage}&limit=10&searchTerm=${userSearchTerm}&roles=${rolesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/list?farmId=${farmData._id}&page=${userPage}&limit=10&searchTerm=${userSearchTerm}&roles=${rolesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +115,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
     
     try {
       isFetchingRef.current = 'collections';
-      const response = await fetch(`http://localhost:5001/collection/list?farmId=${farmData._id}&page=${milkCollectionPage}&limit=10&searchTerm=${milkCollectionSearchTerm}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collection/list?farmId=${farmData._id}&page=${milkCollectionPage}&limit=10&searchTerm=${milkCollectionSearchTerm}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -167,7 +159,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
       searchParams.append('types', typesQuery);
       searchParams.append('filters', encodeURIComponent(filtersQuery));
       
-      const response = await fetch(`http://localhost:5001/equipment/list?${searchParams.toString()}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/list?${searchParams.toString()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -209,14 +201,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
     setSelectedFilters(filters);
   };
 
-  const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
-    setDateRange(newDateRange);
-  };
-
-  const handleApplyDateRange = () => {
-    setAppliedDateRange(dateRange);
-  };
-
   const handleOpenAddEquipmentModal = () => {
     setShowAddEquipmentModal(true);
   };
@@ -245,25 +229,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
               <TabsTrigger value="overview">Vista general</TabsTrigger>
               <TabsTrigger value="analytics">Estadísticas</TabsTrigger>
             </TabsList>
-            {activeTab === "analytics" && (
-              <div className="flex w-full sm:w-auto items-center gap-2">
-                <div className="flex-grow">
-                  <CalendarDateRangePicker
-                    start={dateRange?.from}
-                    end={dateRange?.to}
-                    onDateRangeChange={handleDateRangeChange}
-                  />
-                </div>
-                <Button 
-                  variant="default" 
-                  size="default"
-                  onClick={handleApplyDateRange}
-                  className="h-9 shrink-0"
-                >
-                  <PaperPlaneIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
           </div>
           <TabsContent value="overview" className="space-y-4">
             <Card className="w-full">
@@ -366,17 +331,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
             </Card>
           </TabsContent>
           <TabsContent value="analytics">
-            <div className="col-span-2 grid grid-cols-1 gap-4 mb-5">
-              <TemperatureProbeChart 
-                key={`${appliedDateRange?.from}-${appliedDateRange?.to}`} 
-                bucket={farmData.idname} 
-                startDate={appliedDateRange?.from} 
-                endDate={appliedDateRange?.to} 
-              />
-              <DairyTimeline/>
-              <AirQualityChart bucket={farmData.idname} />
-              <AccelerometerChart bucket={farmData.idname} />
-            </div>
+            <Statistics farmData={farmData} />
           </TabsContent>
         </Tabs>
       </div>
