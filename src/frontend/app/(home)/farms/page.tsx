@@ -113,7 +113,8 @@ const UserClient: React.FC = () => {
         )}
       </div>
 
-      <div className="my-4"></div>      <DataTable<Farm>
+      <div className="my-4"></div>      
+      <DataTable<Farm>
         columns={updatedColumns}
         data={data}
         enableColumnSelection={false}

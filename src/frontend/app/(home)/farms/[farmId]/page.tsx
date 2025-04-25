@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react'
 import AdminView from './administrator'
+import NonAdminView from './non-administrator'
 
 // import UserView from './userview'
 
@@ -99,7 +100,7 @@ export default function FarmViewPage() {
           </CardContent>
           <CardFooter>
             <Button variant="outline" onClick={() => router.push('/')} className="w-full">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Dashboard
+              <ArrowLeft className="mr-2 h-4 w-4" /> Volver al inicio
             </Button>
           </CardFooter>
         </Card>
@@ -116,7 +117,8 @@ export default function FarmViewPage() {
             </div>
           ) : (
             <div>
-              </div>
+            <NonAdminView farmData={farmData} />
+            </div>
           )}
 
     </div>

@@ -183,10 +183,8 @@ router.put('/:id', verifyToken, isAdmin, async (req, res) => {
 
 // Eliminar una granja
 router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const deletedFarm = await Farm.findByIdAndDelete(id);
+  try { 
+    const deletedFarm = await Farm.findByIdAndDelete(req.params);
     
     if (!deletedFarm) {
       return res.status(404).json({ message: 'Granja no encontrada' });
@@ -201,19 +199,15 @@ router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
   
 router.get('/:farmId/access', verifyToken, async (req, res) => {
   try {
-    const { farmId } = req.params;
-    const farm = await Farm.findOne({ idname: farmId }).select('_id name idname');
-    if (!farm) {
-      return res.status(404).json({ message: 'Granja no encontrada' });
-    }
+    const farm = await Farm.findOne({ idname: req.params.farmId }).select('-__v');
+    if (!farm) return res.status(404).json({ message: 'Granja no encontrada' });
 
-    const hasAccess = req.user.role === 'Administrador' || (farm.users && farm.users.includes(req.user.id));
-    if (hasAccess) {
-      res.json(farm);
-    } else {
-      res.status(403).json({ message: 'No tienes acceso a esta granja' });
+    if (req.user.role === 'Administrador' || farm.users.includes(req.user.id)) {
+      const { users, ...farmData } = farm.toObject();
+      return res.json(farmData);
     }
-  } catch (error) {
+    res.status(403).json({ message: 'No tienes acceso a esta granja' });
+  } catch {
     res.status(500).json({ message: 'Error verificando acceso a la granja' });
   }
 });
