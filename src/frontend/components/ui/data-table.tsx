@@ -37,6 +37,7 @@ interface DataTableProps<TData> {
   totalItems?: number
   onFilterChange?: (filters: Record<string, string[]>) => void
   containerClassName?: string // Nueva prop para personalizar el contenedor
+  loading?: boolean
 }
 
 function useDataTable<TData>({
@@ -153,6 +154,7 @@ export function DataTable<TData>({
   totalItems = 0,
   onFilterChange,
   containerClassName = "w-full border rounded-md shadow-sm", // Valor por defecto sin max-width
+  loading = false,
 }: DataTableProps<TData>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const [maxTotalItems, setMaxTotalItems] = useState(0)
@@ -239,8 +241,6 @@ export function DataTable<TData>({
   )
 
   const PageSelector = () => {
-    if (!totalPages || totalPages <= 1) return null
-
     return (
       <div className="flex items-center space-x-2 text-sm pb-4 justify-center sm:pb-0 sm:justify-start">
         <span>Página</span>
@@ -264,8 +264,13 @@ export function DataTable<TData>({
               const pageNumber = i + 1;
               return (
                 <DropdownMenuItem 
-                  key={i} 
-                  onSelect={() => onPageChange?.(pageNumber)}
+                  key={`page-${pageNumber}`}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    if (typeof onPageChange === 'function') {
+                      onPageChange(pageNumber);
+                    }
+                  }}
                   className={`justify-center ${pageNumber === currentPage ? 'bg-gray-100 dark:bg-gray-700' : ''} hover:bg-gray-100 dark:hover:bg-gray-700`}
                 >
                   {pageNumber}
@@ -282,7 +287,7 @@ export function DataTable<TData>({
   return (
     <div className="space-y-4 lg:space-y-6 xl:space-y-7">
       <div className="flex flex-col gap-6 lg:flex-row lg:justify-between lg:items-center lg:gap-4">
-        <div className="flex flex-col gap-6 lg:flex-row lg:gap-4 w-full justify-center">
+        <div className="flex flex-row flex-wrap gap-4 w-full justify-center">
           {showSearchBar && <DataTableSearch value={globalFilter} onChange={handleSearch} />}
           <DataTableFilters
             filters={filters}
@@ -375,7 +380,10 @@ export function DataTable<TData>({
               variant="outline"
               size="icon"
               type="button"
-              onClick={() => onPageChange?.(1)}
+              onClick={(e) => {
+                e.preventDefault();
+                onPageChange?.(1);
+              }}
               disabled={currentPage <= 1}
             >
               <span className="sr-only">Primera página</span>
@@ -385,7 +393,10 @@ export function DataTable<TData>({
               variant="outline"
               size="icon"
               type="button"
-              onClick={() => onPageChange?.(currentPage - 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                onPageChange?.(currentPage - 1);
+              }}
               disabled={currentPage <= 1}
             >
               <span className="sr-only">Página anterior</span>
@@ -395,7 +406,10 @@ export function DataTable<TData>({
               variant="outline"
               size="icon"
               type="button"
-              onClick={() => onPageChange?.(currentPage + 1)}
+              onClick={(e) => {
+                e.preventDefault(); 
+                onPageChange?.(currentPage + 1);
+              }}
               disabled={currentPage >= totalPages}
             >
               <span className="sr-only">Página siguiente</span>
@@ -405,7 +419,10 @@ export function DataTable<TData>({
               variant="outline"
               size="icon"
               type="button"
-              onClick={() => onPageChange?.(totalPages)}
+              onClick={(e) => {
+                e.preventDefault();
+                onPageChange?.(totalPages);
+              }}
               disabled={currentPage >= totalPages}
             >
               <span className="sr-only">Última página</span>

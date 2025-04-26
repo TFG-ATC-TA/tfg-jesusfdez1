@@ -1,77 +1,88 @@
-const express = require('express');
-const mqtt = require('mqtt');
 const WebSocket = require('ws');
 const url = require('url');
+const express = require('express');
+const { verifyToken } = require('../middleware/auth');
+const Farm = require('../models/Farm');
+const { connectMQTT } = require('../config/connection');
+
 require('dotenv').config();
 
 module.exports = function(wss) {
   const router = express.Router();
-
-  const client = mqtt.connect(`${process.env.MQTT_PROTOCOL}://${process.env.MQTT_HOST}`, {
-    username: process.env.MQTT_USERNAME,
-    password: process.env.MQTT_PASSWORD,
-  });
-
-  client.on('connect', function () {
-    console.log('MQTT client connected');
-  });
-
-  client.on('error', function (error) {
-    console.error('MQTT client error:', error);
-  });
-
-  // Function to handle MQTT subscriptions
-  function handleMqttSubscription(from, info) {
-    const mqttTopic = `${from}/${info}`;
-    client.subscribe(mqttTopic, function (err) {
-      if (!err) {
-        console.log(`MQTT subscription to ${mqttTopic} successful`);
-      } else {
-        console.error(`MQTT subscription to ${mqttTopic} failed:`, err);
-      }
-    });
-  }
-
-  // Handle MQTT messages and broadcast to relevant WebSocket clients
+  const client = connectMQTT();
+  
+  // Manejar mensajes MQTT y transmitir a clientes WebSocket relevantes
   client.on('message', function (topic, message) {
-    const payload = JSON.parse(message.toString().replace(/\\\\/g, '\\')); // Convertir el string JSON a objeto JavaScript
-
-    console.log(`Received MQTT message on topic ${topic}:`, payload);
-
-    // Extract 'from' and 'info' from the MQTT topic
+    const payload = JSON.parse(message.toString().replace(/\\\\/g, '\\'));
     const [from, info] = topic.split('/');
 
-    // Broadcast message to relevant WebSocket clients
+    // Transmitir mensaje a clientes WebSocket relevantes
     wss.clients.forEach(function (ws) {
       if (ws.readyState === WebSocket.OPEN && ws.from === from && ws.info === info) {
         ws.send(JSON.stringify({ topic, payload }));
       }
     });
-  });
+  });  
+  // Función auxiliar para cerrar conexión con error
+  function closeWithError(ws, message) {
+    ws.close(1008, message);
+  }
 
-  // Set up WebSocket connection handling
-  wss.on('connection', function(ws, req) {
+  // Función auxiliar para verificar acceso a granja
+  async function checkFarmAccess(user, farmIdname) {
+    if (user.role === 'Administrador') return true;
+    
+    const farm = await Farm.findOne({ idname: farmIdname });
+    if (!farm) return false;
+    
+    return user.farms.some(farmId => farmId.toString() === farm._id.toString());
+  }
+
+  // Configurar manejo de conexiones WebSocket
+  wss.on('connection', async function(ws, req) {
     const { query } = url.parse(req.url, true);
-    console.log(query);
-    const from = query.from;
-    const info = query.info;
+    const { from, info, token } = query;
 
-    if (from && info) {
-      handleMqttSubscription(from, info);
+    // Verificar token
+    if (!token) {
+      return closeWithError(ws, 'Token requerido');
     }
 
-    ws.from = from;
+    // Verificar validez del token
+    const mockReq = { headers: { authorization: token } };
+    try {
+      await verifyToken(mockReq, null, () => {
+        ws.user = mockReq.user;
+      });
+    } catch (error) {
+      return closeWithError(ws, 'Token inválido');
+    }
+
+    if (!ws.user) {
+      return closeWithError(ws, 'Token inválido');
+    }
+
+    // Verificar acceso a la granja si se especifica
+    if (from) {
+      try {
+        const hasAccess = await checkFarmAccess(ws.user, from);
+        if (!hasAccess) {
+          return closeWithError(ws, 'Acceso denegado a la granja');
+        }
+      } catch (error) {
+        console.error('Error verificando acceso a granja:', error);
+        return closeWithError(ws, 'Error interno del servidor');
+      }
+    }
+
+    // Suscribirse al topic MQTT si se proporcionan ambos parámetros
+    if (from && info) {
+      client.subscribe(`${from}/${info}`);
+    }    ws.from = from;
     ws.info = info;
-
-    console.log(`WebSocket client connected for from: ${from}, info: ${info}`);
-
-    ws.on('message', function (message) {
-      console.log('Received message:', message);
-      // Handle incoming message here
-    });
   });
 
   return router;
 };
 
-// TESTING: wscat -c "ws://localhost:5001/realtime/data?from=farm-01&info=6_dof_imu"
+// PRUEBA: wscat -c "ws://localhost:5001/realtime/data?from=farm-01&info=6_dof_imu&token=TU_JWT_TOKEN"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,63 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
 
   const { toast } = useToast();
 
+  const filterOptions = {
+    type: ["Monitor de leche", "Monitor de tanque", "Monitor de estación de lavado"],
+  };
+
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
+    type: [...filterOptions.type],
+  });
+
+  const handleFilterChange = (filters: Record<string, string[]>) => {
+    setSelectedFilters(filters);
+  };
+
+  const fetchDevices = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '') => {
+    if (!session?.accessToken || !farmId) {
+      return;
+    }
+
+    try {
+      const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
+      const filtersQuery = JSON.stringify(selectedFilters);
+      const searchParams = new URLSearchParams();
+      searchParams.append('farmId', farmId);
+      searchParams.append('page', page.toString());
+      searchParams.append('limit', '10');
+      searchParams.append('types', typesQuery);
+      searchParams.append('filters', encodeURIComponent(filtersQuery));
+      if (searchTerm) {
+        searchParams.append('searchTerm', searchTerm);
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/device/list?${searchParams.toString()}`, 
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `${session.accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Error al obtener dispositivos');
+      }
+
+      const result = await response.json();
+      console.log(result);
+    } catch (error) {
+      console.error('Error al obtener dispositivos:', error);
+      toast({
+        title: "Error al cargar dispositivos",
+        description: error instanceof Error ? error.message : "Error al obtener dispositivos",
+        variant: "destructive",
+      });
+    }
+  }, [session, selectedFilters]);
+
   useEffect(() => {
     if (isOpen && farms.length === 0) {
       const fetchFarms = async () => {
@@ -47,7 +104,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           return;
         }
         try {
-          const response = await fetch('http://localhost:5001/farm/listName', {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -87,7 +144,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           return;
         }
         try {
-          const response = await fetch('http://localhost:5001/equipment/list', {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/listName`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -100,7 +157,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
           if (!response.ok) {
             throw new Error(data.message || 'Error al obtener los equipos');
           }
-          setEquipments(data);
+          setEquipments(data || []);
         } catch (error) {
           console.error('Error al obtener equipos:', error);
           toast({
@@ -150,7 +207,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       }
       
       try {
-        const response = await fetch('http://localhost:5001/device', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/device`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -236,9 +293,9 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
                           <SelectValue placeholder="Seleccione un tipo de dispositivo" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Monitor de leche">Monitor de leche</SelectItem>
-                          <SelectItem value="Monitor de tanque">Monitor de tanque</SelectItem>
-                          <SelectItem value="Monitor de estación de lavado">Monitor de estación de lavado</SelectItem>
+                          {filterOptions.type.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -345,8 +402,8 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
                   {deviceInfo.sensors.map((sensor, index) => (
                     <div key={index} className="flex items-start gap-4">
                       <div className="flex-grow border p-4 rounded-md bg-gray-50 dark:bg-gray-900">
-                        <div className="flex gap-4">
-                          <div className="w-1/2 space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
                             <Label htmlFor={`sensorId-${index}`}>ID del sensor <span className="text-red-500">*</span></Label>
                             <Input 
                               id="sensorId" 
@@ -356,7 +413,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
                               className="bg-white dark:bg-gray-800 text-black dark:text-white" 
                             />
                           </div>
-                          <div className="w-1/2 space-y-2">
+                          <div className="space-y-2">
                             <Label htmlFor={`name-${index}`}>Nombre del sensor</Label>
                             <Input 
                               id="name" 
@@ -371,7 +428,6 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
                       <Button 
                         type="button" 
                         onClick={() => handleRemoveSensor(index)} 
-                        
                         className="h-9 w-9 p-0 bg-red-500 hover:bg-red-600 text-white flex items-center justify-center"
                       >
                         <Trash className="h-3.5 w-3.5" />

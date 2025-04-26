@@ -19,7 +19,7 @@ var equipmentSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Farm'
     },
-    device: [{
+    devices: [{
         type: Schema.Types.ObjectId,
         ref: 'Device'
     }],

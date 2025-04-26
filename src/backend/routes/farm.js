@@ -36,6 +36,7 @@ router.get('/list', verifyToken, async (req, res) => {
     const farms = await Farm.find(query)
       .select('_id name idname')
       .skip(skip)
+      .sort({ name: 1 })
       .limit(limit)
 
     res.json({ 
@@ -107,5 +108,108 @@ router.get('/listName', verifyToken, async (req, res) => {
   }
 });
 
+// Obtener una granja específica por ID
+router.get('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const farm = await Farm.findById(id).select('_id name idname');
+    
+    if (!farm) {
+      return res.status(404).json({ message: 'Granja no encontrada' });
+    }
+
+    // Verificar que el usuario tenga acceso a esta granja
+    if (req.user.role !== 'Administrador' && !farm.users.includes(req.user.id)) {
+      return res.status(403).json({ message: 'No tienes acceso a esta granja' });
+    }
+
+    res.json(farm);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener la granja: ' + error.message });
+  }
+});
+
+// Actualizar una granja
+router.put('/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { name, idname } = req.body;
+    
+    // Trim input fields
+    name = name ? name.trim() : '';
+    idname = idname ? idname.trim() : '';
+
+    if (!name || !idname) {
+      return res.status(400).json({ message: 'Nombre e ID de la granja son obligatorios' });
+    }
+
+    // Validate farm name (letters, numbers, spaces, hyphens, apostrophes, and punctuation, 2-50 characters)
+    const nameRegex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\-\'.,;:!?()]{2,50}$/;
+    if (!nameRegex.test(name)) {
+      return res.status(400).json({ 
+        message: 'El nombre debe contener entre 2 y 50 caracteres y puede contener letras, números, espacios, guiones, apóstrofes y signos de puntuación' 
+      });
+    }
+
+    // Validate farm ID (lowercase letters, numbers, and hyphens, 2-30 characters)
+    const idRegex = /^[a-zA-Z0-9-]{2,30}$/;
+    if (!idRegex.test(idname)) {
+      return res.status(400).json({ 
+        message: 'El ID debe contener entre 2 y 30 caracteres y solo puede contener letras minúsculas, números y guiones' 
+      });
+    }
+
+    // Verificar si existe otra granja con el mismo idname
+    const existingFarm = await Farm.findOne({ idname, _id: { $ne: id } });
+    if (existingFarm) {
+      return res.status(409).json({ message: 'Ya existe una granja con este ID' });
+    }
+
+    const updatedFarm = await Farm.findByIdAndUpdate(
+      id,
+      { name, idname },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedFarm) {
+      return res.status(404).json({ message: 'Granja no encontrada' });
+    }
+
+    res.json({ message: 'Granja actualizada con éxito', farm: updatedFarm });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar la granja: ' + error.message });
+  }
+});
+
+// Eliminar una granja
+router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
+  try { 
+    const deletedFarm = await Farm.findByIdAndDelete(req.params);
+    
+    if (!deletedFarm) {
+      return res.status(404).json({ message: 'Granja no encontrada' });
+    }
+
+    res.json({ message: 'Granja eliminada con éxito' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al eliminar la granja: ' + error.message });
+  }
+});
+
   
+router.get('/:farmId/access', verifyToken, async (req, res) => {
+  try {
+    const farm = await Farm.findOne({ idname: req.params.farmId }).select('-__v');
+    if (!farm) return res.status(404).json({ message: 'Granja no encontrada' });
+
+    if (req.user.role === 'Administrador' || farm.users.includes(req.user.id)) {
+      const { users, ...farmData } = farm.toObject();
+      return res.json(farmData);
+    }
+    res.status(403).json({ message: 'No tienes acceso a esta granja' });
+  } catch {
+    res.status(500).json({ message: 'Error verificando acceso a la granja' });
+  }
+});
+
 module.exports = router;

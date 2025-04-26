@@ -20,20 +20,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, MoreHorizontal, Trash, ExternalLink } from 'lucide-react';
-import FarmEditModal from '@/components/modals/farm-edit-modal';
-import { Farm } from '@/types';
-import { useRouter } from 'next/navigation';
+import { Edit, MoreHorizontal, Trash, Eye } from 'lucide-react';
+import { MilkCollectionEditModal } from '@/components/modals/milk-collection-edit-modal';
+import { MilkCollectionViewModal } from '@/components/modals/milk-collection-view-modal';
+import { MilkCollection } from '@/types';
 
 interface CellActionProps {
-  data: Farm;
+  data: MilkCollection;
   onRefresh: () => void;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
   const { data: session } = useSession();
-  const router = useRouter();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { toast } = useToast()
 
@@ -48,7 +48,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/${data._id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collection/${data._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -63,12 +63,13 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
       onRefresh();
       
       toast({
-        description: "Granja eliminada correctamente",
+        description: "Recogida de leche eliminada correctamente",
         variant: "success",
       });
     } catch (error) {
       toast({
-        title: "Error al eliminar la granja",
+        title: "Error al eliminar la recogida de leche",
+        description: error instanceof Error ? error.message : "Error desconocido",
         variant: "destructive",
       });
     }
@@ -76,51 +77,53 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
 
   return (
     <>
-      <FarmEditModal
+      <MilkCollectionEditModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        farmId={data._id}
+        collectionId={data._id}
         onRefresh={onRefresh}
       />
+      
+      <MilkCollectionViewModal 
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        collectionId={data._id}
+      />
+
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente esta granja de la base de datos.
+              Esta acción no se puede deshacer. Se eliminará permanentemente este registro de la base de datos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={onDelete} className="bg-red-600 text-white hover:bg-red-700">Borrar</AlertDialogAction>
-          </AlertDialogFooter>        </AlertDialogContent>
-      </AlertDialog>      <div className="flex items-center gap-2">
-        <Button  
-          className="h-6 w-12 p-0 flex items-center"   
-          onClick={() => router.push(`/farms/${data.idname}`)}
-        >
-          <ExternalLink className="h-4 w-4" />
-        </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        {session?.user?.role === 'Administrador' && (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-4 w-12 p-0 flex items-center">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setShowEditModal(true)}>
-                <Edit className="mr-2 h-4 w-4" /> Actualizar
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowDeleteAlert(true)}>
-                <Trash className="mr-2 h-4 w-4" /> Borrar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-4 w-12 p-0 flex items-center">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => setShowViewModal(true)}>
+            <Eye className="mr-2 h-4 w-4" /> Ver detalles
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setShowEditModal(true)}>
+            <Edit className="mr-2 h-4 w-4" /> Actualizar
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setShowDeleteAlert(true)}>
+            <Trash className="mr-2 h-4 w-4" /> Borrar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 };

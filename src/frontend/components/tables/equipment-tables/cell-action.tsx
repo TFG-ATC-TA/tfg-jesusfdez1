@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,12 +22,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Edit, MoreHorizontal, Trash, ExternalLink } from 'lucide-react';
-import FarmEditModal from '@/components/modals/farm-edit-modal';
-import { Farm } from '@/types';
-import { useRouter } from 'next/navigation';
+import { Equipment } from '@/types';
+import EquipmentEditModal from '@/components/modals/equipment-edit-modal';
 
 interface CellActionProps {
-  data: Farm;
+  data: Equipment;
   onRefresh: () => void;
 }
 
@@ -35,7 +35,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
   const router = useRouter();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-  const { toast } = useToast()
+  const { toast } = useToast();
 
   const onDelete = async () => {
     try {
@@ -48,7 +48,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/${data._id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/${data._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -63,12 +63,13 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
       onRefresh();
       
       toast({
-        description: "Granja eliminada correctamente",
+        description: "Equipamiento eliminado correctamente",
         variant: "success",
       });
     } catch (error) {
       toast({
-        title: "Error al eliminar la granja",
+        title: "Error al eliminar el equipamiento",
+        description: error instanceof Error ? error.message : "Error desconocido",
         variant: "destructive",
       });
     }
@@ -76,31 +77,34 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
 
   return (
     <>
-      <FarmEditModal
+      <EquipmentEditModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        farmId={data._id}
+        equipmentId={data._id}
         onRefresh={onRefresh}
       />
+
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente esta granja de la base de datos.
+              Esta acción no se puede deshacer. Se eliminará permanentemente este equipamiento de la base de datos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={onDelete} className="bg-red-600 text-white hover:bg-red-700">Borrar</AlertDialogAction>
           </AlertDialogFooter>        </AlertDialogContent>
-      </AlertDialog>      <div className="flex items-center gap-2">
-        <Button  
+      </AlertDialog>
+
+      <div className="flex items-center gap-2">
+        {/* <Button  
           className="h-6 w-12 p-0 flex items-center"   
-          onClick={() => router.push(`/farms/${data.idname}`)}
+          onClick={() => router.push(`/equipment/${data._id}`)}
         >
           <ExternalLink className="h-4 w-4" />
-        </Button>
+        </Button> */}
 
         {session?.user?.role === 'Administrador' && (
           <DropdownMenu modal={false}>

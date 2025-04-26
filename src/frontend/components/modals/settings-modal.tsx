@@ -278,7 +278,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       return;
     }
     try {
-      const response = await fetch('http://localhost:5001/user/update-basic', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/update-basic`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -335,7 +335,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       return;
     }
     try {
-      const response = await fetch('http://localhost:5001/user/update-password', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/update-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -8,11 +8,14 @@ var userRouter = require('./routes/user');
 var farmRouter = require('./routes/farm'); 
 var deviceRouter = require('./routes/device');
 var equipmentRouter = require('./routes/equipment');
+var influxdbRouter = require('./routes/influxdb');
+var postgresRouter = require('./routes/postgresql');
+var collectionRouter = require('./routes/collection');
 
 
 
 var app = express();
-const connectDB = require('./config/db'); // Ruta hacia el archivo de conexión de la base de datos
+const connectDB = require('./config/connection'); // Ruta hacia el archivo de conexión de la base de datos
 
 
 app.use(logger('dev'));
@@ -25,10 +28,13 @@ app.use('/user', userRouter);
 app.use('/farm', farmRouter); 
 app.use('/device', deviceRouter);
 app.use('/equipment', equipmentRouter);
+app.use('/history', influxdbRouter);
+app.use('/postgres', postgresRouter);
+app.use('/collection', collectionRouter);
 
 
 // Conectar a la base de datos
-connectDB();
+connectDB.connectMongoDB();
 // Catch 404 and forward to error handler
 app.use((req, res, next) => next(createError(404)));
 

@@ -43,11 +43,29 @@ router.get("/list", verifyToken, async (req, res) => {
       const adjustedPage = page > totalPages ? 1 : page;
       const skip = (adjustedPage - 1) * limit;
 
-      const devices = await Device.find(query)
-        .select("_id boardId type")
-        .populate("farm", "name -_id")
-        .skip(skip)
-        .limit(limit);
+      const devices = await Device.aggregate([
+        { $match: query },
+        {
+          $lookup: {
+            from: 'farms',
+            localField: 'farm',
+            foreignField: '_id',
+            as: 'farm'
+          }
+        },
+        { $unwind: { path: '$farm', preserveNullAndEmptyArrays: true } },
+        { $sort: { 'farm.name': 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            boardId: 1,
+            type: 1,
+            farm: { name: '$farm.name' }
+          }
+        }
+      ]);
 
       res.json({ 
         data: devices, 

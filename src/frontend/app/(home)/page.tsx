@@ -80,12 +80,12 @@ export default function Component() {
   return (
     <AuroraBackground>
     <PageContainer scrollable={true}>
-        <div className="container mx-auto px-4 sm:px-6 pb-2 pt-6 sm:pt-12 max-w-5xl">
+        <div className="w-full mt-10 sm:mb-0 mb-20"> {/* Added margin at the bottom for mobile */}
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeInOut" }}
-            className="space-y-6 mb-10 sm:space-y-12"
+            className="space-y-6 mb-4 sm:space-y-12 mt-10 sm:mt-0 overflow-hidden" // Added overflow-hidden to prevent extra scrollbar
           >
             <div className="text-center">
               <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white">
@@ -100,7 +100,7 @@ export default function Component() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.8 }}
-              className="bg-white/40 backdrop-blur-md dark:bg-black/20 text-gray-800 dark:text-white rounded-lg p-6 max-w-5xl mx-auto"
+              className="bg-white/40 backdrop-blur-md dark:bg-black/20 text-gray-800 dark:text-white rounded-lg p-6 mx-auto overflow-hidden" // Added overflow-hidden to prevent double scrollbars
             >
               <p className="text-gray-600 dark:text-neutral-200 mb-4 justify-center text-center text-light">
                 Selecciona una de las <span className="font-bold">opciones</span> para acceder a las distintas secciones de la web

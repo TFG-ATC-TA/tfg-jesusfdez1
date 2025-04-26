@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,20 +11,66 @@ import { Separator } from "@/components/ui/separator";
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 
-const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: () => void }> = ({ isOpen, onClose, onRefresh }) => {
-  const { data: session } = useSession();
-  const [farmInfo, setFarmInfo] = useState({
+const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: string; onRefresh: () => void }> = ({ isOpen, onClose, farmId, onRefresh }) => {
+  const { data: session } = useSession();  const [farmInfo, setFarmInfo] = useState({
     name: '',
     idname: ''
   });
+  const [loading, setLoading] = useState(true);
 
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (isOpen && farmId) {
+      const fetchFarmData = async () => {
+        if (!session?.accessToken) {
+          console.error('No hay sesión iniciada');
+          toast({
+            title: "Error",
+            description: "No hay sesión iniciada",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/${farmId}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `${session.accessToken}`,
+            },
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Error al obtener datos de la granja');
+          }
+
+          setFarmInfo({
+            name: data.name || '',
+            idname: data.idname || '',
+          });
+          setLoading(false);
+        } catch (error) {
+          console.error('Error al obtener datos de la granja:', error);
+          toast({
+            title: "Error al cargar la granja",
+            description: error instanceof Error ? error.message : "Error desconocido al cargar los datos",
+            variant: "destructive",
+          });
+          onClose();
+        }
+      };
+
+      fetchFarmData();
+    }
+  }, [isOpen, farmId, session, toast]);
+
   const handleFarmInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFarmInfo({ ...farmInfo, [e.target.id]: e.target.value });
-  };
-
-  const resetForm = () => {
+  };  const resetForm = () => {
     setFarmInfo({
       name: '',
       idname: ''
@@ -33,6 +79,7 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
 
   const handleClose = () => {
     resetForm();
+    setLoading(true);
     onClose();
   };
 
@@ -40,7 +87,7 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     e.preventDefault();
     const target = (e as React.FormEvent<HTMLFormElement> & { nativeEvent: SubmitEvent }).nativeEvent.submitter as HTMLButtonElement;
     if (target && target.id === 'submit-data-button') {
-      const createFarm = async () => {
+      const updateFarm = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
           toast({
@@ -52,8 +99,8 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
         }
         
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm`, {
-            method: 'POST',
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/${farmId}`, {
+            method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `${session.accessToken}`,
@@ -63,36 +110,38 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
           
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al crear la granja');
+            throw new Error(errorData.message || 'Error al actualizar la granja');
           }
           
-          console.log('Granja creada con éxito');
+          console.log('Granja actualizada con éxito');
           toast({
-            description: "Granja creada con éxito",
+            description: "Granja actualizada con éxito",
             variant: "success",
           });
           handleClose();
           onRefresh();
         } catch (error) {
-          console.error('Error al crear la granja:', error);
+          console.error('Error al actualizar la granja:', error);
           toast({
-            title: "Error al crear la granja",
+            title: "Error al actualizar la granja",
             description: error instanceof Error ? error.message : 'Error desconocido',
             variant: "destructive",
           });
         }
       };
-      createFarm();
+      updateFarm();
     }
-  };
+  };  const isFormValid = farmInfo.name && farmInfo.idname;
 
-  const isFormValid = farmInfo.name && farmInfo.idname;
+  if (loading) {
+    return null; // No renderizar nada mientras se cargan los datos
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] h-[65vh] sm:h-[55vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
-          <DialogTitle className="text-lg font-bold">Crear nueva granja</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Editar granja</DialogTitle>
         </div>
         <ScrollArea className="flex-grow">
           <div className="p-4 md:p-6 space-y-6">
@@ -113,8 +162,8 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
                     </div>
                   </div>
                   <Separator />
-                  <p className="text-gray-500 text-sm">Nota: Para añadir usuarios y dispositivos a la granja, diríjase a la sección correspondiente en la aplicación.</p>
-                  <Button id="submit-data-button" type="submit" disabled={!isFormValid}>Crear granja</Button>
+                  <p className="text-gray-500 text-sm">Nota: Para gestionar usuarios y dispositivos de la granja, diríjase a la sección correspondiente en la aplicación.</p>
+                  <Button id="submit-data-button" type="submit" disabled={!isFormValid}>Guardar cambios</Button>
                 </form>
               </CardContent>
             </Card>
@@ -125,5 +174,4 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
   );
 }
 
-export default FarmAddModal;
-
+export default FarmEditModal;

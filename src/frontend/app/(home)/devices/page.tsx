@@ -39,7 +39,7 @@ const DeviceClient: React.FC = () => {
     try {
       const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
       const filtersQuery = JSON.stringify(selectedFilters); // Convertir los filtros seleccionados a JSON
-      const response = await fetch(`http://localhost:5001/device/list?page=${page}&limit=10&searchTerm=${searchTerm}&types=${typesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/device/list?page=${page}&limit=10&searchTerm=${searchTerm}&types=${typesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

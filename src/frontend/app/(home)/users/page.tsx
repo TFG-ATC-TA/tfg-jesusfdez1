@@ -41,7 +41,7 @@ const UserClient: React.FC = () => {
     try {
       const rolesQuery = selectedFilters['role'] ? selectedFilters['role'].join(',') : '';
       const filtersQuery = JSON.stringify(selectedFilters);
-      const response = await fetch(`http://localhost:5001/user/list?page=${page}&limit=10&searchTerm=${searchTerm}&roles=${rolesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/list?page=${page}&limit=10&searchTerm=${searchTerm}&roles=${rolesQuery}&filters=${encodeURIComponent(filtersQuery)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

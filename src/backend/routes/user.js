@@ -80,6 +80,7 @@ router.get('/list', verifyToken, async (req, res) => {
 
       const users = await User.find(query)
         .select('_id name surname email role')
+        .sort({ surname: 1 })
         .skip(skip)
         .limit(limit);
 
