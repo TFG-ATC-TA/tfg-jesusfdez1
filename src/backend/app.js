@@ -9,7 +9,7 @@ var farmRouter = require('./routes/farm');
 var deviceRouter = require('./routes/device');
 var equipmentRouter = require('./routes/equipment');
 var influxdbRouter = require('./routes/influxdb');
-var postgresRouter = require('./routes/postgres');
+var postgresRouter = require('./routes/postgresql');
 var collectionRouter = require('./routes/collection');
 
 

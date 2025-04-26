@@ -10,15 +10,67 @@ import { Farm } from '@/types/index';
 import PageContainer from '@/components/layout/page-container';
 import FarmAddModal from '@/components/modals/farm-add-modal';
 import {CellAction} from '@/components/tables/farm-tables/cell-action';
+import { useRouter } from 'next/navigation';
+
+// Hook para redirección automática de ganaderos
+function useGanaderoRedirect(session: any, router: any) {
+  const [noFarmError, setNoFarmError] = useState(false);
+  const [checkingFarm, setCheckingFarm] = useState(false);
+
+  useEffect(() => {
+    const redirectIfGanadero = async () => {
+      if (session?.user?.role === 'Ganadero' && session?.accessToken) {
+        setCheckingFarm(true);
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/farm/list?page=1&limit=1`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `${session.accessToken}`,
+              },
+              cache: 'no-store',
+            }
+          );
+          if (!response.ok) return setCheckingFarm(false);
+          const result = await response.json();
+          if (result.data && result.data.length > 0) {
+            const farm = result.data[0];
+            const farmId = farm.idname;
+            if (farmId) {
+              router.replace(`/farms/${farmId}`);
+              return;
+            } else {
+              setNoFarmError(true);
+            }
+          } else {
+            setNoFarmError(true);
+          }
+        } catch (e) {
+          setNoFarmError(true);
+        } finally {
+          setCheckingFarm(false);
+        }
+      }
+    };
+    redirectIfGanadero();
+  }, [session, router]);
+
+  return { noFarmError, checkingFarm };
+}
 
 const UserClient: React.FC = () => {
   const { data: session } = useSession();
+  const router = useRouter();
   const [data, setData] = useState<Farm[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [noFarmError, setNoFarmError] = useState(false);
+  const [checkingFarm, setCheckingFarm] = useState(false);
   const isFetchingRef = useRef(false);
   const lastRequestedPageRef = useRef(1);
 
@@ -91,8 +143,29 @@ const UserClient: React.FC = () => {
     return column;
   });
 
+  const { noFarmError: redirectNoFarmError, checkingFarm: redirectCheckingFarm } = useGanaderoRedirect(session, router);
+
+  // Evita renderizar nada hasta que se sepa el rol del usuario
+  if (typeof session === 'undefined' || session === null) {
+    return null;
+  }
+
+  // Si es ganadero, nunca renderiza la tabla ni aunque haya error
+  if (session?.user?.role === 'Ganadero') {
+    if (redirectCheckingFarm) return null;
+    if (redirectNoFarmError) {
+      return (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          No tienes ninguna granja asignada. Por favor, contacta con el administrador.
+        </div>
+      );
+    }
+    // Si no hay error ni está comprobando, tampoco renderiza nada (por seguridad)
+    return null;
+  }
+
   return (
-    <>    
+    <>
     <PageContainer scrollable={true}>
       <div className="space-y-2 mb-16 md:mb-0">
       <div className="flex items-start justify-between">
