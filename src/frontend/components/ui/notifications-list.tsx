@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   ColumnDef,
   flexRender,
@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronLeft, ChevronRight, Search, AlertCircle, AlertTriangle, Check, Info, ChevronsLeft, ChevronsRight, ChevronDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, AlertCircle, AlertTriangle, Check, Info, ChevronsLeft, ChevronsRight, ChevronDown, CheckCheck } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
@@ -114,52 +114,6 @@ function getNotificationIcon(type: string) {
   }
 }
 
-const columns: ColumnDef<Notification>[] = [
-  {
-    id: 'notification',
-    header: '',
-    cell: ({ row }) => {
-      const message = row.original.message
-      const type = row.original.type
-      const read = row.original.read
-      const date = new Date(row.original.createdAt)
-      const farm = row.original.farm
-      const device = row.original.device
-      
-      return (
-        <div className={`flex items-start py-2 px-4 transition-colors relative
-          ${!read ? 'bg-blue-100/100 dark:bg-blue-950/40'  : 
-          'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
-          <div className="flex-shrink-0">
-            {getNotificationIcon(type)}
-          </div>
-          <div className="ml-4 flex-1 min-w-0">
-            <div className="flex justify-between items-start">
-              <p className={`text-sm ${!read ? 
-                'font-bold text-blue-900 dark:text-blue-100' : 
-                'text-gray-700 dark:text-gray-300'}`}>
-                {farm}
-              </p>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimeAgo(date)}</span>
-            </div>
-            <p className={`text-sm mt-0.5 ${!read ? 
-              'text-gray-900 dark:text-gray-100 font-medium break-words' : 
-              'text-gray-600 dark:text-gray-400 break-words'}`}>
-              {message}
-            </p>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">Dispositivo {device}</span>
-              {!read && (
-                <div className="w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full ml-2"/>
-              )}
-            </div>
-          </div>
-        </div>
-      )
-    }
-  }
-]
-
 const PageSelector = ({ table }: { table: any }) => {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
@@ -191,13 +145,75 @@ export default function NotificationsList() {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
+  const [notificationData, setNotificationData] = useState(notifications)
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 5,
   })
 
+  // Marcar automáticamente como leídas después de 3 segundos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setNotificationData(prev => 
+        prev.map(notification => ({ ...notification, read: true }))
+      )
+    }, 3000)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  const columns: ColumnDef<Notification>[] = [
+    {
+      id: 'notification',
+      header: '',
+      cell: ({ row }) => {
+        const message = row.original.message
+        const type = row.original.type
+        const read = row.original.read
+        const date = new Date(row.original.createdAt)
+        const farm = row.original.farm
+        const device = row.original.device
+        
+        return (
+          <div className={`flex items-start py-2 px-4 transition-colors relative
+            ${!read ? 'bg-blue-100/100 dark:bg-blue-950/40'  : 
+            'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
+            <div className="flex-shrink-0">
+              {getNotificationIcon(type)}
+            </div>
+            <div className="ml-4 flex-1 min-w-0">
+              <div className="flex justify-between items-start">
+                <p className={`text-sm ${!read ? 
+                  'font-bold text-blue-900 dark:text-blue-100' : 
+                  'text-gray-700 dark:text-gray-300'}`}>
+                  {farm}
+                </p>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimeAgo(date)}</span>
+              </div>
+              <p className={`text-sm mt-0.5 ${!read ? 
+                'text-gray-900 dark:text-gray-100 font-medium break-words' : 
+                'text-gray-600 dark:text-gray-400 break-words'}`}>
+                {message}
+              </p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate">Dispositivo {device}</span>
+                <div className="flex items-center ml-2">
+                  {read ? (
+                    <CheckCheck className="w-4 h-4 text-green-500 dark:text-green-400" />
+                  ) : (
+                    <div className="w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"/>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    }
+  ]
+
   const table = useReactTable({
-    data: notifications,
+    data: notificationData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -214,7 +230,7 @@ export default function NotificationsList() {
       globalFilter,
       pagination,
     },
-    pageCount: Math.ceil(notifications.length / 5),
+    pageCount: Math.ceil(notificationData.length / 5),
   })
 
   return (
