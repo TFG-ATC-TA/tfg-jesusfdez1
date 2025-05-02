@@ -7,7 +7,9 @@ import { Farm } from '@/types/index';
 import PageContainer from '@/components/layout/page-container';
 import NotificationsList from '@/components/ui/notifications-list';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const UserClient: React.FC = () => {
   const router = useRouter();
@@ -21,30 +23,62 @@ const UserClient: React.FC = () => {
     error: 0,
     unread: 0
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
 
-  // Datos mock de notificaciones para mostrar estadísticas
-  const mockNotifications = [
-    { id: '1', type: 'info', read: false },
-    { id: '2', type: 'warning', read: false },
-    { id: '3', type: 'error', read: false },
-    { id: '4', type: 'info', read: true },
-    { id: '5', type: 'warning', read: true },
-    { id: '6', type: 'warning', read: true },
-    { id: '7', type: 'error', read: false },
-    { id: '8', type: 'info', read: false },
-    { id: '9', type: 'warning', read: false },
-    { id: '10', type: 'error', read: true }
-  ];
+  // Información de las tarjetas
+  const cardInfo = {
+    total: {
+      title: "Total de notificaciones",
+      description: "Representa el número total de notificaciones generadas por todos los dispositivos y granjas en tu sistema. Incluye notificaciones de información, avisos y errores.",
+      icon: CheckCircle,
+      color: "blue"
+    },
+    info: {
+      title: "Información general", 
+      description: "Notificaciones informativas que proporcionan datos sobre el estado normal de los dispositivos, actualizaciones de sistema, o confirmaciones de operaciones completadas exitosamente.",
+      icon: Info,
+      color: "green"
+    },
+    warning: {
+      title: "Avisos y advertencias",
+      description: "Alertas que requieren atención pero no representan un problema crítico. Pueden indicar condiciones que deben monitorearse o acciones preventivas recomendadas.",
+      icon: AlertTriangle,
+      color: "yellow"
+    },
+    error: {
+      title: "Errores críticos",
+      description: "Notificaciones de alta prioridad que indican problemas críticos en el sistema, fallos de dispositivos, o situaciones que requieren acción inmediata para mantener el funcionamiento óptimo.",
+      icon: AlertCircle,
+      color: "red"
+    }
+  };
 
-  const calculateNotificationStats = () => {
-    const stats = {
-      total: mockNotifications.length,
-      info: mockNotifications.filter(n => n.type === 'info').length,
-      warning: mockNotifications.filter(n => n.type === 'warning').length,
-      error: mockNotifications.filter(n => n.type === 'error').length,
-      unread: mockNotifications.filter(n => !n.read).length
-    };
-    setNotificationsStats(stats);
+  const fetchNotificationStats = async () => {
+    if (!session?.accessToken) {
+      console.error('No hay sesión iniciada');
+      return;
+    }
+
+    try {
+      // Usar la ruta /list con limit=1 solo para obtener estadísticas
+      const response = await fetch('http://localhost:5001/notification/list?limit=1', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener estadísticas de notificaciones');
+      }
+      
+      const data = await response.json();
+      setNotificationsStats(data.stats);
+    } catch (error) {
+      console.error('Error al obtener estadísticas de notificaciones:', error);
+    }
   };
 
     const fetchFarms = async () => {
@@ -73,8 +107,26 @@ const UserClient: React.FC = () => {
     
   useEffect(() => {
     fetchFarms();
-    calculateNotificationStats();
-  }, []);
+    fetchNotificationStats();
+
+    // Escuchar actualizaciones de notificaciones desde el componente de lista
+    const handleNotificationsUpdate = (event: any) => {
+      if (event.detail) {
+        setNotificationsStats(event.detail);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('notificationsUpdated', handleNotificationsUpdate);
+      return () => window.removeEventListener('notificationsUpdated', handleNotificationsUpdate);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (session?.accessToken) {
+      setIsLoading(false);
+    }
+  }, [session]);
   
   return (
     <>    
@@ -92,7 +144,10 @@ const UserClient: React.FC = () => {
       {/* Cards de estadísticas de notificaciones */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4 mb-8">
         {/* Total de notificaciones */}
-        <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
+        <Card 
+          className="border-l-4 border-l-blue-500 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
+          onClick={() => setSelectedCard('total')}
+        >
           <CardContent className="p-2 lg:p-3">
             <div className="flex items-center justify-between lg:items-center lg:justify-between">
               <div className="flex-1 lg:flex-none">
@@ -107,11 +162,14 @@ const UserClient: React.FC = () => {
         </Card>
 
         {/* Notificaciones de información */}
-        <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+        <Card 
+          className="border-l-4 border-l-green-500 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
+          onClick={() => setSelectedCard('info')}
+        >
           <CardContent className="p-2 lg:p-3">
             <div className="flex items-center justify-between lg:items-center lg:justify-between">
               <div className="flex-1 lg:flex-none">
-                <p className="text-xs lg:text-sm font-medium text-muted-foreground mb-0.5">Info</p>
+                <p className="text-xs lg:text-sm font-medium text-muted-foreground mb-0.5">Información</p>
                 <p className="text-lg lg:text-2xl font-bold text-green-600">{notificationsStats.info}</p>
               </div>
               <div className="w-6 h-6 lg:w-10 lg:h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -122,7 +180,10 @@ const UserClient: React.FC = () => {
         </Card>
 
         {/* Notificaciones de advertencia */}
-        <Card className="border-l-4 border-l-yellow-500 hover:shadow-lg transition-shadow">
+        <Card 
+          className="border-l-4 border-l-yellow-500 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
+          onClick={() => setSelectedCard('warning')}
+        >
           <CardContent className="p-2 lg:p-3">
             <div className="flex items-center justify-between lg:items-center lg:justify-between">
               <div className="flex-1 lg:flex-none">
@@ -137,7 +198,10 @@ const UserClient: React.FC = () => {
         </Card>
 
         {/* Notificaciones de error */}
-        <Card className="border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
+        <Card 
+          className="border-l-4 border-l-red-500 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
+          onClick={() => setSelectedCard('error')}
+        >
           <CardContent className="p-2 lg:p-3">
             <div className="flex items-center justify-between lg:items-center lg:justify-between">
               <div className="flex-1 lg:flex-none">
@@ -154,7 +218,7 @@ const UserClient: React.FC = () => {
 
       {/* Información adicional */}
       <div className="mb-4">
-        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+        <div className="mb-8 flex items-center space-x-4 text-sm text-muted-foreground">
           <span className="flex items-center">
             <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
             {notificationsStats.unread} sin leer
@@ -168,6 +232,49 @@ const UserClient: React.FC = () => {
 
       <div className="my-4"></div>
       <NotificationsList />
+
+      {/* Modal de información */}
+      {selectedCard && (
+        <Dialog open={!!selectedCard} onOpenChange={() => setSelectedCard(null)}>
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0 bg-background shadow-xl [&>button]:hidden">
+            <div className="p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                {(() => {
+                  const info = cardInfo[selectedCard as keyof typeof cardInfo];
+                  const IconComponent = info.icon;
+                  const colorClasses = {
+                    blue: "bg-blue-100 text-blue-600",
+                    green: "bg-green-100 text-green-600", 
+                    yellow: "bg-yellow-100 text-yellow-600",
+                    red: "bg-red-100 text-red-600"
+                  };
+                  return (
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${colorClasses[info.color as keyof typeof colorClasses]}`}>
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                  );
+                })()}
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {cardInfo[selectedCard as keyof typeof cardInfo].title}
+                </h3>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6">
+                {cardInfo[selectedCard as keyof typeof cardInfo].description}
+              </p>
+              
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setSelectedCard(null)}
+                  className="px-6 py-2"
+                >
+                  Entendido
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
             </div>
             </PageContainer>
     </>

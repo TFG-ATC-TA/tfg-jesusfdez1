@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   ColumnDef,
   flexRender,
@@ -15,75 +16,42 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronLeft, ChevronRight, Search, AlertCircle, AlertTriangle, Check, Info, ChevronsLeft, ChevronsRight, ChevronDown, CheckCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, AlertCircle, AlertTriangle, Check, Info, ChevronsLeft, ChevronsRight, ChevronDown, CheckCheck, Filter } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Checkbox } from '@/components/ui/checkbox'
 
-const notifications = [
-    {
-      id: '1',
-      type: 'info',
-      message: 'Se ha actualizado el firmware del dispositivo D001',
-      read: false,
-      farm: 'Granja Norte',
-      equipment: 'Sensor de humedad',
-      device: 'D001',
-      createdAt: '2023-09-01T10:00:00Z'
-    },
-    {
-      id: '2',
-      type: 'warning',
-      message: 'Nivel de batería bajo en el dispositivo D002',
-      read: false,
-      farm: 'Granja Sur',
-      equipment: 'Estación meteorológica',
-      device: 'D002',
-      createdAt: '2023-09-02T14:30:00Z'
-    },
-    {
-      id: '3',
-      type: 'error',
-      message: 'Fallo de conexión con el dispositivo D003',
-      read: false,
-      farm: 'Granja Este',
-      equipment: 'Sistema de riego',
-      device: 'D003',
-      createdAt: '2023-09-03T09:15:00Z'
-    },
-    {
-      id: '4',
-      type: 'info',
-      message: 'Mantenimiento programado para el equipo E001',
-      read: true,
-      farm: 'Granja Oeste',
-      equipment: 'Tractor',
-      device: 'E001',
-      createdAt: '2023-06-04T11:45:00Z'
-    },
-    {
-      id: '5',
-      type: 'warning',
-      message: 'Detección de posible plaga en el sector S001',
-      read: true,
-      farm: 'Granja Central',
-      equipment: 'Dron de vigilancia',
-      device: 'D004',
-      createdAt: '2023-06-05T16:20:00Z'
-    },
-    {
-        id: '6',
-        type: 'warning',
-        message: 'Detección de posible plaga en el sector S001',
-        read: true,
-        farm: 'Granja Central',
-        equipment: 'Dron de vigilancia',
-        device: 'D004',
-        createdAt: '2023-06-05T16:20:00Z'
-      }
-  ];
-  
-type Notification = typeof notifications[0]
+// Tipo de notificación
+type Notification = {
+  id: string;
+  type: 'info' | 'warning' | 'error';
+  message: string;
+  read: boolean;
+  readDate?: string;
+  farm: string;
+  equipment: string;
+  device: string;
+  createdAt: string;
+};
+
+type NotificationResponse = {
+  notifications: Notification[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalNotifications: number;
+    limit: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  stats: {
+    total: number;
+    info: number;
+    warning: number;
+    error: number;
+    unread: number;
+  };
+};
 
 function formatTimeAgo(date: Date) {
   const now = new Date()
@@ -114,6 +82,113 @@ function getNotificationIcon(type: string) {
   }
 }
 
+// Componente para filtros con checkboxes
+const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isScrollable = false }: {
+  title: string;
+  options: { value: string; label: string }[];
+  selectedValues: string[];
+  onSelectionChange: (values: string[]) => void;
+  isScrollable?: boolean;
+}) => {
+  const handleCheckboxChange = (value: string) => {
+    const updatedValues = selectedValues.includes(value)
+      ? selectedValues.filter(v => v !== value)
+      : [...selectedValues, value];
+    onSelectionChange(updatedValues);
+  };
+
+  const handleSelectAll = () => {
+    const allValues = options.map(option => option.value);
+    onSelectionChange(allValues);
+  };
+
+  const handleDeselectAll = () => {
+    onSelectionChange([]);
+  };
+
+  // Ordenar opciones alfabéticamente si es scrollable (para granjas)
+  const sortedOptions = isScrollable 
+    ? [...options].sort((a, b) => a.label.localeCompare(b.label))
+    : options;
+
+  const maxVisibleItems = 5;
+  const shouldScroll = isScrollable && sortedOptions.length > maxVisibleItems;
+  const allSelected = selectedValues.length === options.length;
+  const noneSelected = selectedValues.length === 0;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="w-full sm:w-[250px] bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700 flex items-center justify-between px-3 py-2 cursor-pointer rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+        <div className="flex items-center space-x-2 flex-1 min-w-0">
+          <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+          <span className="truncate">{title}</span>
+          {selectedValues.length > 0 && !allSelected && (
+            <span className="text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center flex-shrink-0">
+              {selectedValues.length}
+            </span>
+          )}
+          {isScrollable && allSelected && (
+            <span className="text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5 flex-shrink-0">
+              Todas
+            </span>
+          )}
+        </div>
+        <ChevronDown className="w-4 h-4 flex-shrink-0" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent 
+        className={`w-[250px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 ${
+          shouldScroll ? 'max-h-[240px] overflow-y-auto' : ''
+        }`}
+        align="start"
+      >
+        {isScrollable && options.length > 3 && (
+          <div className="border-b border-gray-200 dark:border-gray-600 mb-1">
+            <DropdownMenuItem
+              className="text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1.5"
+              onSelect={(e) => {
+                e.preventDefault();
+                if (allSelected) {
+                  handleDeselectAll();
+                } else {
+                  handleSelectAll();
+                }
+              }}
+            >
+              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                {allSelected ? 'Deseleccionar todas' : 'Seleccionar todas'}
+              </span>
+            </DropdownMenuItem>
+          </div>
+        )}
+        {sortedOptions.map((option) => (
+          <DropdownMenuItem
+            key={option.value}
+            className="flex items-center space-x-2 cursor-default focus:bg-gray-100 dark:focus:bg-gray-700 px-2 py-1.5"
+            onSelect={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <div onClick={(e) => e.stopPropagation()} className="flex items-center w-full space-x-2">
+              <Checkbox
+                checked={selectedValues.includes(option.value)}
+                onCheckedChange={() => handleCheckboxChange(option.value)}
+                className="flex-shrink-0"
+              />
+              <span className="pointer-events-none truncate flex-1 text-sm">{option.label}</span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+        {sortedOptions.length === 0 && (
+          <DropdownMenuItem className="text-gray-500 dark:text-gray-400 text-center cursor-default py-3 text-sm">
+            No hay opciones disponibles
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 const PageSelector = ({ table }: { table: any }) => {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
@@ -142,25 +217,170 @@ const PageSelector = ({ table }: { table: any }) => {
 }
 
 export default function NotificationsList() {
+  const { data: session } = useSession();
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
-  const [notificationData, setNotificationData] = useState(notifications)
+  const [notificationData, setNotificationData] = useState<Notification[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [farms, setFarms] = useState<{ id: string; name: string }[]>([])
+  const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>([])
+  const [selectedFarmFilters, setSelectedFarmFilters] = useState<string[]>([])
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 5,
   })
+  const [serverPagination, setServerPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalNotifications: 0,
+    hasNext: false,
+    hasPrev: false
+  })
 
-  // Marcar automáticamente como leídas después de 3 segundos
+  // Función para obtener las granjas disponibles
+  const fetchFarms = async () => {
+    if (!session?.accessToken) return;
+
+    try {
+      const response = await fetch('http://localhost:5001/farm/listName', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const farmsData = await response.json();
+        setFarms(farmsData);
+        // Por defecto, seleccionar todas las granjas
+        setSelectedFarmFilters(farmsData.map((farm: any) => farm.name));
+      }
+    } catch (error) {
+      console.error('Error al obtener granjas:', error);
+    }
+  };
+
+  // Función para obtener notificaciones del servidor
+  const fetchNotifications = async () => {
+    if (!session?.accessToken) return;
+
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      
+      // Parámetros básicos
+      params.append('page', (pagination.pageIndex + 1).toString());
+      params.append('limit', pagination.pageSize.toString());
+      
+      // Término de búsqueda
+      if (globalFilter.trim()) {
+        params.append('searchTerm', globalFilter);
+      }
+      
+      // Filtro de tipo - solo si hay alguno seleccionado
+      if (selectedTypeFilters.length > 0) {
+        params.append('type', selectedTypeFilters.join(','));
+      }
+      
+      // Filtro de granja - solo si hay alguna seleccionada Y no están todas seleccionadas
+      const allFarmsSelected = farms.length > 0 && selectedFarmFilters.length === farms.length;
+      if (selectedFarmFilters.length > 0 && !allFarmsSelected) {
+        params.append('farm', selectedFarmFilters.join(','));
+      }
+
+      const response = await fetch(`http://localhost:5001/notification/list?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener notificaciones');
+      }
+
+      const data: NotificationResponse = await response.json();
+      console.log('Datos recibidos del servidor:', data); // Para debugging
+      
+      setNotificationData(data.notifications);
+      setServerPagination({
+        currentPage: data.pagination.currentPage,
+        totalPages: data.pagination.totalPages,
+        totalNotifications: data.pagination.totalNotifications,
+        hasNext: data.pagination.hasNext,
+        hasPrev: data.pagination.hasPrev
+      });
+
+      // Disparar evento personalizado para actualizar estadísticas en la página principal
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notificationsUpdated', { 
+          detail: data.stats 
+        }));
+      }
+
+    } catch (error) {
+      console.error('Error al obtener notificaciones:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Marcar notificación como leída
+  const markAsRead = async (notificationId: string) => {
+    if (!session?.accessToken) return;
+
+    try {
+      const response = await fetch(`http://localhost:5001/notification/${notificationId}/mark-read`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        // Actualizar localmente
+        setNotificationData(prev => 
+          prev.map(notification => 
+            notification.id === notificationId 
+              ? { ...notification, read: true, readDate: new Date().toISOString() }
+              : notification
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error al marcar notificación como leída:', error);
+    }
+  };
+
+  // Efecto para cargar granjas al inicio
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setNotificationData(prev => 
-        prev.map(notification => ({ ...notification, read: true }))
-      )
-    }, 3000)
+    if (session?.accessToken) {
+      fetchFarms();
+    }
+  }, [session]);
 
-    return () => clearTimeout(timer)
-  }, [])
+  // Efecto para cargar datos cuando cambian los filtros o paginación
+  useEffect(() => {
+    fetchNotifications();
+  }, [session, pagination.pageIndex, pagination.pageSize, globalFilter, selectedTypeFilters, selectedFarmFilters]);
+
+  // Auto-marcar como leídas después de 3 segundos
+  useEffect(() => {
+    if (notificationData.length > 0) {
+      const timer = setTimeout(() => {
+        const unreadNotifications = notificationData.filter(n => !n.read);
+        unreadNotifications.forEach(notification => {
+          markAsRead(notification.id);
+        });
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [notificationData]);
 
   const columns: ColumnDef<Notification>[] = [
     {
@@ -218,11 +438,11 @@ export default function NotificationsList() {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
+    manualPagination: true, // Usar paginación del servidor
     globalFilterFn: 'includesString',
     state: {
       sorting,
@@ -230,54 +450,47 @@ export default function NotificationsList() {
       globalFilter,
       pagination,
     },
-    pageCount: Math.ceil(notificationData.length / 5),
+    pageCount: serverPagination.totalPages,
   })
 
   return (
     <div className="space-y-4 flex flex-col min-h-[520px]"> 
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-        <div className="relative w-full lg:w-72">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+      {/* Header compacto con búsqueda y filtros en línea */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        {/* Barra de búsqueda */}
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
           <Input
             placeholder="Buscar notificaciones..."
             value={globalFilter ?? ''}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            className="pl-8 w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            className="pl-9 pr-4 w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Select
-            value={(table.getColumn('type')?.getFilterValue() as string) ?? 'all'}
-            onValueChange={(value) =>
-              table.getColumn('type')?.setFilterValue(value === 'all' ? '' : value)
-            }
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Tipo de notificación" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="info">Información</SelectItem>
-              <SelectItem value="warning">Advertencia</SelectItem>
-              <SelectItem value="error">Error</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={(table.getColumn('farm')?.getFilterValue() as string) ?? 'all'}
-            onValueChange={(value) =>
-              table.getColumn('farm')?.setFilterValue(value === 'all' ? '' : value)
-            }
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por granja" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las granjas</SelectItem>
-              {Array.from(new Set(notifications.map(n => n.farm))).map(farm => (
-                <SelectItem key={farm} value={farm}>{farm}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        
+        {/* Filtros compactos */}
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex-1 sm:flex-none">
+            <FilterSelector
+              title="Tipo"
+              options={[
+                { value: 'info', label: 'Información' },
+                { value: 'warning', label: 'Advertencia' },
+                { value: 'error', label: 'Error' }
+              ]}
+              selectedValues={selectedTypeFilters}
+              onSelectionChange={setSelectedTypeFilters}
+            />
+          </div>
+          <div className="flex-1 sm:flex-none">
+            <FilterSelector
+              title="Granja"
+              options={farms.map(farm => ({ value: farm.name, label: farm.name }))}
+              selectedValues={selectedFarmFilters}
+              onSelectionChange={setSelectedFarmFilters}
+              isScrollable={true}
+            />
+          </div>
         </div>
       </div>
 
@@ -308,59 +521,102 @@ export default function NotificationsList() {
         </Table>
       </div>
 
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center justify-center sm:justify-between mt-auto"> 
-        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 justify-center sm:justify-start">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-auto"> 
+        <div className="flex items-center space-x-2 text-sm pb-4 justify-center sm:pb-0 sm:justify-start">
           <span>Página</span>
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-[60px] bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700 flex items-center justify-between space-x-2 cursor-pointer rounded-md p-2 text-sm">
-              <span>{table.getState().pagination.pageIndex + 1}</span>
-              <ChevronDown className="w-4 h-4" />
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                role="combobox" 
+                className="w-[60px] bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700 flex items-center justify-between"
+              >
+                {table.getState().pagination.pageIndex + 1}
+                <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-[60px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-              {Array.from({ length: table.getPageCount() }, (_, i) => (
-                <DropdownMenuItem key={i} onSelect={() => table.setPageIndex(i)}>
-                  {i + 1}
-                </DropdownMenuItem>
-              ))}
+            <DropdownMenuContent 
+              align="center"
+              className="w-[60px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:hover:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:hover:bg-gray-500"
+              style={{ maxHeight: '200px', overflowY: 'auto' }}
+            >
+              {Array.from({ length: table.getPageCount() }, (_, i) => {
+                const pageNumber = i + 1;
+                const currentPageIndex = table.getState().pagination.pageIndex + 1;
+                return (
+                  <DropdownMenuItem 
+                    key={`page-${pageNumber}`}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      table.setPageIndex(i);
+                    }}
+                    className={`justify-center ${pageNumber === currentPageIndex ? 'bg-gray-100 dark:bg-gray-700' : ''} hover:bg-gray-100 dark:hover:bg-gray-700`}
+                  >
+                    {pageNumber}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
           <span>de {table.getPageCount()}</span>
         </div>
         
-        <div className="flex items-center space-x-2 justify-center sm:justify-end">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {table.getPageCount() > 1 && (
+          <div className="flex items-center justify-center space-x-2">
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                table.setPageIndex(0);
+              }}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <span className="sr-only">Primera página</span>
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                table.previousPage();
+              }}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <span className="sr-only">Página anterior</span>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault(); 
+                table.nextPage();
+              }}
+              disabled={!table.getCanNextPage()}
+            >
+              <span className="sr-only">Página siguiente</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                table.setPageIndex(table.getPageCount() - 1);
+              }}
+              disabled={!table.getCanNextPage()}
+            >
+              <span className="sr-only">Última página</span>
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
