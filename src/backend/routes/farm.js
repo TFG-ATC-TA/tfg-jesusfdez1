@@ -100,8 +100,7 @@ router.get('/listName', verifyToken, async (req, res) => {
     if (req.user.role === 'Administrador') {
       farms = await Farm.find().select('_id name'); // Admin can see all farms
     } else {
-      // Usuario normal: devolver solo las granjas a las que tiene acceso
-      farms = await Farm.find({ users: req.user.id }).select('_id name');
+      res.status(403).json({ message: 'No tienes permisos para esta acción' });
     }
     res.json(farms);
   } catch (error) {

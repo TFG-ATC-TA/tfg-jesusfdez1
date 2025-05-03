@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   ColumnDef,
@@ -13,11 +13,10 @@ import {
   ColumnFiltersState,
   SortingState,
 } from '@tanstack/react-table'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Search, AlertCircle, AlertTriangle, Check, Info, ChevronsLeft, ChevronsRight, ChevronDown, CheckCheck, Filter } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ChevronLeft, ChevronRight, Search, AlertCircle, AlertTriangle, HelpCircle, Info, ChevronsLeft, ChevronsRight, ChevronDown, CheckCheck, Filter } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Checkbox } from '@/components/ui/checkbox'
 
@@ -74,11 +73,14 @@ function formatTimeAgo(date: Date) {
 function getNotificationIcon(type: string) {
   switch (type) {
     case 'info':
-      return <div className="bg-blue-500 dark:bg-blue-600 p-2.5 rounded-lg"><Info className="h-5 w-5 text-white" /></div>
+      return <div className="bg-blue-500 dark:bg-blue-600 p-2.5 rounded-lg flex items-center justify-center"><Info className="h-5 w-5 text-white" /></div>
     case 'warning':
-      return <div className="bg-yellow-500 dark:bg-yellow-600 p-2.5 rounded-lg"><AlertTriangle className="h-5 w-5 text-white" /></div>
+      return <div className="bg-yellow-500 dark:bg-yellow-600 p-2.5 rounded-lg flex items-center justify-center"><AlertTriangle className="h-5 w-5 text-white" /></div>
     case 'error':
-      return <div className="bg-red-500 dark:bg-red-600 p-2.5 rounded-lg"><AlertCircle className="h-5 w-5 text-white" /></div>
+      return <div className="bg-red-500 dark:bg-red-600 p-2.5 rounded-lg flex items-center justify-center"><AlertCircle className="h-5 w-5 text-white" /></div>
+    default:
+      return <div className="bg-gray-500 dark:bg-gray-600 p-2.5 rounded-lg flex items-center justify-center"><HelpCircle className="h-5 w-5 text-white" /></div>
+  
   }
 }
 
@@ -237,6 +239,19 @@ export default function NotificationsList() {
     hasNext: false,
     hasPrev: false
   })
+  
+  // Variables para el control de paginación y filtros como en DataTable
+  const [pageChangeTriggered, setPageChangeTriggered] = useState(false)
+  const prevGlobalFilterRef = useRef(globalFilter)
+  const prevSelectedTypeFiltersRef = useRef(selectedTypeFilters)
+  const prevSelectedFarmFiltersRef = useRef(selectedFarmFilters)
+
+  // Inicializar las referencias con los valores actuales
+  useEffect(() => {
+    prevGlobalFilterRef.current = globalFilter;
+    prevSelectedTypeFiltersRef.current = selectedTypeFilters;
+    prevSelectedFarmFiltersRef.current = selectedFarmFilters;
+  }, []);
 
   // Función para obtener las granjas disponibles
   const fetchFarms = async () => {
@@ -356,12 +371,94 @@ export default function NotificationsList() {
     }
   };
 
+  // Funciones auxiliares para el manejo de paginación y búsqueda (similar a DataTable)
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({
+      ...prev,
+      pageIndex: newPage - 1
+    }))
+  };
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setGlobalFilter(event.target.value);
+  };
+
   // Efecto para cargar granjas al inicio
   useEffect(() => {
     if (session?.accessToken) {
       fetchFarms();
     }
   }, [session]);
+
+  // Actualizar pageIndex cuando serverPagination.currentPage cambia
+  useEffect(() => {
+    setPagination(prev => ({
+      ...prev,
+      pageIndex: (serverPagination.currentPage || 1) - 1
+    }))
+  }, [serverPagination.currentPage])
+
+  // Detectar cuando currentPage es mayor que totalPages y ajustar
+  useEffect(() => {
+    // Solo realizamos la actualización si:
+    // 1. La página actual es mayor que el total de páginas
+    // 2. Hay páginas disponibles (totalPages > 0)
+    // 3. No estamos en medio de una actualización de página (evita bucles)
+    if (serverPagination.totalPages > 0 && 
+        serverPagination.currentPage > serverPagination.totalPages && 
+        !pageChangeTriggered) {
+      setPageChangeTriggered(true);
+      setPagination(prev => ({
+        ...prev,
+        pageIndex: (serverPagination.totalPages || 1) - 1
+      }))
+    } else if (serverPagination.currentPage <= serverPagination.totalPages) {
+      // Reseteamos el estado cuando la condición ya no aplica
+      setPageChangeTriggered(false);
+    }
+  }, [serverPagination.currentPage, serverPagination.totalPages, pageChangeTriggered])
+
+  // Cuando cambia el filtro global, volver a la página 1
+  useEffect(() => {
+    if (prevGlobalFilterRef.current !== globalFilter) {
+      // Solo cambiar de página si el filtro cambió y no estamos ya en la página 1
+      if (serverPagination.currentPage !== 1) {
+        setPagination(prev => ({
+          ...prev,
+          pageIndex: 0
+        }))
+      }
+      prevGlobalFilterRef.current = globalFilter;
+    }
+  }, [globalFilter, serverPagination.currentPage]);
+
+  // Cuando cambian los filtros de tipo, volver a la página 1
+  useEffect(() => {
+    if (JSON.stringify(prevSelectedTypeFiltersRef.current) !== JSON.stringify(selectedTypeFilters)) {
+      // Solo cambiar de página si los filtros cambiaron y no estamos ya en la página 1
+      if (serverPagination.currentPage !== 1) {
+        setPagination(prev => ({
+          ...prev,
+          pageIndex: 0
+        }))
+      }
+      prevSelectedTypeFiltersRef.current = selectedTypeFilters;
+    }
+  }, [selectedTypeFilters, serverPagination.currentPage]);
+
+  // Cuando cambian los filtros de granja, volver a la página 1
+  useEffect(() => {
+    if (JSON.stringify(prevSelectedFarmFiltersRef.current) !== JSON.stringify(selectedFarmFilters)) {
+      // Solo cambiar de página si los filtros cambiaron y no estamos ya en la página 1
+      if (serverPagination.currentPage !== 1) {
+        setPagination(prev => ({
+          ...prev,
+          pageIndex: 0
+        }))
+      }
+      prevSelectedFarmFiltersRef.current = selectedFarmFilters;
+    }
+  }, [selectedFarmFilters, serverPagination.currentPage]);
 
   // Efecto para cargar datos cuando cambian los filtros o paginación
   useEffect(() => {
@@ -395,10 +492,10 @@ export default function NotificationsList() {
         const device = row.original.device
         
         return (
-          <div className={`flex items-start py-2 px-4 transition-colors relative
+          <div className={`flex items-center py-3 px-4 transition-colors relative
             ${!read ? 'bg-blue-100/100 dark:bg-blue-950/40'  : 
             'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 self-start mt-1">
               {getNotificationIcon(type)}
             </div>
             <div className="ml-4 flex-1 min-w-0">
@@ -463,7 +560,7 @@ export default function NotificationsList() {
           <Input
             placeholder="Buscar notificaciones..."
             value={globalFilter ?? ''}
-            onChange={(event) => setGlobalFilter(event.target.value)}
+            onChange={handleSearch}
             className="pl-9 pr-4 w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
           />
         </div>
@@ -531,7 +628,7 @@ export default function NotificationsList() {
                 role="combobox" 
                 className="w-[60px] bg-white text-black dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-700 flex items-center justify-between"
               >
-                {table.getState().pagination.pageIndex + 1}
+                {serverPagination.currentPage}
                 <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
@@ -540,17 +637,16 @@ export default function NotificationsList() {
               className="w-[60px] rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:hover:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:hover:bg-gray-500"
               style={{ maxHeight: '200px', overflowY: 'auto' }}
             >
-              {Array.from({ length: table.getPageCount() }, (_, i) => {
+              {Array.from({ length: serverPagination.totalPages }, (_, i) => {
                 const pageNumber = i + 1;
-                const currentPageIndex = table.getState().pagination.pageIndex + 1;
                 return (
                   <DropdownMenuItem 
                     key={`page-${pageNumber}`}
                     onSelect={(e) => {
                       e.preventDefault();
-                      table.setPageIndex(i);
+                      handlePageChange(pageNumber);
                     }}
-                    className={`justify-center ${pageNumber === currentPageIndex ? 'bg-gray-100 dark:bg-gray-700' : ''} hover:bg-gray-100 dark:hover:bg-gray-700`}
+                    className={`justify-center ${pageNumber === serverPagination.currentPage ? 'bg-gray-100 dark:bg-gray-700' : ''} hover:bg-gray-100 dark:hover:bg-gray-700`}
                   >
                     {pageNumber}
                   </DropdownMenuItem>
@@ -558,10 +654,10 @@ export default function NotificationsList() {
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <span>de {table.getPageCount()}</span>
+          <span>de {serverPagination.totalPages}</span>
         </div>
         
-        {table.getPageCount() > 1 && (
+        {serverPagination.totalPages > 1 && (
           <div className="flex items-center justify-center space-x-2">
             <Button
               variant="outline"
@@ -569,9 +665,9 @@ export default function NotificationsList() {
               type="button"
               onClick={(e) => {
                 e.preventDefault();
-                table.setPageIndex(0);
+                handlePageChange(1);
               }}
-              disabled={!table.getCanPreviousPage()}
+              disabled={serverPagination.currentPage <= 1}
             >
               <span className="sr-only">Primera página</span>
               <ChevronsLeft className="h-4 w-4" />
@@ -582,9 +678,9 @@ export default function NotificationsList() {
               type="button"
               onClick={(e) => {
                 e.preventDefault();
-                table.previousPage();
+                handlePageChange(serverPagination.currentPage - 1);
               }}
-              disabled={!table.getCanPreviousPage()}
+              disabled={serverPagination.currentPage <= 1}
             >
               <span className="sr-only">Página anterior</span>
               <ChevronLeft className="h-4 w-4" />
@@ -595,9 +691,9 @@ export default function NotificationsList() {
               type="button"
               onClick={(e) => {
                 e.preventDefault(); 
-                table.nextPage();
+                handlePageChange(serverPagination.currentPage + 1);
               }}
-              disabled={!table.getCanNextPage()}
+              disabled={serverPagination.currentPage >= serverPagination.totalPages}
             >
               <span className="sr-only">Página siguiente</span>
               <ChevronRight className="h-4 w-4" />
@@ -608,9 +704,9 @@ export default function NotificationsList() {
               type="button"
               onClick={(e) => {
                 e.preventDefault();
-                table.setPageIndex(table.getPageCount() - 1);
+                handlePageChange(serverPagination.totalPages);
               }}
-              disabled={!table.getCanNextPage()}
+              disabled={serverPagination.currentPage >= serverPagination.totalPages}
             >
               <span className="sr-only">Última página</span>
               <ChevronsRight className="h-4 w-4" />

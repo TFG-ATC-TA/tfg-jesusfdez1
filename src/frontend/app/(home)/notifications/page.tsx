@@ -169,7 +169,7 @@ const UserClient: React.FC = () => {
           <CardContent className="p-2 lg:p-3">
             <div className="flex items-center justify-between lg:items-center lg:justify-between">
               <div className="flex-1 lg:flex-none">
-                <p className="text-xs lg:text-sm font-medium text-muted-foreground mb-0.5">Información</p>
+                <p className="text-xs lg:text-sm font-medium text-muted-foreground mb-0.5">General</p>
                 <p className="text-lg lg:text-2xl font-bold text-green-600">{notificationsStats.info}</p>
               </div>
               <div className="w-6 h-6 lg:w-10 lg:h-10 bg-green-100 rounded-full flex items-center justify-center">

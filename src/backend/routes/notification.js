@@ -24,37 +24,54 @@ router.get('/list', verifyToken, async (req, res) => {
 
     console.log('Solicitud de notificaciones:', { userId, page, limit, searchTerm, typeFilter, farmFilter });
 
-    // Obtener las granjas del usuario
-    const userFarms = await Farm.find({ users: userId }).select('_id');
-    const farmIds = userFarms.map(farm => farm._id);
+    // Obtener información del usuario para verificar su rol
+    const User = require('../models/User');
+    const currentUser = await User.findById(userId).select('role');
+    const isAdmin = currentUser && currentUser.role === 'Administrador';
 
-    console.log('Granjas del usuario:', farmIds);
+    console.log('Usuario:', { userId, role: currentUser?.role, isAdmin });
 
-    if (farmIds.length === 0) {
-      return res.json({
-        notifications: [],
-        pagination: {
-          currentPage: 0,
-          totalPages: 0,
-          totalNotifications: 0,
-          limit: limit,
-          hasNext: false,
-          hasPrev: false
-        },
-        stats: {
-          total: 0,
-          info: 0,
-          warning: 0,
-          error: 0,
-          unread: 0
-        }
-      });
+    let farmIds = [];
+    
+    if (isAdmin) {
+      // Si es administrador, puede acceder a todas las notificaciones
+      console.log('Usuario administrador: acceso a todas las notificaciones');
+    } else {
+      // Si no es administrador, solo puede acceder a las notificaciones de sus granjas
+      const userFarms = await Farm.find({ users: userId }).select('_id');
+      farmIds = userFarms.map(farm => farm._id);
+      
+      console.log('Granjas del usuario:', farmIds);
+
+      if (farmIds.length === 0) {
+        return res.json({
+          notifications: [],
+          pagination: {
+            currentPage: 0,
+            totalPages: 0,
+            totalNotifications: 0,
+            limit: limit,
+            hasNext: false,
+            hasPrev: false
+          },
+          stats: {
+            total: 0,
+            info: 0,
+            warning: 0,
+            error: 0,
+            unread: 0
+          }
+        });
+      }
     }
 
     // Construir query base
-    let query = {
-      farm: { $in: farmIds }
-    };
+    let query = {};
+    
+    // Solo filtrar por granjas si no es administrador
+    if (!isAdmin) {
+      query.farm = { $in: farmIds };
+    }
 
     console.log('Query construida:', JSON.stringify(query, null, 2));
 
@@ -70,10 +87,14 @@ router.get('/list', verifyToken, async (req, res) => {
     if (farmFilter && farmFilter !== 'all') {
       const farmNames = farmFilter.split(',').filter(f => f.trim() !== '');
       if (farmNames.length > 0) {
-        const farmsByName = await Farm.find({ 
-          name: { $in: farmNames }, 
-          _id: { $in: farmIds } 
-        }).select('_id');
+        let farmQuery = { name: { $in: farmNames } };
+        
+        // Si no es administrador, también filtrar por las granjas a las que tiene acceso
+        if (!isAdmin) {
+          farmQuery._id = { $in: farmIds };
+        }
+        
+        const farmsByName = await Farm.find(farmQuery).select('_id');
         
         if (farmsByName.length > 0) {
           const selectedFarmIds = farmsByName.map(f => f._id);
@@ -189,12 +210,19 @@ router.put('/:id/mark-read', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Notificación no encontrada' });
     }
 
-    // Verificar que el usuario tiene acceso a esta notificación
-    const userFarms = await Farm.find({ users: userId }).select('_id');
-    const farmIds = userFarms.map(farm => farm._id.toString());
-    
-    if (!farmIds.includes(notification.farm.toString())) {
-      return res.status(403).json({ message: 'No tienes acceso a esta notificación' });
+    // Obtener información del usuario para verificar su rol
+    const User = require('../models/User');
+    const currentUser = await User.findById(userId).select('role');
+    const isAdmin = currentUser && currentUser.role === 'Administrador';
+
+    // Verificar que el usuario tiene acceso a esta notificación (solo si no es administrador)
+    if (!isAdmin) {
+      const userFarms = await Farm.find({ users: userId }).select('_id');
+      const farmIds = userFarms.map(farm => farm._id.toString());
+      
+      if (!farmIds.includes(notification.farm.toString())) {
+        return res.status(403).json({ message: 'No tienes acceso a esta notificación' });
+      }
     }
 
     // Buscar si ya existe un registro de lectura para este usuario
@@ -229,3 +257,4 @@ router.put('/:id/mark-read', verifyToken, async (req, res) => {
   }
 });
 
+module.exports = router;
