@@ -1,13 +1,12 @@
-var express = require('express');
-var router = express.Router();
-const cors = require('cors');
+
+const express = require('express');
+const router = express.Router();
 const Notification = require('../models/Notification');
 const Farm = require('../models/Farm');
-const Equipment = require('../models/Equipment');
 const Device = require('../models/Device');
 const { verifyToken } = require('../middleware/auth');
+const cors = require('cors');
 
-// Middleware
 router.use(cors());
 router.use(express.json());
 
@@ -118,7 +117,7 @@ router.get('/list', verifyToken, async (req, res) => {
     const allNotifications = await Notification.find(query)
       .populate('farm', 'name')
       .populate('equipment', 'name')
-      .populate('device', 'name')
+      .populate('device', 'boardId')
       .sort({ createdAt: -1 });
 
     console.log('Notificaciones encontradas:', allNotifications.length);
@@ -164,6 +163,7 @@ router.get('/list', verifyToken, async (req, res) => {
     // Si no hay notificaciones, enviar página 0
     const currentPage = totalNotifications === 0 ? 0 : page;
 
+
     // Formatear respuesta - solo enviar datos necesarios para el frontend
     const formattedNotifications = paginatedNotifications.map(notification => ({
       id: notification._id,
@@ -173,21 +173,23 @@ router.get('/list', verifyToken, async (req, res) => {
       readDate: notification.readDate,
       farm: notification.farm ? notification.farm.name : 'N/A',
       equipment: notification.equipment ? notification.equipment.name : 'N/A',
-      device: notification.device ? notification.device.name : 'N/A',
+      device: notification.device ? (notification.device.description || notification.device.boardId) : 'N/A',
+      boardId: notification.device ? notification.device.boardId : null,
       createdAt: notification.createdAt
     }));
+
 
     res.json({
       notifications: formattedNotifications,
       pagination: {
-        currentPage: currentPage,
-        totalPages: totalPages,
-        totalNotifications: totalNotifications,
-        limit: limit,
+        currentPage,
+        totalPages,
+        totalNotifications,
+        limit,
         hasNext: currentPage > 0 && currentPage < totalPages,
         hasPrev: currentPage > 1
       },
-      stats: stats
+      stats
     });
 
   } catch (error) {
@@ -199,61 +201,40 @@ router.get('/list', verifyToken, async (req, res) => {
   }
 });
 
+
 // PUT /notification/:id/mark-read - Marcar notificación como leída
 router.put('/:id/mark-read', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const notificationId = req.params.id;
-
     const notification = await Notification.findById(notificationId);
-    if (!notification) {
-      return res.status(404).json({ message: 'Notificación no encontrada' });
-    }
+    if (!notification) return res.status(404).json({ message: 'Notificación no encontrada' });
 
-    // Obtener información del usuario para verificar su rol
     const User = require('../models/User');
     const currentUser = await User.findById(userId).select('role');
     const isAdmin = currentUser && currentUser.role === 'Administrador';
 
-    // Verificar que el usuario tiene acceso a esta notificación (solo si no es administrador)
     if (!isAdmin) {
       const userFarms = await Farm.find({ users: userId }).select('_id');
       const farmIds = userFarms.map(farm => farm._id.toString());
-      
       if (!farmIds.includes(notification.farm.toString())) {
         return res.status(403).json({ message: 'No tienes acceso a esta notificación' });
       }
     }
 
-    // Buscar si ya existe un registro de lectura para este usuario
-    const existingReadIndex = notification.read.findIndex(r => r.userId.toString() === userId);
-
-    if (existingReadIndex !== -1) {
-      // Actualizar existente
-      notification.read[existingReadIndex].read = true;
-      notification.read[existingReadIndex].readDate = new Date();
+    // Actualizar o crear registro de lectura
+    const readInfo = notification.read.find(r => r.userId.toString() === userId);
+    if (readInfo) {
+      readInfo.read = true;
+      readInfo.readDate = new Date();
     } else {
-      // Crear nuevo registro
-      notification.read.push({
-        userId: userId,
-        read: true,
-        readDate: new Date()
-      });
+      notification.read.push({ userId, read: true, readDate: new Date() });
     }
-
     await notification.save();
-
-    res.json({ 
-      message: 'Notificación marcada como leída',
-      success: true
-    });
-
+    res.json({ message: 'Notificación marcada como leída', success: true });
   } catch (error) {
     console.error('Error al marcar notificación como leída:', error);
-    res.status(500).json({ 
-      message: 'Error interno del servidor',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
   }
 });
 

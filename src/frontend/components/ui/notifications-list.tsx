@@ -258,7 +258,7 @@ export default function NotificationsList() {
     if (!session?.accessToken) return;
 
     try {
-      const response = await fetch('http://localhost:5001/farm/listName', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -305,7 +305,7 @@ export default function NotificationsList() {
         params.append('farm', selectedFarmFilters.join(','));
       }
 
-      const response = await fetch(`http://localhost:5001/notification/list?${params}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notification/list?${params}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +348,7 @@ export default function NotificationsList() {
     if (!session?.accessToken) return;
 
     try {
-      const response = await fetch(`http://localhost:5001/notification/${notificationId}/mark-read`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notification/${notificationId}/mark-read`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

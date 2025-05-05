@@ -62,7 +62,7 @@ const UserClient: React.FC = () => {
 
     try {
       // Usar la ruta /list con limit=1 solo para obtener estadísticas
-      const response = await fetch('http://localhost:5001/notification/list?limit=1', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notification/list?limit=1`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ const UserClient: React.FC = () => {
       }
 
       try {
-        const response = await fetch('http://localhost:5001/farm/list', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
