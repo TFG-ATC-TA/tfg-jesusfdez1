@@ -115,7 +115,13 @@ const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isS
 
   const maxVisibleItems = 5;
   const shouldScroll = isScrollable && sortedOptions.length > maxVisibleItems;
-  const allSelected = selectedValues.length === options.length;
+  
+  // Verificar si todas las opciones están seleccionadas comparando los values
+  const allOptionValues = options.map(option => option.value);
+  const allSelected = allOptionValues.length > 0 && 
+    allOptionValues.every(value => selectedValues.includes(value)) &&
+    selectedValues.length === allOptionValues.length;
+  
   const noneSelected = selectedValues.length === 0;
 
   return (
@@ -225,8 +231,8 @@ export default function NotificationsList() {
   const [globalFilter, setGlobalFilter] = useState('')
   const [notificationData, setNotificationData] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [farms, setFarms] = useState<{ id: string; name: string }[]>([])
-  const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>([])
+  const [farms, setFarms] = useState<{ _id: string; name: string }[]>([])
+  const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>(['info', 'warning', 'error', 'otros'])
   const [selectedFarmFilters, setSelectedFarmFilters] = useState<string[]>([])
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -270,7 +276,7 @@ export default function NotificationsList() {
         const farmsData = await response.json();
         setFarms(farmsData);
         // Por defecto, seleccionar todas las granjas
-        setSelectedFarmFilters(farmsData.map((farm: any) => farm.name));
+        setSelectedFarmFilters(farmsData.map((farm: { _id: string; name: string }) => farm._id));
       }
     } catch (error) {
       console.error('Error al obtener granjas:', error);
@@ -296,12 +302,25 @@ export default function NotificationsList() {
       
       // Filtro de tipo - solo si hay alguno seleccionado
       if (selectedTypeFilters.length > 0) {
-        params.append('type', selectedTypeFilters.join(','));
+        // Separar tipos específicos y "otros"
+        const specificTypes = selectedTypeFilters.filter(type => type !== 'otros');
+        const hasOtros = selectedTypeFilters.includes('otros');
+        
+        if (specificTypes.length > 0 && hasOtros) {
+          // Si se seleccionan tipos específicos Y "otros", enviar los específicos + "otros"
+          params.append('type', [...specificTypes, 'otros'].join(','));
+        } else if (specificTypes.length > 0) {
+          // Solo tipos específicos
+          params.append('type', specificTypes.join(','));
+        } else if (hasOtros) {
+          // Solo "otros"
+          params.append('type', 'otros');
+        }
       }
       
-      // Filtro de granja - solo si hay alguna seleccionada Y no están todas seleccionadas
-      const allFarmsSelected = farms.length > 0 && selectedFarmFilters.length === farms.length;
-      if (selectedFarmFilters.length > 0 && !allFarmsSelected) {
+      // Filtro de granja - solo si hay alguna seleccionada específicamente
+      if (selectedFarmFilters.length > 0) {
+        // Enviar los IDs de las granjas seleccionadas
         params.append('farm', selectedFarmFilters.join(','));
       }
 
@@ -573,21 +592,22 @@ export default function NotificationsList() {
               options={[
                 { value: 'info', label: 'Información' },
                 { value: 'warning', label: 'Advertencia' },
-                { value: 'error', label: 'Error' }
+                { value: 'error', label: 'Error' },
+                { value: 'otros', label: 'Otros' }
               ]}
               selectedValues={selectedTypeFilters}
               onSelectionChange={setSelectedTypeFilters}
             />
           </div>
-          <div className="flex-1 sm:flex-none">
+            <div className="flex-1 sm:flex-none">
             <FilterSelector
               title="Granja"
-              options={farms.map(farm => ({ value: farm.name, label: farm.name }))}
+              options={farms.map(farm => ({ value: farm._id, label: farm.name }))}
               selectedValues={selectedFarmFilters}
               onSelectionChange={setSelectedFarmFilters}
               isScrollable={true}
             />
-          </div>
+            </div>
         </div>
       </div>
 

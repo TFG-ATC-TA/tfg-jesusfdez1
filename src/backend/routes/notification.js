@@ -78,31 +78,56 @@ router.get('/list', verifyToken, async (req, res) => {
     if (typeFilter) {
       const types = typeFilter.split(',').filter(t => t.trim() !== '');
       if (types.length > 0) {
-        query.type = { $in: types };
+        // Separar tipos específicos y "otros"
+        const specificTypes = types.filter(type => type !== 'otros');
+        const hasOtros = types.includes('otros');
+        
+        if (specificTypes.length > 0 && hasOtros) {
+          // Si incluye tipos específicos Y "otros"
+          query.$or = [
+            { type: { $in: specificTypes } },
+            { type: { $nin: ['info', 'warning', 'error'] } }
+          ];
+        } else if (specificTypes.length > 0) {
+          // Solo tipos específicos
+          query.type = { $in: specificTypes };
+        } else if (hasOtros) {
+          // Solo "otros" - todo lo que no sea info, warning, error
+          query.type = { $nin: ['info', 'warning', 'error'] };
+        }
       }
     }
 
-    // Para el filtro de granja, buscar por nombre si se proporciona
+    // Para el filtro de granja, procesar IDs directamente si se proporciona
     if (farmFilter && farmFilter !== 'all') {
-      const farmNames = farmFilter.split(',').filter(f => f.trim() !== '');
-      if (farmNames.length > 0) {
-        let farmQuery = { name: { $in: farmNames } };
+      const requestedFarmIds = farmFilter.split(',').filter(f => f.trim() !== '');
+      if (requestedFarmIds.length > 0) {
+        // Verificar que los IDs son válidos ObjectIds
+        const validFarmIds = requestedFarmIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
         
-        // Si no es administrador, también filtrar por las granjas a las que tiene acceso
-        if (!isAdmin) {
-          farmQuery._id = { $in: farmIds };
-        }
-        
-        const farmsByName = await Farm.find(farmQuery).select('_id');
-        
-        if (farmsByName.length > 0) {
-          const selectedFarmIds = farmsByName.map(f => f._id);
-          query.farm = { $in: selectedFarmIds };
+        if (validFarmIds.length > 0) {
+          // Si no es administrador, solo permitir granjas a las que tiene acceso
+          if (!isAdmin) {
+            const accessibleFarmIds = validFarmIds.filter(id => 
+              farmIds.some(userFarmId => userFarmId.toString() === id)
+            );
+            if (accessibleFarmIds.length > 0) {
+              query.farm = { $in: accessibleFarmIds };
+            } else {
+              // Si no tiene acceso a ninguna de las granjas solicitadas, no devolver resultados
+              query.farm = null;
+            }
+          } else {
+            query.farm = { $in: validFarmIds };
+          }
         } else {
-          // Si no se encuentra ninguna granja por nombre, no devolver resultados
+          // Si no hay IDs válidos, no devolver resultados
           query.farm = null;
         }
       }
+    } else if (!farmFilter || farmFilter === '') {
+      // Si no se proporciona filtro de granja, no devolver notificaciones
+      query.farm = null;
     }
 
     // Búsqueda por texto
