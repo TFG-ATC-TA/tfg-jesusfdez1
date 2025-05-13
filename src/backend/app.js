@@ -11,6 +11,7 @@ var equipmentRouter = require('./routes/equipment');
 var influxdbRouter = require('./routes/influxdb');
 var postgresRouter = require('./routes/postgresql');
 var collectionRouter = require('./routes/collection');
+var notificationRouter = require('./routes/notification');
 
 
 
@@ -31,6 +32,8 @@ app.use('/equipment', equipmentRouter);
 app.use('/history', influxdbRouter);
 app.use('/postgres', postgresRouter);
 app.use('/collection', collectionRouter);
+app.use('/notification', notificationRouter);
+
 
 
 // Conectar a la base de datos
