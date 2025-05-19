@@ -40,3 +40,8 @@
 # typescript
 /src/frontend/.tsbuildinfo
 /src/frontend/next-env.d.ts
+
+#pwa
+/src/frontend/public/icon-*.png
+/src/frontend/public/workbox-*.js
+/src/frontend/public/fallback-*.js
