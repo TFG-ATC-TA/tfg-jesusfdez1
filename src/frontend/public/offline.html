@@ -229,21 +229,49 @@
                 // Intentar hacer una petición simple para verificar conectividad
                 const response = await fetch('/', { 
                     method: 'HEAD',
-                    cache: 'no-cache'
+                    cache: 'no-cache',
+                    signal: AbortSignal.timeout(5000)
                 });
                 
-                if (response.ok || response.status === 401 || response.status === 403) {
-                    // Si hay respuesta (incluso error de autenticación), hay conectividad
-                    window.location.reload();
+                if (response.ok || response.status === 401 || response.status === 403 || response.status === 404) {
+                    // Si hay respuesta del servidor Next.js, la aplicación está disponible
+                    window.location.href = '/';
                 } else {
-                    throw new Error('No hay conexión');
+                    throw new Error('Server not available');
                 }
             } catch (error) {
                 // Si falla la petición, aún no hay conexión
+                console.log('Server still not available:', error);
                 button.disabled = false;
                 button.textContent = 'Verificar conexión y recargar';
             }
         }
+
+        // Verificar automáticamente cada 30 segundos
+        setInterval(async () => {
+            try {
+                const response = await fetch('/', { 
+                    method: 'HEAD',
+                    cache: 'no-cache',
+                    signal: AbortSignal.timeout(3000)
+                });
+                
+                if (response.ok || response.status === 401 || response.status === 403 || response.status === 404) {
+                    // El servidor está disponible, redirigir automáticamente
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                // El servidor aún no está disponible
+                console.log('Auto-check: Server still not available');
+            }
+        }, 30000);
+
+        // También verificar cuando la ventana vuelve a estar visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                setTimeout(checkConnection, 1000);
+            }
+        });
     </script>
 </body>
 </html>
