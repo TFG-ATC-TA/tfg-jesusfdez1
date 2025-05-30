@@ -48,7 +48,18 @@ self.addEventListener('fetch', event => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then(response => response.status === 200 ? response : Promise.reject())
+        .then(response => {
+          // Si es una respuesta exitosa, devolverla
+          if (response.ok) {
+            return response;
+          }
+          // Para errores 4xx y 5xx, permitir que Next.js los maneje
+          // Solo usar offline para errores de red reales
+          if (response.status >= 400) {
+            return response;
+          }
+          return Promise.reject();
+        })
         .catch(() => 
           caches.match(OFFLINE_URL)
             .then(cachedResponse => cachedResponse || createOfflineResponse())

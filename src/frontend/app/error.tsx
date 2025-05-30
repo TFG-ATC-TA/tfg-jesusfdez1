@@ -1,13 +1,25 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, Home } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Home, RefreshCw } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
-export default function NotFound() {
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
   const router = useRouter()
+
+  useEffect(() => {
+    // Log the error to an error reporting service
+    console.error('Application error:', error)
+  }, [error])
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 landscape:py-1 text-center mx-5 md:mx-0">
@@ -27,24 +39,29 @@ export default function NotFound() {
             />
           </div>
           <div className="flex flex-col items-center justify-center">
-            <span
+            <AlertTriangle 
+              className="h-16 w-16 text-yellow-500 mb-2 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-32 lg:w-32"
               aria-hidden="true"
-              className="bg-gradient-to-b from-foreground to-transparent bg-clip-text text-[5rem] font-extrabold leading-none text-transparent mt-2 sm:text-[4.5rem] md:text-[5.5rem] lg:text-[10rem]"
-            >
-              404
-            </span>
+            />
           </div>
         </div>
-        <h1 className="mb-2 font-heading text-2xl font-bold md:text-3xl">Algo ha fallado</h1>
-        <p className="mb-8 text-muted-foreground md:text-lg">
-          Lo sentimos, la página que estás buscando no existe o ha sido movida.
+        <h1 className="mb-2 font-heading text-2xl font-bold md:text-3xl">Ha ocurrido un error</h1>
+        <p className="mb-4 text-muted-foreground md:text-lg">
+          Lo sentimos, algo ha salido mal en la aplicación.
+        </p>
+        <p className="mb-8 text-sm text-muted-foreground font-mono bg-muted p-2 rounded">
+          {error.message || 'Error desconocido'}
         </p>
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+          <Button onClick={reset} variant="default" size="lg" className="w-full sm:w-auto">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Intentar de nuevo
+          </Button>
           <Button onClick={() => router.back()} variant="outline" size="lg" className="w-full sm:w-auto">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver atrás
           </Button>
-          <Button onClick={() => router.push('/')} variant="default" size="lg" className="w-full sm:w-auto">
+          <Button onClick={() => router.push('/')} variant="outline" size="lg" className="w-full sm:w-auto">
             <Home className="mr-2 h-4 w-4" />
             Volver al inicio
           </Button>
