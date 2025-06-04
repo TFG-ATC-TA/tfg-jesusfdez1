@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lactokeeper-offline-v1';
+const CACHE_NAME = 'lactokeeper-offline-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Archivos críticos para cachear
@@ -46,6 +46,19 @@ self.addEventListener('fetch', event => {
   
   // Para navegación: Network First, fallback a offline.html
   if (request.mode === 'navigate') {
+    const url = new URL(request.url);
+    
+    // No interceptar rutas que requieren autenticación - dejar que Next.js middleware las maneje
+    const authRequiredRoutes = ['/', '/farms', '/users', '/devices', '/notifications'];
+    const isAuthRoute = authRequiredRoutes.some(route => 
+      url.pathname === route || url.pathname.startsWith(route + '/')
+    );
+    
+    // Si es una ruta que requiere autenticación, no interceptar - dejar que Next.js la maneje
+    if (isAuthRoute) {
+      return;
+    }
+    
     event.respondWith(
       fetch(request)
         .then(response => {

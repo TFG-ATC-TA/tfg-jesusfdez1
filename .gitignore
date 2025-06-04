@@ -3,6 +3,7 @@
 ###BACKEND
 /src/backend/.env
 /src/backend/node_modules
+/src/backend/logs
 
 
 ###FRONTEND
