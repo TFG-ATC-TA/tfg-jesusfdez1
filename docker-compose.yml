@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: lactokeeper
+    volumes:
+      - mongo_data:/data/db
+
   backend:
     build:
       context: ./src/backend
@@ -12,6 +23,9 @@ services:
       - ./src/backend:/app
     environment:
       - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/lactokeeper
+    depends_on:
+      - mongo
     restart: unless-stopped
 
   frontend:
@@ -28,3 +42,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  mongo_data:

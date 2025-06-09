@@ -9,6 +9,9 @@ RUN npm ci --omit=dev
 
 COPY . .
 
+# Espera a que MongoDB esté disponible antes de iniciar el backend
+RUN npm install -g wait-port
+
 EXPOSE 3001
 
-CMD ["node", "app.js"]
+CMD ["sh", "-c", "wait-port mongo:27017 && node app.js"]
