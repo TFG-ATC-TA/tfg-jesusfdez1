@@ -25,9 +25,22 @@ export default function PWAInstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     // Solo mostrar en la página de login
     const shouldShowOnCurrentPage = pathname === '/login';
+
+    useEffect(() => {
+        // Detectar si es móvil
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        
+        return () => window.removeEventListener('resize', checkMobile);
+    }, [pathname]);
 
     useEffect(() => {
         if (!shouldShowOnCurrentPage) {
@@ -71,8 +84,43 @@ export default function PWAInstallPrompt() {
 
     if (!shouldShowOnCurrentPage || isDismissed || !showInstallPrompt) return null;
 
+    // Diseño para móviles (footer simple)
+    if (isMobile) {
+        return (
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg">
+                <div className="flex items-center justify-between p-3">
+                    <div className="flex items-center space-x-2 flex-1 min-w-0">
+                        <Download className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                Instalar Lactokeeper
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 ml-2">
+                        <Button
+                            onClick={handleInstallClick}
+                            size="sm"
+                            className="text-xs px-3 py-1"
+                        >
+                            Instalar
+                        </Button>
+                        <button
+                            onClick={handleDismiss}
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                            aria-label="Cerrar"
+                        >
+                            <X className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Diseño para escritorio (popup lateral)
     return (
-        <div className="fixed bottom-4 left-4 right-4 lg:left-4 lg:right-auto lg:max-w-sm z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 animate-in slide-in-from-bottom-2">
+        <div className="fixed bottom-4 left-4 max-w-sm z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 animate-in slide-in-from-bottom-2">
             <button
                 onClick={handleDismiss}
                 className="absolute top-2 right-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"

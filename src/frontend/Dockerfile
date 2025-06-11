@@ -1,30 +1,40 @@
 # Dockerfile para el frontend (Next.js)
-FROM node:24-alpine AS builder
+FROM node:24-alpine AS base
 
+# Establecer el directorio de trabajo
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+# Copiar archivos de manifiesto de paquetes
+COPY package*.json ./
 
+# Etapa para instalar todas las dependencias
+FROM base AS deps
 RUN npm install
 
+# Etapa para construir la aplicación
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
+# La variable de entorno es necesaria para que el build no falle
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Producción
-FROM node:24-alpine AS runner
+# Etapa de producción final
+FROM base AS runner
 WORKDIR /app
 
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
+# Copiar archivos de configuración y manifiesto
 COPY --from=builder /app/next.config.mjs ./
-COPY --from=builder /app/next-env.d.ts ./
-COPY --from=builder /app/tailwind.config.ts ./
-COPY --from=builder /app/postcss.config.mjs ./
-COPY --from=builder /app/tsconfig.json ./
+COPY --from=builder /app/package.json ./
+
+# Copiar artefactos de compilación y activos públicos
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+
+# Instalar solo dependencias de producción
+RUN npm ci --omit=dev
 
 EXPOSE 3000
 
+# Iniciar la aplicación
 CMD ["npm", "start"]
