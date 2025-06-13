@@ -5,6 +5,9 @@
 /src/backend/node_modules
 /src/backend/logs
 
+#POBLADOR
+/others/populate-mongodb/node_modules
+
 
 ###FRONTEND
 # dependencies
