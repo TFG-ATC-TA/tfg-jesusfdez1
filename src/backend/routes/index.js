@@ -7,10 +7,9 @@ const Farm = require('../models/Farm');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const logger = require('../config/logger'); // Logging de login
+const dotenv = require('dotenv'); // Token generation imports
 
-
-// Token generation imports
-const dotenv = require('dotenv');
 // get config vars
 dotenv.config();
 // Middleware
@@ -31,21 +30,27 @@ const loginLimiter = rateLimit({
   resetTime: 24 * 60 * 60 * 1000 // 24 horas de penalización
 });
 
+
 router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
+  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
+  const timestamp = new Date().toISOString();
 
   try {
     const user = await User.findOne({ email });
     if (!user) {
+      logger.info(`${timestamp} | ${email} | ${ip} | FAIL`);
       return res.status(400).json({ message: 'Credenciales inválidas. Por favor, verifica tu correo electrónico y contraseña.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
+      logger.info(`${timestamp} | ${email} | ${ip} | FAIL`);
       return res.status(400).json({ message: 'Credenciales inválidas. Por favor, verifica tu correo electrónico y contraseña.' });
     }
 
-    //Imprimir el usuario
+    logger.info(`${timestamp} | ${email} | ${ip} | SUCCESS`);
+
     const payload = {
       user: {
         id: user._id,
@@ -70,6 +75,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       }
     });
   } catch (err) {
+    logger.error(`${timestamp} | ${email} | ${ip} | ERROR | ${err.message}`);
     res.status(500).json({ message: 'Error del servidor' + err.message });
   }
 });

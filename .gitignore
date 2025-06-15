@@ -3,6 +3,10 @@
 ###BACKEND
 /src/backend/.env
 /src/backend/node_modules
+/src/backend/logs
+
+#POBLADOR
+/others/populate-mongodb/node_modules
 
 
 ###FRONTEND
@@ -40,3 +44,8 @@
 # typescript
 /src/frontend/.tsbuildinfo
 /src/frontend/next-env.d.ts
+
+#pwa
+/src/frontend/public/icon-*.png
+/src/frontend/public/workbox-*.js
+/src/frontend/public/fallback-*.js

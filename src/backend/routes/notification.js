@@ -6,6 +6,8 @@ const Farm = require('../models/Farm');
 const Device = require('../models/Device');
 const { verifyToken } = require('../middleware/auth');
 const cors = require('cors');
+const User = require('../models/User');
+
 
 router.use(cors());
 router.use(express.json());
@@ -24,7 +26,6 @@ router.get('/list', verifyToken, async (req, res) => {
     console.log('Solicitud de notificaciones:', { userId, page, limit, searchTerm, typeFilter, farmFilter });
 
     // Obtener información del usuario para verificar su rol
-    const User = require('../models/User');
     const currentUser = await User.findById(userId).select('role');
     const isAdmin = currentUser && currentUser.role === 'Administrador';
 
