@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "cross-env NODE_ENV=development next dev",
+    "build": "cross-env NODE_ENV=production next build",
+    "start": "cross-env NODE_ENV=production next start",
     "lint": "next lint",
     "generate-icons": "node generate-icons.js",
-    "build-pwa": "npm run generate-icons && next build"
+    "build-pwa": "npm run generate-icons && cross-env NODE_ENV=production next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -64,6 +64,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^7.0.3",
     "eslint": "^8",
     "eslint-config-next": "14.2.13",
     "postcss": "^8.4.47",

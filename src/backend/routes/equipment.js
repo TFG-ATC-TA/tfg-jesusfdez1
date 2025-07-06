@@ -5,6 +5,9 @@ const { verifyToken, isAdmin } = require('../middleware/auth');
 const Equipment = require('../models/Equipment');
 const Farm = require('../models/Farm');
 
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
 // Token generation imports
 const dotenv = require('dotenv');
 // get config vars
@@ -98,7 +101,7 @@ router.get('/list', verifyToken, async (req, res) => {
       currentPage: adjustedPage 
     });
   } catch (error) {
-    console.error('Error en listado de equipos:', error);
+    devConsole.error('Error en listado de equipos:', error);
     res.status(500).json({ message: 'Error obteniendo datos de los equipos' });
   }
 });
@@ -133,7 +136,7 @@ router.get('/listTanks', verifyToken, async (req, res) => {
     
     res.json(tanks);
   } catch (error) {
-    console.error('Error obteniendo datos de los tanques:', error);
+    devConsole.error('Error obteniendo datos de los tanques:', error);
     res.status(500).json({ message: 'Error obteniendo datos de los tanques' });
   }
 });

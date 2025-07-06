@@ -6,6 +6,9 @@ const Collection = require('../models/Collection');
 const Farm = require('../models/Farm');
 const Equipment = require('../models/Equipment');
 
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
 // Token generation imports
 const dotenv = require('dotenv');
 // get config vars
@@ -79,7 +82,7 @@ router.get('/list', verifyToken, async (req, res) => {
       currentPage: adjustedPage
     });
   } catch (error) {
-    console.error('Error al obtener recogidas de leche:', error);
+    devConsole.error('Error al obtener recogidas de leche:', error);
     res.status(500).json({ message: 'Error obteniendo datos de recogidas de leche' });
   }
 });
@@ -113,7 +116,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 
     res.json(collection);
   } catch (error) {
-    console.error('Error al obtener detalles de recogida:', error);
+    devConsole.error('Error al obtener detalles de recogida:', error);
     res.status(500).json({ message: 'Error obteniendo detalles de la recogida de leche' });
   }
 });
@@ -199,7 +202,7 @@ router.post('/', verifyToken, async (req, res) => {
       collection: newCollection
     });
   } catch (error) {
-    console.error('Error al crear recogida de leche:', error);
+    devConsole.error('Error al crear recogida de leche:', error);
     res.status(500).json({ 
       message: 'Error al crear la recogida de leche',
       error: error.message
@@ -297,7 +300,7 @@ router.put('/:id', verifyToken, async (req, res) => {
       collection: updatedCollection
     });
   } catch (error) {
-    console.error('Error al actualizar recogida de leche:', error);
+    devConsole.error('Error al actualizar recogida de leche:', error);
     res.status(500).json({ 
       message: 'Error al actualizar la recogida de leche',
       error: error.message
@@ -332,7 +335,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     
     res.json({ message: 'Recogida de leche eliminada con éxito' });
   } catch (error) {
-    console.error('Error al eliminar recogida de leche:', error);
+    devConsole.error('Error al eliminar recogida de leche:', error);
     res.status(500).json({ 
       message: 'Error al eliminar la recogida de leche',
       error: error.message

@@ -5,6 +5,9 @@ const { verifyToken } = require('../middleware/auth');
 const Farm = require('../models/Farm');
 const { connectMQTT } = require('../config/connection');
 
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
 require('dotenv').config();
 
 module.exports = function(wss) {
@@ -70,7 +73,7 @@ module.exports = function(wss) {
           return closeWithError(ws, 'Acceso denegado a la granja');
         }
       } catch (error) {
-        console.error('Error verificando acceso a granja:', error);
+        devConsole.error('Error verificando acceso a granja:', error);
         return closeWithError(ws, 'Error interno del servidor');
       }
     }

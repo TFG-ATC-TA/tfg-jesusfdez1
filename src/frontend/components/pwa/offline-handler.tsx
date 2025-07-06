@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { logger } from '@/lib/logger';
 
 export default function OfflineHandler() {
   const router = useRouter();
@@ -46,12 +47,12 @@ export default function OfflineHandler() {
     const handleOffline = () => {
       setServerAvailable(false);
       // Cuando se detecta offline, el service worker debería manejar las peticiones
-      console.log('OfflineHandler: Browser offline detected');
+      logger.log('OfflineHandler: Browser offline detected');
     };
 
     const handleOnline = () => {
       // Cuando volvemos online, verificar si el servidor está disponible
-      console.log('OfflineHandler: Browser online detected, checking server...');
+      logger.log('OfflineHandler: Browser online detected, checking server...');
       setTimeout(checkServerConnection, 1000);
     };
 

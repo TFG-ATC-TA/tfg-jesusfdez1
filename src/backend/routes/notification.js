@@ -8,6 +8,8 @@ const { verifyToken } = require('../middleware/auth');
 const cors = require('cors');
 const User = require('../models/User');
 
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
 
 router.use(cors());
 router.use(express.json());
@@ -23,25 +25,25 @@ router.get('/list', verifyToken, async (req, res) => {
     const readFilter = req.query.read || ''; // 'true', 'false', or ''
     const farmFilter = req.query.farm || '';
 
-    console.log('Solicitud de notificaciones:', { userId, page, limit, searchTerm, typeFilter, farmFilter });
+    devConsole.log('Solicitud de notificaciones:', { userId, page, limit, searchTerm, typeFilter, farmFilter });
 
     // Obtener información del usuario para verificar su rol
     const currentUser = await User.findById(userId).select('role');
     const isAdmin = currentUser && currentUser.role === 'Administrador';
 
-    console.log('Usuario:', { userId, role: currentUser?.role, isAdmin });
+    devConsole.log('Usuario:', { userId, role: currentUser?.role, isAdmin });
 
     let farmIds = [];
     
     if (isAdmin) {
       // Si es administrador, puede acceder a todas las notificaciones
-      console.log('Usuario administrador: acceso a todas las notificaciones');
+      devConsole.log('Usuario administrador: acceso a todas las notificaciones');
     } else {
       // Si no es administrador, solo puede acceder a las notificaciones de sus granjas
       const userFarms = await Farm.find({ users: userId }).select('_id');
       farmIds = userFarms.map(farm => farm._id);
       
-      console.log('Granjas del usuario:', farmIds);
+      devConsole.log('Granjas del usuario:', farmIds);
 
       if (farmIds.length === 0) {
         return res.json({
@@ -73,7 +75,7 @@ router.get('/list', verifyToken, async (req, res) => {
       query.farm = { $in: farmIds };
     }
 
-    console.log('Query construida:', JSON.stringify(query, null, 2));
+    devConsole.log('Query construida:', JSON.stringify(query, null, 2));
 
     // Filtros opcionales
     if (typeFilter) {
@@ -146,7 +148,7 @@ router.get('/list', verifyToken, async (req, res) => {
       .populate('device', 'boardId')
       .sort({ createdAt: -1 });
 
-    console.log('Notificaciones encontradas:', allNotifications.length);
+    devConsole.log('Notificaciones encontradas:', allNotifications.length);
 
     // Calcular estadísticas
     const stats = {
@@ -219,7 +221,7 @@ router.get('/list', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
+    devConsole.error('Error al obtener notificaciones:', error);
     res.status(500).json({ 
       message: 'Error interno del servidor',
       error: error.message 
@@ -259,7 +261,7 @@ router.put('/:id/mark-read', verifyToken, async (req, res) => {
     await notification.save();
     res.json({ message: 'Notificación marcada como leída', success: true });
   } catch (error) {
-    console.error('Error al marcar notificación como leída:', error);
+    devConsole.error('Error al marcar notificación como leída:', error);
     res.status(500).json({ message: 'Error interno del servidor', error: error.message });
   }
 });

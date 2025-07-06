@@ -3,6 +3,7 @@
 import { Session } from 'next-auth';
 import { useSession } from 'next-auth/react';
 import { useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 // Definición del tipo para los datos de usuario actualizados
 export type UserProfileUpdate = {
@@ -118,9 +119,9 @@ export function useAutoSessionUpdate() {
         });
         window.dispatchEvent(userUpdateEvent);
         
-        console.log('Sesión actualizada con éxito', userData);
+        logger.log('Sesión actualizada con éxito', userData);
       } catch (error) {
-        console.error('Error al actualizar la sesión:', error);
+        logger.error('Error al actualizar la sesión:', error);
       }
     }
   });

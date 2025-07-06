@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       // Limpiar registros antiguos primero
       navigator.serviceWorker.getRegistrations().then(registrations => {
-        console.log('SW: Found', registrations.length, 'existing registrations');
+        logger.log('SW: Found', registrations.length, 'existing registrations');
         registrations.forEach(registration => {
-          console.log('SW: Unregistering:', registration.scope);
+          logger.log('SW: Unregistering:', registration.scope);
           registration.unregister();
         });
 
@@ -20,27 +21,27 @@ export default function ServiceWorkerRegistration() {
             updateViaCache: 'none'
           })
             .then(registration => {
-              console.log('SW: Service Worker registrado con éxito:', registration);
+              logger.log('SW: Service Worker registrado con éxito:', registration);
               
               // Forzar actualización inmediata si hay un worker esperando
               if (registration.waiting) {
-                console.log('SW: Activating waiting worker immediately');
+                logger.log('SW: Activating waiting worker immediately');
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });
               }
               
               // Verificar actualizaciones manualmente
               registration.update().then(() => {
-                console.log('SW: Manual update check completed');
+                logger.log('SW: Manual update check completed');
               });
               
               // Escuchar nuevas instalaciones
               registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing;
                 if (newWorker) {
-                  console.log('SW: New worker installing');
+                  logger.log('SW: New worker installing');
                   newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed') {
-                      console.log('SW: New worker installed, activating immediately');
+                      logger.log('SW: New worker installed, activating immediately');
                       newWorker.postMessage({ type: 'SKIP_WAITING' });
                     }
                   });
@@ -49,7 +50,7 @@ export default function ServiceWorkerRegistration() {
 
               // Verificar si el service worker está activo
               if (registration.active) {
-                console.log('SW: Service worker is active and ready');
+                logger.log('SW: Service worker is active and ready');
               }
             })
             .catch(error => {
@@ -60,14 +61,14 @@ export default function ServiceWorkerRegistration() {
 
       // Escuchar cambios en el service worker activo
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('SW: Controller changed - nuevo Service Worker activo');
+        logger.log('SW: Controller changed - nuevo Service Worker activo');
         // Recargar la página cuando el nuevo service worker tome control
         window.location.reload();
       });
 
       // Escuchar mensajes del service worker
       navigator.serviceWorker.addEventListener('message', event => {
-        console.log('SW: Message received from service worker:', event.data);
+        logger.log('SW: Message received from service worker:', event.data);
       });
     } else {
       console.warn('SW: Service Worker no soportado en este navegador');

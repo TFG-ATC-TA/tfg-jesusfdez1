@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { X, Download } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface BeforeInstallPromptEvent extends Event {
     readonly platforms: string[];
@@ -70,7 +71,7 @@ export default function PWAInstallPrompt() {
         await deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         
-        console.log(`PWA install prompt: ${outcome}`);
+        logger.log(`PWA install prompt: ${outcome}`);
         
         setDeferredPrompt(null);
         setShowInstallPrompt(false);

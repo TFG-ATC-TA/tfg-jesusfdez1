@@ -4,6 +4,9 @@ const { connectInfluxDB } = require('../config/connection');
 const cors = require('cors');
 const { verifyToken } = require('../middleware/auth');
 
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
 /* GET home page. */
 router.use(cors());
   
@@ -69,7 +72,7 @@ router.get('/data', verifyToken, async function(req, res, next) {
     const result = await connectInfluxDB.getQueryApi(process.env.INFLUXDB_ORG).collectRows(query);
     res.send(JSON.stringify(result));
     } catch (error) {
-        console.error('Error constructing query:', error);
+        devConsole.error('Error constructing query:', error);
         res.send(JSON.stringify([])); // Send empty JSON array in case of error
     }
 });

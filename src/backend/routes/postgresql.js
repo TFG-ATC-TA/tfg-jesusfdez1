@@ -3,6 +3,10 @@ var router = express.Router();
 const cors = require('cors');
 const { verifyToken } = require('../middleware/auth');
 const { connectPostgreSQL } = require('../config/connection');
+
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
 require('dotenv').config();
 
 /* Setup CORS */
@@ -144,7 +148,7 @@ router.get('/farm-activities', async (req, res) => {
         };
         res.json(response);
     } catch (error) {
-        console.error('Error al consultar farm-activities:', error);
+        devConsole.error('Error al consultar farm-activities:', error);
         res.status(500).json({
             success: false,
             message: 'Error al obtener las estadísticas de actividades',

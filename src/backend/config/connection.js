@@ -4,13 +4,16 @@ const { InfluxDB } = require('@influxdata/influxdb-client');
 const mqtt = require('mqtt');
 require('dotenv').config();
 
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
 // MongoDB
 const connectMongoDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB connected successfully');
+    devConsole.log('MongoDB connected successfully');
   } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
+    devConsole.error('Error connecting to MongoDB:', error);
     process.exit(1);
   }
 };

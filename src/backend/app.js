@@ -13,11 +13,17 @@ var postgresRouter = require('./routes/postgresql');
 var collectionRouter = require('./routes/collection');
 var notificationRouter = require('./routes/notification');
 
-
+// Importar el sistema de console personalizado
+const devConsole = require('./utils/console');
 
 var app = express();
 const connectDB = require('./config/connection'); // Ruta hacia el archivo de conexión de la base de datos
 
+// Mostrar modo de ejecución al iniciar
+const currentMode = process.env.NODE_ENV || 'production';
+devConsole.log(`🚀 Servidor iniciando en modo: ${currentMode.toUpperCase()}`);
+devConsole.log(`📝 Logs de consola: ${currentMode === 'development' || currentMode === 'dev' ? 'ACTIVADOS' : 'DESACTIVADOS'}`);
+devConsole.log(`📋 Logs de Winston (inicio de sesión): SIEMPRE ACTIVOS`);
 
 app.use(logger('dev'));
 app.use(express.json());

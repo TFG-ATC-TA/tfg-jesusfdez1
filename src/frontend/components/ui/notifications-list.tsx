@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { logger } from '@/lib/logger'
 import {
   ColumnDef,
   flexRender,
@@ -336,7 +337,7 @@ export default function NotificationsList() {
       }
 
       const data: NotificationResponse = await response.json();
-      console.log('Datos recibidos del servidor:', data); // Para debugging
+      logger.log('Datos recibidos del servidor:', data); // Para debugging
       
       setNotificationData(data.notifications);
       setServerPagination({
