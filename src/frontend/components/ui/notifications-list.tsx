@@ -7,7 +7,6 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   getSortedRowModel,
   getFilteredRowModel,
   ColumnFiltersState,
@@ -122,7 +121,7 @@ const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isS
     allOptionValues.every(value => selectedValues.includes(value)) &&
     selectedValues.length === allOptionValues.length;
   
-  const noneSelected = selectedValues.length === 0;
+  const _noneSelected = selectedValues.length === 0;
 
   return (
     <DropdownMenu>
@@ -197,7 +196,7 @@ const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isS
   );
 };
 
-const PageSelector = ({ table }: { table: any }) => {
+const _PageSelector = ({ table }: { table: Record<string, unknown> }) => {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
 
@@ -230,7 +229,7 @@ export default function NotificationsList() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [notificationData, setNotificationData] = useState<Notification[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [_isLoading, setIsLoading] = useState(true)
   const [farms, setFarms] = useState<{ _id: string; name: string }[]>([])
   const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>(['info', 'warning', 'error', 'otros'])
   const [selectedFarmFilters, setSelectedFarmFilters] = useState<string[]>([])

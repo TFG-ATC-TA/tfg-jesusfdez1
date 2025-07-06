@@ -42,7 +42,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     inhibitorSampleTaken: false,
     litersPerTank: [{ tankId: '', liters: 0, compartment: 'Único' }] as TankCollection[]
   });
-  const [tanks, setTanks] = useState<any[]>([]);
+  const [tanks, setTanks] = useState<Array<{ _id: string; identifier: string; capacity: number }>>([]);
 
   const { toast } = useToast();
 

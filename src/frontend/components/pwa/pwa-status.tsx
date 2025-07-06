@@ -14,7 +14,7 @@ export default function PWAStatus() {
         // Verificar si la PWA está instalada
         const checkInstalled = () => {
             return window.matchMedia('(display-mode: standalone)').matches ||
-                (window.navigator as any).standalone === true ||
+                (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
                 document.referrer.includes('android-app://');
         };
 

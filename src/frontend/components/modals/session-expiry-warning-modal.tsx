@@ -18,7 +18,7 @@ export const SessionExpiryWarningModal: React.FC<SessionExpiryWarningModalProps>
   onContinue,
   onClose
 }) => {
-  const { data: session } = useSession();
+  const { data: _session } = useSession();
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();

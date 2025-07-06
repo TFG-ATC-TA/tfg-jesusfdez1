@@ -98,7 +98,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
   });
 
   // Define fetchDevicesAndMark and fetchTanksAndMark first to avoid circular references  // Optimized fetchDevices para marcar los dispositivos seleccionados
-  const fetchDevicesAndMark = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '', selectedDeviceIds: string[] = []) => {
+  const fetchDevicesAndMark = useCallback(async (farmId: string, page = 1, searchTerm = '', selectedDeviceIds: string[] = []) => {
     if (!session?.accessToken || !farmId || isFetchingRef.current) {
       return;
     }
@@ -161,7 +161,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       }
     }
   }, [session, selectedFilters, toast]);  // Optimized fetchTanks para marcar los tanques seleccionados
-  const fetchTanksAndMark = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '', selectedTankIds: string[] = []) => {
+  const fetchTanksAndMark = useCallback(async (farmId: string, page = 1, searchTerm = '', selectedTankIds: string[] = []) => {
     if (!session?.accessToken || !farmId || !mountedRef.current) {
       return;
     }
@@ -354,12 +354,12 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       // Manejar diferentes formatos de respuesta del API
       let deviceIds: string[] = [];
       if (Array.isArray(data.devices)) {
-        deviceIds = data.devices.map((device: any) => typeof device === 'string' ? device : device._id);
+        deviceIds = data.devices.map((device: { _id: string } | string) => typeof device === 'string' ? device : device._id);
       }
       
       let tankIds: string[] = [];
       if (Array.isArray(data.associatedTanks)) {
-        tankIds = data.associatedTanks.map((tank: any) => typeof tank === 'string' ? tank : tank._id);
+        tankIds = data.associatedTanks.map((tank: { _id: string } | string) => typeof tank === 'string' ? tank : tank._id);
       }
       
       console.log("DeviceIds a marcar:", deviceIds);

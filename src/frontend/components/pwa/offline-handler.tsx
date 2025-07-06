@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function OfflineHandler() {
   const router = useRouter();
-  const [serverAvailable, setServerAvailable] = useState(true);
+  const [_serverAvailable, setServerAvailable] = useState(true);
 
   useEffect(() => {
     const checkServerConnection = async () => {
@@ -32,7 +32,7 @@ export default function OfflineHandler() {
         } else {
           setServerAvailable(false);
         }
-      } catch (error) {
+      } catch (_error) {
         setServerAvailable(false);
         
         // Si el servidor no está disponible, forzar recarga para que el service worker maneje la situación

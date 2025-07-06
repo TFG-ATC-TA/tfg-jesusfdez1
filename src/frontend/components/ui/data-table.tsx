@@ -20,7 +20,7 @@ import { DataTableSearch } from "./data-table-search"
 import { DataTableFilters } from "./data-table-filters"
 
 interface DataTableProps<TData> {
-  columns: ColumnDef<TData, any>[]
+  columns: ColumnDef<TData, unknown>[]
   data: TData[]
   enableColumnSelection?: boolean
   enableRowNumbering?: boolean
@@ -37,7 +37,7 @@ interface DataTableProps<TData> {
   totalItems?: number
   onFilterChange?: (filters: Record<string, string[]>) => void
   containerClassName?: string // Nueva prop para personalizar el contenedor
-  loading?: boolean
+  _loading?: boolean
 }
 
 function useDataTable<TData>({
@@ -104,7 +104,7 @@ function useDataTable<TData>({
         onRowSelectionChange?.(updaterOrValue)
       }
     },
-    getRowId: (row) => (row as any)._id,
+    getRowId: (row) => (row as { _id: string })._id,
     state: {
       sorting,
       globalFilter,
@@ -130,7 +130,7 @@ function useDataTable<TData>({
   return { table, handleSearch, globalFilter }
 }
 
-const columnNames: Record<string, string> = {
+const _columnNames: Record<string, string> = {
   role: "rol",
   type: "tipo",
   // Añadir más mapeos de id a nombres de columnas si es necesario
@@ -154,7 +154,7 @@ export function DataTable<TData>({
   totalItems = 0,
   onFilterChange,
   containerClassName = "w-full border rounded-md shadow-sm", // Valor por defecto sin max-width
-  loading = false,
+  _loading = false,
 }: DataTableProps<TData>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const [maxTotalItems, setMaxTotalItems] = useState(0)

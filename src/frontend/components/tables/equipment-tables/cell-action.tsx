@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, MoreHorizontal, Trash, ExternalLink } from 'lucide-react';
+import { Edit, MoreHorizontal, Trash } from 'lucide-react';
 import { Equipment } from '@/types';
 import EquipmentEditModal from '@/components/modals/equipment-edit-modal';
 
@@ -32,7 +31,6 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
   const { data: session } = useSession();
-  const router = useRouter();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { toast } = useToast();

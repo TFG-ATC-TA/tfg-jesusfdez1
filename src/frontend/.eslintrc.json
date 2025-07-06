@@ -1,11 +1,39 @@
 {
   "extends": ["next/core-web-vitals", "next/typescript"],
   "rules": {
-    "@typescript-eslint/no-unused-vars": "off",
-    "@typescript-eslint/no-explicit-any": "off",
-    "react-hooks/exhaustive-deps": "off",
+    // Reglas de TypeScript
+    "@typescript-eslint/no-unused-vars": ["warn", { 
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_",
+      "caughtErrorsIgnorePattern": "^_"
+    }],
+    "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/no-empty-object-type": "off",
+    "@typescript-eslint/no-inferrable-types": "warn",
+
+    // Reglas de React Hooks
+    "react-hooks/exhaustive-deps": "warn",
+
+    // Reglas de React
     "react/display-name": "off",
-    "@next/next/no-img-element": "off"
+
+    // Reglas específicas de Next.js según la documentación del proyecto
+    "@next/next/google-font-display": "error",
+    "@next/next/google-font-preconnect": "warn",
+    "@next/next/inline-script-id": "error",
+    "@next/next/next-script-for-ga": "warn",
+    "@next/next/no-assign-module-variable": "error",
+    "@next/next/no-async-client-component": "error",
+    "@next/next/no-css-tags": "error",
+    "@next/next/no-document-import-in-page": "error",
+    "@next/next/no-head-import-in-document": "error",
+    "@next/next/no-img-element": "warn",
+    "@next/next/no-script-component-in-head": "error",
+    "@next/next/no-sync-scripts": "error",
+    "@next/next/no-title-in-document-head": "error",
+    "@next/next/no-typos": "error",
+
+    // Otras reglas de calidad de código
+    "prefer-const": "warn"
   }
 }

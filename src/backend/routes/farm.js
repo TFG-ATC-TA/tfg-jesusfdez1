@@ -184,7 +184,8 @@ router.put('/:id', verifyToken, isAdmin, async (req, res) => {
 // Eliminar una granja
 router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
   try { 
-    const deletedFarm = await Farm.findByIdAndDelete(req.params);
+    const { id } = req.params;
+    const deletedFarm = await Farm.findByIdAndDelete(id);
     
     if (!deletedFarm) {
       return res.status(404).json({ message: 'Granja no encontrada' });

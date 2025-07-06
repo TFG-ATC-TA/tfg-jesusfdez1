@@ -45,7 +45,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   const mountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [_initialLoading, _setInitialLoading] = useState(true);
   
   const [equipmentInfo, setEquipmentInfo] = useState({
     name: '',
@@ -183,7 +183,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   ];
 
   // Modificar el fetchDevices para que coincida con el patrón de page.tsx
-  const fetchDevices = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '') => {
+  const fetchDevices = useCallback(async (farmId: string, page = 1, searchTerm = '') => {
     if (!session?.accessToken || !farmId || isFetchingRef.current) {
       return;
     }
@@ -251,7 +251,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   }, [devicesPage, devicesSearchTerm, isOpen, farmId, fetchDevices]);
 
   // Optimized fetchTanks to avoid race conditions
-  const fetchTanks = useCallback(async (page: number = 1, searchTerm: string = '') => {
+  const fetchTanks = useCallback(async (page = 1, searchTerm = '') => {
     if (!session?.accessToken || !farmId || !mountedRef.current) {
       return;
     }

@@ -181,7 +181,7 @@ export const TimePickerInput = React.forwardRef<HTMLInputElement, TimePickerInpu
     ref
   ) => {
     const [flag, setFlag] = React.useState<boolean>(false);
-    const [prevIntKey, setPrevIntKey] = React.useState<string>("0");
+    const [_prevIntKey, _setPrevIntKey] = React.useState<string>("0");
 
     React.useEffect(() => {
       if (flag) {

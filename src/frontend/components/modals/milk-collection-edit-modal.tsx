@@ -23,8 +23,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { Trash2, Plus, Trash } from 'lucide-react';
+import { Plus, Trash } from 'lucide-react';
 
 // Define un tipo para un tanque en la recogida
 interface TankCollection {
@@ -59,7 +58,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     litersPerTank: [] as TankCollection[],
     farmId: ''
   });
-  const [tanks, setTanks] = useState<any[]>([]);
+  const [tanks, setTanks] = useState<Array<{ _id: string; identifier: string; capacity: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { toast } = useToast();
@@ -164,7 +163,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     }
   };
 
-  const handleTankChange = (index: number, field: keyof TankCollection, value: any) => {
+  const handleTankChange = (index: number, field: keyof TankCollection, value: string | number) => {
     const updatedTanks = [...collectionInfo.litersPerTank];
     updatedTanks[index] = { 
       ...updatedTanks[index], 

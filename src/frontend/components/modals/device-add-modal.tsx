@@ -29,7 +29,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
   });
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmFilter, setFarmFilter] = useState('');
-  const [equipments, setEquipments] = useState<any[]>([]);
+  const [equipments, setEquipments] = useState<Array<{ _id: string; name: string; type: string }>>([]);
   const [equipmentFilter, setEquipmentFilter] = useState('');
 
   const { toast } = useToast();
@@ -46,7 +46,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
     setSelectedFilters(filters);
   };
 
-  const _fetchDevices = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '') => {
+  const _fetchDevices = useCallback(async (farmId: string, page = 1, searchTerm = '') => {
     if (!session?.accessToken || !farmId) {
       return;
     }

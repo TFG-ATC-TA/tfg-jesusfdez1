@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CheckIcon, XIcon, ChevronDown } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 interface MilkCollectionViewModalProps {
   isOpen: boolean;
@@ -19,10 +18,26 @@ interface MilkCollectionViewModalProps {
 }
 
 export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = ({ isOpen, onClose, collectionId }) => {  const { data: session } = useSession();
-  const [collection, setCollection] = useState<any>(null);
+  const [collection, setCollection] = useState<{
+    _id: string;
+    date: string;
+    collectionDate: string;
+    sampleLabel: string;
+    milkTemperature: number;
+    inhibitorSampleTaken: boolean;
+    litersPerTank: Array<{ 
+      tankId: string | { _id: string; name: string }; 
+      liters: number; 
+      compartment: string 
+    }>;
+    farmId: string;
+    collectionCompany?: string;
+    driver?: string;
+    cisternLicensePlate?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { theme, resolvedTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [totalLiters, setTotalLiters] = useState<number>(0);
 
   const ticketColor = resolvedTheme === 'dark' ? '#111827' : '#ffffff';
@@ -60,7 +75,7 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
           
           // Calculate total liters
           if (data.litersPerTank && data.litersPerTank.length > 0) {
-            const total = data.litersPerTank.reduce((sum: number, tank: any) => sum + parseFloat(tank.liters || 0), 0);
+            const total = data.litersPerTank.reduce((sum: number, tank: { liters: number }) => sum + parseFloat(tank.liters?.toString() || '0'), 0);
             setTotalLiters(total);
           }
         } catch (error) {
@@ -193,15 +208,17 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
                     <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-1" />
                     <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-300">Detalle por tanques</h3>
                   </div>                  <div className="space-y-2">
-                    {collection.litersPerTank.map((tank: any, index: number) => (
+                    {collection.litersPerTank.map((tank, index: number) => (
                       <div key={index} className="p-3 rounded-lg border shadow-sm bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/50">
                         <div className="flex justify-between items-center">
                           <div>
-                            <p className="font-semibold text-gray-800 dark:text-gray-100">{tank.tankId?.name || '—'}</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">
+                              {typeof tank.tankId === 'string' ? tank.tankId : tank.tankId?.name || '—'}
+                            </p>
                             <p className="text-xs text-gray-600 dark:text-gray-400">{tank.compartment ? `Compartimento: ${tank.compartment}` : 'Compartimento único'}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-lg text-blue-600 dark:text-blue-400">{parseFloat(tank.liters).toLocaleString('es-ES')} L</p>
+                            <p className="font-bold text-lg text-blue-600 dark:text-blue-400">{tank.liters.toLocaleString('es-ES')} L</p>
                           </div>
                         </div>
                       </div>

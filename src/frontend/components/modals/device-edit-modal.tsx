@@ -29,7 +29,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
   });
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmFilter, setFarmFilter] = useState('');
-  const [equipments, setEquipments] = useState<any[]>([]);
+  const [equipments, setEquipments] = useState<Array<{ _id: string; name: string; type: string }>>([]);
   const [equipmentFilter, setEquipmentFilter] = useState('');
   const [loading, setLoading] = useState(true);
 

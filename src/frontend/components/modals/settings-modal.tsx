@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUserContext';
 import { notifyProfileUpdate, getUserLocalData } from '@/services/user-service';
 import { useTheme } from 'next-themes';
-import { cn } from '@/lib/utils';
+
 
 export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { data: session } = useSession();
@@ -175,19 +176,19 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     applyThemeColor(preset);
   };
 
-  const handleHueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleHueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = { ...primaryColor, hue: parseInt(e.target.value, 10) };
     setPrimaryColor(newColor);
     applyThemeColor(newColor);
   };
 
-  const handleSaturationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleSaturationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = { ...primaryColor, saturation: parseInt(e.target.value, 10) };
     setPrimaryColor(newColor);
     applyThemeColor(newColor);
   };
 
-  const handleLightnessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleLightnessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = { ...primaryColor, lightness: parseInt(e.target.value, 10) };
     setPrimaryColor(newColor);
     applyThemeColor(newColor);
@@ -207,7 +208,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     window.dispatchEvent(new CustomEvent('theme-color-changed', { detail: color }));
   };
 
-  const handleColorFieldMouseDown = useCallback((e: React.MouseEvent) => {
+  const _handleColorFieldMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isDraggingRef.current = true;
 
@@ -230,7 +231,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     applyThemeColor(newColor);
   }, [primaryColor]);
 
-  const handleColorFieldMouseMove = useCallback((e: React.MouseEvent) => {
+  const _handleColorFieldMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDraggingRef.current) return;
 
     const rect = colorFieldRef.current?.getBoundingClientRect();
@@ -252,7 +253,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     applyThemeColor(newColor);
   }, [primaryColor]);
 
-  const handleColorFieldMouseUp = useCallback(() => {
+  const _handleColorFieldMouseUp = useCallback(() => {
     isDraggingRef.current = false;
   }, []);
 
@@ -638,10 +639,12 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
                               aria-label={`Seleccionar tema ${option.label}`}
                             >
                               <div className="aspect-video w-full overflow-hidden rounded-lg bg-background">
-                                <img
+                                <Image
                                   src={option.image}
                                   alt={`Vista previa del tema ${option.label}`}
                                   className="w-full h-full object-cover"
+                                  width={200}
+                                  height={113}
                                 />
                               </div>
                             </button>
