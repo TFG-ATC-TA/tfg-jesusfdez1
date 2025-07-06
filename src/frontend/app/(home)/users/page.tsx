@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Plus } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { User } from '@/types/index';
 import { columns } from '@/components/tables/user-tables/columns';
@@ -13,7 +12,6 @@ import UserAddModal from '@/components/modals/user-add-modal';
 import {CellAction} from '@/components/tables/user-tables/cell-action';
 
 const UserClient: React.FC = () => {
-  const router = useRouter();
   const { data: session } = useSession();
   const [data, setData] = useState<User[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);

@@ -3,13 +3,12 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, Home, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Home } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
 export default function Error({
   error,
-  reset,
 }: {
   error: Error & { digest?: string }
   reset: () => void

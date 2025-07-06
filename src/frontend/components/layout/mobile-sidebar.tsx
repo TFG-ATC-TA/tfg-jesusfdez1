@@ -19,9 +19,11 @@ import { Badge } from '@/components/ui/badge';
 import { roleColors } from '@/constants/data';
 import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/user-service';
 
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string;
+}
 
-export function MobileSidebar({ className }: SidebarProps) {
+export function MobileSidebar({ }: SidebarProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();

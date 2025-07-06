@@ -1,21 +1,16 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Farm } from '@/types/index';
 import PageContainer from '@/components/layout/page-container';
 import NotificationsList from '@/components/ui/notifications-list';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const UserClient: React.FC = () => {
-  const router = useRouter();
   const { data: session } = useSession();
-  const [data, setData] = useState<Farm[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [notificationsStats, setNotificationsStats] = useState({
     total: 0,
     info: 0,
@@ -23,7 +18,6 @@ const UserClient: React.FC = () => {
     error: 0,
     unread: 0
   });
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
 
   // Información de las tarjetas
@@ -98,8 +92,7 @@ const UserClient: React.FC = () => {
         if (!response.ok) {
           throw new Error('Error al obtener granjas');
         }
-        const fetchedData: Farm[] = await response.json();
-        setData(fetchedData);
+        // Farm data fetched successfully
       } catch (error) {
         console.error('Error al obtener granjas:', error);
       }
@@ -110,9 +103,10 @@ const UserClient: React.FC = () => {
     fetchNotificationStats();
 
     // Escuchar actualizaciones de notificaciones desde el componente de lista
-    const handleNotificationsUpdate = (event: any) => {
-      if (event.detail) {
-        setNotificationsStats(event.detail);
+    const handleNotificationsUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        setNotificationsStats(customEvent.detail);
       }
     };
 
@@ -124,7 +118,7 @@ const UserClient: React.FC = () => {
 
   useEffect(() => {
     if (session?.accessToken) {
-      setIsLoading(false);
+      // Session loaded successfully
     }
   }, [session]);
   

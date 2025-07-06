@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable } from '@/components/ui/data-table'
-import { User, MilkCollection, Equipment } from '@/types'
+import { User, MilkCollection, Equipment, Farm } from '@/types'
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { columnsAlternative } from '@/components/tables/user-tables/columns';
 import { columns as milkCollectionColumns } from '@/components/tables/milk-collection-tables/columns';
@@ -23,11 +23,7 @@ import { CellAction } from "@/components/tables/milk-collection-tables/cell-acti
 import EquipmentAddModal from "@/components/modals/equipment-add-modal"
 import Statistics from "./farm-statistics"
 
-interface AdminViewProps {
-  farmData: any;
-}
-
-export default function AdminView({ farmData }: AdminViewProps) {
+export default function AdminView({ farmData }: { farmData: Farm }) {
   const { data: session } = useSession()
   
   // Users state
@@ -53,7 +49,6 @@ export default function AdminView({ farmData }: AdminViewProps) {
   const [equipmentTotalPages, setEquipmentTotalPages] = useState(1);
 
   // Common state
-  const [activeTab, setActiveTab] = useState("overview");
   const isFetchingRef = useRef<string | false>(false);
 
   const filterOptions = {
@@ -223,7 +218,7 @@ export default function AdminView({ farmData }: AdminViewProps) {
           </div>
         </div>
         
-        <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab}>
+        <Tabs defaultValue="overview" className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <TabsList className="w-full sm:w-auto">
               <TabsTrigger value="overview">Vista general</TabsTrigger>

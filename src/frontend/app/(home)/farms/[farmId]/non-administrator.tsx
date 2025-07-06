@@ -20,13 +20,9 @@ import MilkCollectionAddModal from "@/components/modals/milk-collection-add-moda
 import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
 import Statistics from "./farm-statistics"
 import { getColumns as getEquipmentColumns } from '@/components/tables/equipment-tables/columns';
-import { Equipment } from '@/types';
+import { Equipment, Farm } from '@/types';
 
-interface NonAdminViewProps {
-  farmData: any;
-}
-
-export default function NonAdminView({ farmData }: NonAdminViewProps) {
+export default function NonAdminView({ farmData }: { farmData: Farm }) {
   const { data: session } = useSession()
 
   // Milk collections state

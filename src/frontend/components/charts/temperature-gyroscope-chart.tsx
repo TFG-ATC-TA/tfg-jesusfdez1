@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from "react"
-import { createChart, ColorType, type Time } from "lightweight-charts"
+import { createChart, ColorType, type Time, type IChartApi, type ISeriesApi } from "lightweight-charts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer } from "@/components/ui/chart"
 import { useTheme } from "next-themes"
@@ -47,8 +47,8 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   systemTheme,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<any>(null)
-  const seriesRef = useRef<any>({})
+  const chartRef = useRef<IChartApi | null>(null)
+  const seriesRef = useRef<Record<string, ISeriesApi<'Line'>>>({})
 
   useEffect(() => {
     if (!chartContainerRef.current) return
@@ -265,7 +265,11 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
 
         const combinedData: { [key: string]: DataPoint } = {}
 
-        probeData?.forEach((item: any) => {
+        probeData?.forEach((item: {
+          _time: string;
+          _field: string;
+          _value: number;
+        }) => {
           const timestamp = new Date(item._time).getTime()
           if (!combinedData[timestamp]) {
             combinedData[timestamp] = {
@@ -282,7 +286,11 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
           }
         })
 
-        gyroData?.forEach((item: any) => {
+        gyroData?.forEach((item: {
+          _time: string;
+          _field: string;
+          _value: number;
+        }) => {
           const timestamp = new Date(item._time).getTime()
           if (!combinedData[timestamp]) {
             combinedData[timestamp] = {
@@ -298,6 +306,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
         setData(Object.values(combinedData).sort((a, b) => a.timestamp - b.timestamp))
         setFetchError(Object.values(combinedData).length === 0)
       } catch (error) {
+        console.error('Error fetching temperature and gyroscope data:', error);
         setFetchError(true)
       } finally {
         setIsLoading(false)

@@ -8,12 +8,9 @@ import { PaperPlaneIcon } from "@radix-ui/react-icons";
 import DairyTimeline from "@/components/charts/dairy-timeline-chart";
 import AirQualityChart from "@/components/charts/air-quality-chart";
 import AccelerometerChart from "@/components/charts/accelerometer-chart";
+import { Farm } from '@/types';
 
-interface statisticsProps {
-  farmData: any;
-}
-
-export default function Statistics({ farmData }: statisticsProps) {
+export default function Statistics({ farmData }: { farmData: Farm }) {
   // Ref para el CalendarDateRangePicker
   const dateRangePickerRef = useRef<CalendarDateRangePickerRef>(null);
   

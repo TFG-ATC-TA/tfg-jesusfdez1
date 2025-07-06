@@ -42,11 +42,11 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
     type: [...filterOptions.type],
   });
 
-  const handleFilterChange = (filters: Record<string, string[]>) => {
+  const _handleFilterChange = (filters: Record<string, string[]>) => {
     setSelectedFilters(filters);
   };
 
-  const fetchDevices = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '') => {
+  const _fetchDevices = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '') => {
     if (!session?.accessToken || !farmId) {
       return;
     }

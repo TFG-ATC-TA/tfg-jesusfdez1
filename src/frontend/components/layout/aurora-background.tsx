@@ -157,10 +157,10 @@ export const AuroraBackground = ({
   // Función para calcular un color con contraste garantizado
   const getContrastColor = (hue: number, baseSaturation: number, baseLightness: number, isLight: boolean) => {
     // Ajustar la saturación para colores con poco contraste
-    let saturation = Math.max(baseSaturation, 50); // Mínimo 50% de saturación
+    const saturation = Math.max(baseSaturation, 50); // Mínimo 50% de saturación
     
     // Ajustar la luminosidad según modo claro/oscuro
-    let lightness = isLight 
+    const lightness = isLight 
       ? Math.min(Math.max(baseLightness + 15, 60), 85) // Entre 60% y 85% para modo claro
       : Math.min(Math.max(baseLightness - 15, 15), 40); // Entre 15% y 40% para modo oscuro
     

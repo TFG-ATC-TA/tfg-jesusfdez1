@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { createChart, ColorType, type Time, type LineData } from "lightweight-charts"
+import { createChart, ColorType, type Time, type LineData, type IChartApi, type ISeriesApi } from "lightweight-charts"
 import { ChartContainer } from "@/components/ui/chart"
 import { useTheme } from "next-themes"
 import { AlertTriangle, Wifi, WifiOff } from "lucide-react"
@@ -27,8 +27,8 @@ interface AccelChartRendererProps {
 
 const AccelChartRenderer: React.FC<AccelChartRendererProps> = ({ data, theme, systemTheme }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<any>(null)
-  const seriesRef = useRef<any>({})
+  const chartRef = useRef<IChartApi | null>(null)
+  const seriesRef = useRef<Record<string, ISeriesApi<'Line'>>>({})
 
   useEffect(() => {
     if (!chartContainerRef.current) return
@@ -186,7 +186,14 @@ export default function AccelerometerChart({ bucket }: { bucket: string }) {
           throw new Error("Los datos recibidos no están en el formato esperado")
         }
 
-        const newDataPoints = rawData.payload.map((item: any) => ({
+        const newDataPoints = rawData.payload.map((item: {
+          timestamp: number;
+          fields: {
+            accel_x: number;
+            accel_y: number;
+            accel_z: number;
+          };
+        }) => ({
           timestamp: Math.floor(item.timestamp),
           accel_x: item.fields.accel_x,
           accel_y: item.fields.accel_y,

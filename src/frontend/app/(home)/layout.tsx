@@ -1,7 +1,6 @@
 'use client'
 
 import { useSession } from "next-auth/react"
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
@@ -15,7 +14,6 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const { data: session, status } = useSession()
-  const router = useRouter()
   const [serverUnavailable, setServerUnavailable] = useState(false)
 
   useEffect(() => {
@@ -24,7 +22,7 @@ export default function DashboardLayout({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
         
-        const response = await fetch('/api/auth/session', {
+        await fetch('/api/auth/session', {
           method: 'GET',
           cache: 'no-cache',
           signal: controller.signal
@@ -34,6 +32,7 @@ export default function DashboardLayout({
         // Si el servidor responde, aunque sea con error, está disponible
         setServerUnavailable(false);
       } catch (error) {
+        console.error('Server unavailable:', error);
         // Si no puede conectar con el servidor, redirigir a página offline estática
         setServerUnavailable(true);
         window.location.href = '/offline.html';
