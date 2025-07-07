@@ -145,8 +145,7 @@ router.get('/listTanks', verifyToken, async (req, res) => {
 router.post('/', verifyToken, async (req, res) => {
   try {
     let { name, type, description, farm, devices, associatedTanks } = req.body;
-    
-    // Trim input fields
+// Trim input fields
     name = name ? name.trim() : '';
     description = description ? description.trim() : '';
     
@@ -251,11 +250,14 @@ router.put('/:id', verifyToken, async (req, res) => {
       equipment.devices = devices;
     }
     
-    // Actualizar tanques asociados si se proporcionan y el tipo es "Estación de lavado"
-    if (type === "Estación de lavado" && associatedTanks && Array.isArray(associatedTanks)) {
-      equipment.associatedTanks = associatedTanks;
-    } else if (type !== "Estación de lavado") {
-      // Si no es estación de lavado, limpiar los tanques asociados
+    // Manejar tanques asociados según el tipo del equipo
+    if (equipment.type === "Estación de lavado") {
+      // Solo permitir tanques asociados si se proporcionan y el tipo es "Estación de lavado"
+      if (associatedTanks && Array.isArray(associatedTanks)) {
+        equipment.associatedTanks = associatedTanks;
+      }
+    } else {
+      // Si no es estación de lavado, limpiar siempre los tanques asociados
       equipment.associatedTanks = [];
     }
     

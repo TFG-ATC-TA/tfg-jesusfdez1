@@ -54,7 +54,7 @@ deviceSchema.pre('save', async function(next) {
         if (oldDevice.equipment) {
           await mongoose.model('Equipment').updateOne(
             { _id: oldDevice.equipment },
-            { $unset: { device: oldDevice._id } }
+            { $pull: { devices: oldDevice._id } }
           );
         }
       }
@@ -70,7 +70,7 @@ deviceSchema.pre('save', async function(next) {
       if (this.equipment) {
         await mongoose.model('Equipment').updateOne(
           { _id: this.equipment },
-          { $set: { device: this._id } }
+          { $addToSet: { devices: this._id } }
         );
       }
   
@@ -80,16 +80,26 @@ deviceSchema.pre('save', async function(next) {
     }
   });
 
-deviceSchema.pre('remove', async function(next) {
+deviceSchema.pre(['remove', 'deleteOne', 'findOneAndDelete', 'findByIdAndDelete'], async function(next) {
     try {
-        await mongoose.model('Farm').updateOne(
-            { devices: this._id },
-            { $pull: { devices: this._id } }
-        );
-        await mongoose.model('Equipment').updateOne(
-            { device: this._id },
-            { $unset: { device: "" } }
-        );
+        let deviceId = this._id;
+        
+        // Para operaciones de query, obtener el documento
+        if (!deviceId) {
+            const doc = await this.model.findOne(this.getQuery());
+            if (doc) deviceId = doc._id;
+        }
+        
+        if (deviceId) {
+            await mongoose.model('Farm').updateOne(
+                { devices: deviceId },
+                { $pull: { devices: deviceId } }
+            );
+            await mongoose.model('Equipment').updateOne(
+                { devices: deviceId },
+                { $pull: { devices: deviceId } }
+            );
+        }
         next();
     } catch (err) {
         next(err);

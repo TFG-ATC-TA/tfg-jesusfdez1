@@ -15,6 +15,10 @@ var equipmentSchema = new Schema({
         required: true,
         enum: ["Tanque de leche", "Estación de lavado"]
     },
+    description: {
+        type: String,
+        required: false
+    },
     farm: {
         type: Schema.Types.ObjectId,
         ref: 'Farm'
@@ -31,9 +35,27 @@ var equipmentSchema = new Schema({
                 const equipment = await mongoose.model('Equipment').findById(v);
                 return equipment && equipment.type === "Tanque de leche";
             },
-            message: 'Solo los tanques de leche pueden tener asociados tanques'
+            message: 'Solo los tanques de leche pueden ser asociados'
         }
     }]
+});
+
+// Validación pre-save para verificar que solo estaciones de lavado pueden tener tanques asociados
+equipmentSchema.pre('save', function(next) {
+    if (this.associatedTanks && this.associatedTanks.length > 0 && this.type !== 'Estación de lavado') {
+        const error = new Error('Solo las estaciones de lavado pueden tener tanques asociados');
+        error.name = 'ValidationError';
+        error.errors = {
+            associatedTanks: {
+                message: 'Solo las estaciones de lavado pueden tener tanques asociados',
+                name: 'ValidatorError',
+                path: 'associatedTanks',
+                value: this.associatedTanks
+            }
+        };
+        return next(error);
+    }
+    next();
 });
 
 module.exports = mongoose.model('Equipment', equipmentSchema);

@@ -128,6 +128,13 @@ router.get('/list', verifyToken, async (req, res) => {
           query.farm = null;
         }
       }
+    } else if (farmFilter === 'all') {
+      // Para 'all', solo mostrar notificaciones que tengan farm asignado
+      if (isAdmin) {
+        query.farm = { $ne: null };
+      } else {
+        query.farm = { $in: farmIds };
+      }
     } else if (!farmFilter || farmFilter === '') {
       // Si no se proporciona filtro de granja, no devolver notificaciones
       query.farm = null;

@@ -112,7 +112,7 @@ router.get('/listName', verifyToken, async (req, res) => {
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const farm = await Farm.findById(id).select('_id name idname');
+    const farm = await Farm.findById(id).select('_id name idname users');
     
     if (!farm) {
       return res.status(404).json({ message: 'Granja no encontrada' });
@@ -120,10 +120,17 @@ router.get('/:id', verifyToken, async (req, res) => {
 
     // Verificar que el usuario tenga acceso a esta granja
     if (req.user.role !== 'Administrador' && !farm.users.includes(req.user.id)) {
-      return res.status(403).json({ message: 'No tienes acceso a esta granja' });
+      return res.status(403).json({ message: 'No tienes permisos para acceder a esta granja' });
     }
 
-    res.json(farm);
+    // No incluir usuarios en la respuesta por seguridad
+    const farmResponse = {
+      _id: farm._id,
+      name: farm.name,
+      idname: farm.idname
+    };
+
+    res.json(farmResponse);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener la granja: ' + error.message });
   }

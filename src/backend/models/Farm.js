@@ -30,20 +30,23 @@ var farmSchema = new Schema({
   }],
 });
 
-farmSchema.pre('remove', async function(next) {
+farmSchema.pre(['findOneAndDelete', 'deleteOne', 'remove'], async function(next) {
   try {
-      await User.updateMany(
-          { farms: this._id },
-          { $pull: { farms: this._id } }
+      // Para deleteOne/findOneAndDelete necesitamos obtener el documento primero
+      const farmId = this.getQuery()._id;
+      
+      await mongoose.model('User').updateMany(
+          { farms: farmId },
+          { $pull: { farms: farmId } }
       );
 
-      await Equipment.updateMany(
-          { farm: this._id },
+      await mongoose.model('Equipment').updateMany(
+          { farm: farmId },
           { $unset: { farm: "" } }
       );
 
-      await Device.updateMany(
-          { farm: this._id },
+      await mongoose.model('Device').updateMany(
+          { farm: farmId },
           { $unset: { farm: "" } }
       );
 
@@ -60,30 +63,30 @@ farmSchema.pre('save', async function(next) {
           // Eliminar referencias antiguas
           const oldFarm = await this.constructor.findById(this._id);
           if (oldFarm) {
-              await User.updateMany(
+              await mongoose.model('User').updateMany(
                   { farms: oldFarm._id },
                   { $pull: { farms: oldFarm._id } }
               );
-              await Equipment.updateMany(
+              await mongoose.model('Equipment').updateMany(
                   { farm: oldFarm._id },
                   { $unset: { farm: "" } }
               );
-              await Device.updateMany(
+              await mongoose.model('Device').updateMany(
                   { farm: oldFarm._id },
                   { $unset: { farm: "" } }
               );
           }
 
           // Agregar nuevas referencias
-          await User.updateMany(
+          await mongoose.model('User').updateMany(
               { _id: { $in: this.users } },
               { $addToSet: { farms: this._id } }
           );
-          await Equipment.updateMany(
+          await mongoose.model('Equipment').updateMany(
               { _id: { $in: this.equipments } },
               { $set: { farm: this._id } }
           );
-          await Device.updateMany(
+          await mongoose.model('Device').updateMany(
               { _id: { $in: this.devices } },
               { $set: { farm: this._id } }
           );

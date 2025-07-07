@@ -80,7 +80,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       mountedRef.current = true;
-      setInitialLoading(true);
+      _setInitialLoading(true);
       setEquipmentInfo({
         name: '',
         type: '',
@@ -326,7 +326,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     }
     
     try {
-      setInitialLoading(true);
+      _setInitialLoading(true);
       
       // Cargar dispositivos y tanques en paralelo
       await Promise.all([
@@ -339,7 +339,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
       console.error("Error al cargar datos iniciales:", error);
     } finally {
       if (mountedRef.current) {
-        setInitialLoading(false);
+        _setInitialLoading(false);
       }
     }
   }, [isOpen, farmId, session, fetchDevices, fetchTanks, devicesSearchTerm, tanksSearchTerm]);
@@ -528,7 +528,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
                               filters={["type"]}
                               filterOptions={deviceTypeFilterOptions}
                               onFilterChange={handleFilterChange}
-                              loading={loading}
+                              _loading={loading}
                               key={`device-table-${equipmentInfo.type}`}
                             />
                           </div>

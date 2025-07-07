@@ -2,8 +2,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 module.exports.verifyToken = async function (req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ message: 'Acceso denegado. No hay token proporcionado.' });
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ message: 'Acceso denegado. No hay token proporcionado.' });
+
+  // Extraer el token del header "Bearer <token>"
+  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

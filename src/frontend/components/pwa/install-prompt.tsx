@@ -91,7 +91,7 @@ export default function PWAInstallPrompt() {
             <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg">
                 <div className="flex items-center justify-between p-3">
                     <div className="flex items-center space-x-2 flex-1 min-w-0">
-                        <Download className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <Download className="h-5 w-5 text-primary flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                 Instalar Lactokeeper
@@ -131,7 +131,7 @@ export default function PWAInstallPrompt() {
             </button>
             
             <div className="flex items-start space-x-3 pr-6">
-                <Download className="h-6 w-6 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
+                <Download className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
                         Instalar Lactokeeper

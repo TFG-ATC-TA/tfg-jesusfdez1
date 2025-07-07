@@ -4,6 +4,7 @@
 /src/backend/.env
 /src/backend/node_modules
 /src/backend/logs
+/src/backend/coverage/
 
 #POBLADOR
 /others/populate-mongodb/node_modules

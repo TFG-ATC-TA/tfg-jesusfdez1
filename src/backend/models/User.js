@@ -104,11 +104,14 @@ userSchema.pre('save', async function(next) {
     }
 });
 
-userSchema.pre('remove', async function(next) {
+userSchema.pre(['remove', 'deleteOne', 'findOneAndDelete', 'findByIdAndDelete'], async function(next) {
     try {
-        await Farm.updateMany(
-            { users: this._id },
-            { $pull: { users: this._id } }
+        // Para métodos estáticos, necesitamos acceder al _id de manera diferente
+        const userId = this.getQuery ? this.getQuery()._id : this._id;
+        
+        await mongoose.model('Farm').updateMany(
+            { users: userId },
+            { $pull: { users: userId } }
         );
         next();
     } catch (err) {

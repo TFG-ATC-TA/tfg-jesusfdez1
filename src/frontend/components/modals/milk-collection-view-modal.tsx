@@ -13,11 +13,11 @@ import { Badge } from "@/components/ui/badge";
 
 interface MilkCollectionViewModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
   collectionId: string;
 }
 
-export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = ({ isOpen, onClose, collectionId }) => {  const { data: session } = useSession();
+export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = ({ isOpen, onCloseAction, collectionId }) => {  const { data: session } = useSession();
   const [collection, setCollection] = useState<{
     _id: string;
     date: string;
@@ -85,7 +85,7 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
             description: error instanceof Error ? error.message : "Error desconocido al cargar los datos",
             variant: "destructive",
           });
-          onClose();
+          onCloseAction();
         } finally {
           setLoading(false);
         }
@@ -97,7 +97,8 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
 
   if (loading || !collection) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-transparent border-none shadow-none [&>button]:bg-white dark:[&>button]:bg-gray-900 [&>button]:rounded-lg [&>button]:shadow">
+      <Dialog open={isOpen} onOpenChange={onCloseAction}>       
+       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-transparent border-none shadow-none [&>button]:bg-white dark:[&>button]:bg-gray-900 [&>button]:rounded-lg [&>button]:shadow">
           <div className="bg-transparent max-w-lg mx-auto relative overflow-hidden">
             <div className="sawtooth"></div>
             <div className="bg-white dark:bg-gray-900 px-1 py-3">
@@ -113,7 +114,7 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>      <style jsx global>{`
+    <Dialog open={isOpen} onOpenChange={onCloseAction}>      <style jsx global>{`
         .dialog-overlay {
           background-color: rgba(0, 0, 0, 0.5) !important;
         }
