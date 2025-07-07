@@ -1,23 +1,43 @@
-# Tests del Backend
+# Suite de Tests del Backend
 
-Esta carpeta contiene la suite completa de tests para el backend de la aplicación de gestión de granjas.
+Este directorio contiene la suite completa de tests para el backend de la aplicación de gestión de granjas.
+
+## ✅ Estado Actual
+
+**269 tests pasando** • **15 suites de test** • **0 tests fallando** • **72% cobertura global**
+
+### Cobertura por Área:
+- **Models**: 86% - Excelente cobertura
+- **Routes**: 70% - Buena cobertura de funcionalidades críticas  
+- **Middleware**: 100% - Cobertura completa
+- **Config**: 83% - Bien cubierto
 
 ## Estructura de Tests
 
 ```
 tests/
-├── setup.js                 # Configuración global de tests
+├── setup.js                     # Configuración global de tests
 ├── utils/
-│   └── testHelpers.js       # Utilidades para testing
-├── models/                  # Tests de modelos
-│   ├── User.test.js        # Tests del modelo User
-│   ├── Farm.test.js        # Tests del modelo Farm
-│   ├── Device.test.js      # Tests del modelo Device
-│   └── Equipment.test.js   # Tests del modelo Equipment
-├── routes/                  # Tests de rutas
-│   ├── user.test.js        # Tests de rutas de usuario
-│   └── farm.test.js        # Tests de rutas de granja
-├── middleware/              # Tests de middleware
+│   ├── testHelpers.js           # Utilidades para testing  
+│   └── console.test.js          # Tests de utilidades (2 tests)
+├── models/                      # Tests de modelos (80 tests total)
+│   ├── User.test.js            # Tests del modelo User (11 tests)
+│   ├── Farm.test.js            # Tests del modelo Farm (10 tests)
+│   ├── Device.test.js          # Tests del modelo Device (12 tests)
+│   ├── Equipment.test.js       # Tests del modelo Equipment (15 tests)
+│   ├── Collection.test.js      # Tests del modelo Collection (14 tests)
+│   └── Notification.test.js    # Tests del modelo Notification (18 tests)
+├── routes/                      # Tests de rutas (155 tests total)
+│   ├── user.test.js            # Tests de rutas de usuario (22 tests)
+│   ├── farm.test.js            # Tests de rutas de granja (24 tests)
+│   ├── device.test.js          # Tests de rutas de dispositivo (22 tests)
+│   ├── equipment.test.js       # Tests de rutas de equipo (30 tests)
+│   ├── collection.test.js      # Tests de rutas de colección (30 tests)
+│   └── notification.test.js    # Tests de rutas de notificación (27 tests)
+├── middleware/                  # Tests de middleware (10 tests)
+│   └── auth.test.js            # Tests de autenticación (10 tests)
+└── app.test.js                 # Tests de integración (16 tests)
+```
 │   └── auth.test.js        # Tests de autenticación
 ├── utils/                   # Tests de utilidades
 │   └── console.test.js     # Tests del sistema de console

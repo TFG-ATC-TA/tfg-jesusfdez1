@@ -8,7 +8,13 @@
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand",
     "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand",
-    "test:setup": "node tests/verify-setup.js"
+    "test:setup": "node tests/verify-setup.js",
+    "test:models": "cross-env NODE_ENV=test jest --runInBand tests/models/",
+    "test:routes": "cross-env NODE_ENV=test jest --runInBand tests/routes/",
+    "test:middleware": "cross-env NODE_ENV=test jest --runInBand tests/middleware/",
+    "test:user": "cross-env NODE_ENV=test jest --runInBand tests/routes/user.test.js tests/models/User.test.js --forceExit",
+    "test:silent": "cross-env NODE_ENV=test jest --runInBand --silent",
+    "test:retry": "cross-env NODE_ENV=test jest --runInBand --maxWorkers=1 --forceExit --detectOpenHandles"
   },
   "dependencies": {
     "@influxdata/influxdb-client": "^1.35.0",

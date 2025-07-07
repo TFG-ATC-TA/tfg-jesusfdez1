@@ -36,6 +36,12 @@ router.post('/login', loginLimiter, async (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
   const timestamp = new Date().toISOString();
 
+  // Validación básica
+  if (!email || !password) {
+    logger.info(`${timestamp} | ${email || 'NO_EMAIL'} | ${ip} | VALIDATION_FAIL`);
+    return res.status(400).json({ message: 'Email y contraseña son requeridos.' });
+  }
+
   try {
     const user = await User.findOne({ email });
     if (!user) {

@@ -67,18 +67,6 @@ userSchema.methods.comparePassword = function (candidatePassword, cb) {
     });
 };
 
-userSchema.pre('remove', async function(next) {
-    try {
-        await Farm.updateMany(
-            { users: this._id },
-            { $pull: { users: this._id } }
-        );
-        next();
-    } catch (err) {
-        next(err);
-    }
-});
-
 userSchema.pre('save', async function(next) {
     try {
         if (this.isModified('farms')) {
@@ -86,14 +74,14 @@ userSchema.pre('save', async function(next) {
             // Eliminar referencias antiguas
             const oldUser = await this.constructor.findById(this._id);
             if (oldUser) {
-                await Farm.updateMany(
+                await mongoose.model('Farm').updateMany(
                     { users: oldUser._id },
                     { $pull: { users: oldUser._id } }
                 );
             }
 
             // Agregar nuevas referencias
-            await Farm.updateMany(
+            await mongoose.model('Farm').updateMany(
                 { _id: { $in: this.farms } },
                 { $addToSet: { users: this._id } }
             );

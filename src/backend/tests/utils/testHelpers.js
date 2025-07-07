@@ -9,7 +9,7 @@ const Notification = require('../../models/Notification');
 /**
  * Genera un token JWT para testing
  */
-const generateToken = (user) => {
+const generateToken = (user, expiresIn = '1h') => {
   return jwt.sign(
     { 
       user: { 
@@ -19,7 +19,7 @@ const generateToken = (user) => {
       } 
     },
     process.env.JWT_SECRET,
-    { expiresIn: '1h' }
+    { expiresIn }
   );
 };
 
@@ -27,33 +27,67 @@ const generateToken = (user) => {
  * Crea un usuario de prueba
  */
 const createTestUser = async (userData = {}) => {
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(7);
   const defaultUser = {
     name: 'Test User',
     surname: 'Test Surname',
-    email: 'test@example.com',
+    email: userData.email || `test-${timestamp}-${randomId}@example.com`,
     passwordHash: 'TestPassword123',
     role: 'Ganadero'
   };
 
-  const user = new User({ ...defaultUser, ...userData });
-  await user.save();
-  return user;
+  try {
+    const user = new User({ ...defaultUser, ...userData });
+    await user.save();
+    return user;
+  } catch (error) {
+    // Si hay error de email duplicado, intentar con otro email
+    if (error.code === 11000) {
+      const retryUser = {
+        ...defaultUser,
+        ...userData,
+        email: `test-retry-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`
+      };
+      const user = new User(retryUser);
+      await user.save();
+      return user;
+    }
+    throw error;
+  }
 };
 
 /**
  * Crea un usuario administrador de prueba
  */
 const createTestAdmin = async (userData = {}) => {
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(7);
   const adminData = {
     name: 'Admin User',
     surname: 'Admin Surname',
-    email: 'admin@example.com',
+    email: userData.email || `admin-${timestamp}-${randomId}@example.com`,
     passwordHash: 'AdminPassword123',
-    role: 'Administrador',
-    ...userData
+    role: 'Administrador'
   };
 
-  return await createTestUser(adminData);
+  try {
+    const admin = new User({ ...adminData, ...userData });
+    await admin.save();
+    return admin;
+  } catch (error) {
+    if (error.code === 11000) {
+      const retryAdmin = {
+        ...adminData,
+        ...userData,
+        email: `admin-retry-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`
+      };
+      const admin = new User(retryAdmin);
+      await admin.save();
+      return admin;
+    }
+    throw error;
+  }
 };
 
 /**

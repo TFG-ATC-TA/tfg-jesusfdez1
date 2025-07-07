@@ -82,10 +82,21 @@ farmSchema.pre('save', async function(next) {
               { _id: { $in: this.users } },
               { $addToSet: { farms: this._id } }
           );
-          await mongoose.model('Equipment').updateMany(
-              { _id: { $in: this.equipments } },
-              { $set: { farm: this._id } }
-          );
+          
+          // Verificar si el modelo Equipment existe antes de usarlo
+          try {
+            const Equipment = mongoose.model('Equipment');
+            await Equipment.updateMany(
+                { _id: { $in: this.equipments } },
+                { $set: { farm: this._id } }
+            );
+          } catch (error) {
+            // Si el modelo no está registrado, simplemente ignorar
+            if (error.name !== 'MissingSchemaError') {
+              throw error;
+            }
+          }
+          
           await mongoose.model('Device').updateMany(
               { _id: { $in: this.devices } },
               { $set: { farm: this._id } }
