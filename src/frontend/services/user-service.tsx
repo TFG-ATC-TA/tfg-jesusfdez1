@@ -14,6 +14,103 @@ export type UserProfileUpdate = {
   role?: string;
 };
 
+// Definición de tipos para el UserService
+export interface User {
+  id: string;
+  name: string;
+  surname?: string;
+  email: string;
+  role: 'Ganadero' | 'Administrador' | 'Veterinario';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UserListResponse {
+  data: User[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface UserQueryParams {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+  role?: string;
+}
+
+// Servicio de usuarios
+export const UserService = {
+  async getUsers(params: UserQueryParams = {}): Promise<UserListResponse> {
+    const searchParams = new URLSearchParams();
+    
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.searchTerm) searchParams.append('searchTerm', params.searchTerm);
+    if (params.role) searchParams.append('role', params.role);
+
+    const response = await fetch(`/api/user/list?${searchParams.toString()}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  async getUserById(id: string): Promise<User> {
+    const response = await fetch(`/api/user/${id}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  async createUser(userData: Partial<User>): Promise<User> {
+    const response = await fetch('/api/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  async updateUser(id: string, userData: Partial<User>): Promise<User> {
+    const response = await fetch(`/api/user/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    const response = await fetch(`/api/user/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+  },
+};
+
 // Clave para almacenar los datos de usuario en localStorage
 const USER_DATA_KEY = 'lactokeeper-user-data';
 

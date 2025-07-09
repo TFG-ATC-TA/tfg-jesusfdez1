@@ -19,7 +19,7 @@ type DataPoint = {
   gyroX: number | null
 }
 
-interface TemperatureProbeChartProps {
+interface TemperatureGyroscopeProps {
   bucket: string
   startDate?: Date
   endDate?: Date
@@ -175,7 +175,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   return <div ref={chartContainerRef} className="h-[355px] w-full" />
 }
 
-const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, startDate, endDate }) => {
+const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket, startDate, endDate }) => {
   const [data, setData] = useState<DataPoint[]>([])
   const [showSurfaceTemp, setShowSurfaceTemp] = useState(true)
   const [showOverSurfaceTemp, setShowOverSurfaceTemp] = useState(true)
