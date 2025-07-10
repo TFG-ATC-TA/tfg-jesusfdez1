@@ -17,6 +17,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # La variable de entorno es necesaria para que el build no falle
 ENV NEXT_TELEMETRY_DISABLED=1
+# Configurar variables de entorno para el build
+ARG NEXTAUTH_SECRET
+ARG NEXTAUTH_URL
+ARG NEXT_PUBLIC_API_URL
+ARG INTERNAL_API_URL
+ARG NEXT_PUBLIC_WSS_URL
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
+ENV NEXT_PUBLIC_WSS_URL=$NEXT_PUBLIC_WSS_URL
 RUN npm run build
 
 # Etapa de producción final

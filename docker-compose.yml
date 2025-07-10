@@ -41,6 +41,12 @@ services:
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
+      args:
+        NEXTAUTH_SECRET: unaclavesecretabuenaParagenerarTokens1234
+        NEXTAUTH_URL: http://localhost:3000
+        NEXT_PUBLIC_API_URL: http://localhost:5001
+        INTERNAL_API_URL: http://backend:5001
+        NEXT_PUBLIC_WSS_URL: ws://localhost:5001
     ports:
       - "3000:3000"
     working_dir: /app
@@ -50,8 +56,9 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://localhost:5001
-      - INTERNAL_API_URL=http://localhost:5001
+      - INTERNAL_API_URL=http://backend:5001
       - NEXTAUTH_SECRET=unaclavesecretabuenaParagenerarTokens1234
+      - NEXTAUTH_URL=http://localhost:3000
       - NEXT_PUBLIC_WSS_URL=ws://localhost:5001
 
     depends_on:
