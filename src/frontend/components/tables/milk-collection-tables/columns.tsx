@@ -25,6 +25,6 @@ export const columns: ColumnDef<MilkCollection>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => <CellAction data={row.original} onRefresh={() => {}} />
+    cell: ({ row }) => <CellAction data={row.original} onRefreshAction={() => {}} />
   }
 ];

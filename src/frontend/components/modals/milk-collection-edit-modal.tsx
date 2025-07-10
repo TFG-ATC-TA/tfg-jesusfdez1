@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,16 +34,16 @@ interface TankCollection {
 
 interface MilkCollectionEditModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
   collectionId: string;
-  onRefresh: () => void;
+  onRefreshAction: () => void;
 }
 
 export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = ({ 
   isOpen, 
-  onClose, 
+  onCloseAction, 
   collectionId, 
-  onRefresh 
+  onRefreshAction 
 }) => {
   const { data: session } = useSession();
   const [collectionInfo, setCollectionInfo] = useState({
@@ -116,7 +116,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
             description: error instanceof Error ? error.message : "Error desconocido al cargar los datos",
             variant: "destructive",
           });
-          onClose();
+          onCloseAction();
         } finally {
           setLoading(false);
         }
@@ -126,7 +126,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     }
   }, [isOpen, session, collectionId]);
 
-  const fetchTanks = async (farmId: string) => {
+  const fetchTanks = useCallback(async (farmId: string) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?farmId=${farmId}`, {
         method: 'GET',
@@ -151,7 +151,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
         variant: "destructive",
       });
     }
-  };
+  }, [session?.accessToken, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value, type } = e.target;
@@ -228,8 +228,8 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
           description: "Recogida de leche actualizada con éxito",
           variant: "success",
         });
-        onClose();
-        onRefresh();
+        onCloseAction();
+        onRefreshAction();
       } catch (error) {
         console.error('Error al actualizar la recogida de leche:', error);
         toast({
@@ -273,8 +273,8 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
         variant: "success",
       });
       setShowDeleteAlert(false);
-      onClose();
-      onRefresh();
+      onCloseAction();
+      onRefreshAction();
     } catch (error) {
       console.error('Error al eliminar la recogida de leche:', error);
       toast({
@@ -294,7 +294,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
 
   if (loading) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={onCloseAction}>
         <DialogContent className="sm:max-w-[800px] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
           <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
             <DialogTitle className="text-lg font-bold">Editar recogida de leche</DialogTitle>
@@ -309,7 +309,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={onCloseAction}>
         <DialogContent className="sm:max-w-[800px] h-[80vh] sm:h-[80vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
           <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
             <DialogTitle className="text-lg font-bold">Editar recogida de leche</DialogTitle>
@@ -429,7 +429,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
                                 <Label>Tanque <span className="text-red-500">*</span></Label>
                                 <Select 
                                   value={tank.tankId._id} 
-                                  onValueChange={(value) => handleTankChange(index, 'tankId', { _id: value })}
+                                  onValueChange={(value) => handleTankChange(index, 'tankId', value)}
                                 >
                                   <SelectTrigger className="bg-white dark:bg-gray-800 text-black dark:text-white">
                                     <SelectValue placeholder="Seleccionar tanque" />
@@ -440,7 +440,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
                                         key={t._id} 
                                         value={t._id}
                                       >
-                                        {t.name}
+                                        {t.identifier}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import PageContainer from '@/components/layout/page-container';
 import NotificationsList from '@/components/ui/notifications-list';
@@ -48,7 +48,7 @@ const UserClient: React.FC = () => {
     }
   };
 
-  const fetchNotificationStats = async () => {
+  const fetchNotificationStats = useCallback(async () => {
     if (!session?.accessToken) {
       console.error('No hay sesión iniciada');
       return;
@@ -73,30 +73,30 @@ const UserClient: React.FC = () => {
     } catch (error) {
       console.error('Error al obtener estadísticas de notificaciones:', error);
     }
-  };
+  }, [session?.accessToken]);
 
-    const fetchFarms = async () => {
-      if (!session?.accessToken) {
-        console.error('No hay sesión iniciada');
-        return;
-      }
+  const fetchFarms = useCallback(async () => {
+    if (!session?.accessToken) {
+      console.error('No hay sesión iniciada');
+      return;
+    }
 
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${session.accessToken}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Error al obtener granjas');
-        }
-        // Farm data fetched successfully
-      } catch (error) {
-        console.error('Error al obtener granjas:', error);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Error al obtener granjas');
       }
-    };
+      // Farm data fetched successfully
+    } catch (error) {
+      console.error('Error al obtener granjas:', error);
+    }
+  }, [session?.accessToken]);
     
   useEffect(() => {
     fetchFarms();
@@ -110,11 +110,24 @@ const UserClient: React.FC = () => {
       }
     };
 
+    // Escuchar cambios en el estado de lectura de notificaciones
+    const handleReadStatusChange = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        setNotificationsStats(customEvent.detail);
+      }
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('notificationsUpdated', handleNotificationsUpdate);
-      return () => window.removeEventListener('notificationsUpdated', handleNotificationsUpdate);
+      window.addEventListener('notificationReadStatusChanged', handleReadStatusChange);
+      
+      return () => {
+        window.removeEventListener('notificationsUpdated', handleNotificationsUpdate);
+        window.removeEventListener('notificationReadStatusChanged', handleReadStatusChange);
+      };
     }
-  }, [session]);
+  }, [session, fetchFarms, fetchNotificationStats]);
 
   useEffect(() => {
     if (session?.accessToken) {

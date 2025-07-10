@@ -57,9 +57,9 @@ describe('Utility Functions', () => {
       expect(result).toBe('')
     })
 
-    it('handles complex combinations', () => {
+    it('handles complex combinations with conditional classes', () => {
       const isActive = true
-      const size: 'large' | 'small' = 'large'
+      const isLarge = true
       
       const result = cn(
         'base-class',
@@ -69,11 +69,30 @@ describe('Utility Functions', () => {
           'inactive': !isActive,
           'disabled': false
         },
-        size === 'large' && 'large-class',
-        size === 'small' && 'small-class'
+        isLarge && 'large-class',
+        !isLarge && 'small-class'
       )
       
       expect(result).toBe('base-class component-class active large-class')
+    })
+
+    it('handles small size scenario', () => {
+      const isActive = true
+      const isLarge = false
+      
+      const result = cn(
+        'base-class',
+        'component-class',
+        {
+          'active': isActive,
+          'inactive': !isActive,
+          'disabled': false
+        },
+        isLarge && 'large-class',
+        !isLarge && 'small-class'
+      )
+      
+      expect(result).toBe('base-class component-class active small-class')
     })
 
     it('handles tailwind-like class merging scenario', () => {

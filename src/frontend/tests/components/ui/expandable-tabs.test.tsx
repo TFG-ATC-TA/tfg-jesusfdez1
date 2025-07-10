@@ -173,8 +173,8 @@ describe('ExpandableTabs Component', () => {
       expect(buttons[2]).toHaveClass('bg-primary', 'text-primary-foreground')
     })
 
-    it('should handle no active tab when activeIndex is null', () => {
-      render(<ExpandableTabs tabs={basicTabs} activeIndex={null} />)
+    it('should handle no active tab when activeIndex is undefined', () => {
+      render(<ExpandableTabs tabs={basicTabs} activeIndex={undefined} />)
 
       const buttons = screen.getAllByRole('button')
       

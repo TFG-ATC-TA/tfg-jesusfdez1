@@ -15,7 +15,9 @@ const handler = NextAuth({
         }
 
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+          // Use internal URL for server-side calls in Docker, fallback to public URL
+          const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL
+          const res = await fetch(`${apiUrl}/login`, {
             method: 'POST',
             body: JSON.stringify(credentials),
             headers: { "Content-Type": "application/json" }

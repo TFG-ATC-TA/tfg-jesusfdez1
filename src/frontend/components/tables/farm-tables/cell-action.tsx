@@ -66,7 +66,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
         description: "Granja eliminada correctamente",
         variant: "success",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error al eliminar la granja",
         variant: "destructive",

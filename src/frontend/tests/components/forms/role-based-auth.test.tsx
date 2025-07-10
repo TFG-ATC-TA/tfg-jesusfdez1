@@ -119,7 +119,7 @@ describe('Sign In Form - Roles del Sistema Lactokeeper', () => {
   describe('Redirección post-autenticación', () => {
     test('should redirect users based on their role', () => {
       function getPostLoginRedirect(role: string) {
-        const redirectMap = {
+        const redirectMap: { [key: string]: string } = {
           'Ganadero': '/dashboard/mis-granjas',
           'Administrador': '/dashboard/administracion', 
           'Veterinario': '/dashboard/salud-animal'
@@ -221,7 +221,7 @@ describe('Sign In Form - Roles del Sistema Lactokeeper', () => {
 
 // Función auxiliar para obtener permisos por rol
 function getPermissionsForRole(role: string): string[] {
-  const permissionMap = {
+  const permissionMap: { [key: string]: string[] } = {
     'Ganadero': [
       'view_own_farms',
       'manage_own_devices',

@@ -27,10 +27,10 @@ import { MilkCollection } from '@/types';
 
 interface CellActionProps {
   data: MilkCollection;
-  onRefresh: () => void;
+  onRefreshAction: () => void;
 }
 
-export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
+export const CellAction: React.FC<CellActionProps> = ({ data, onRefreshAction }) => {
   const { data: session } = useSession();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -60,7 +60,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
         throw new Error(`Error: ${response.statusText}`);
       }
 
-      onRefresh();
+      onRefreshAction();
       
       toast({
         description: "Recogida de leche eliminada correctamente",
@@ -79,14 +79,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
     <>
       <MilkCollectionEditModal
         isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
+        onCloseAction={() => setShowEditModal(false)}
         collectionId={data._id}
-        onRefresh={onRefresh}
+        onRefreshAction={onRefreshAction}
       />
       
       <MilkCollectionViewModal 
         isOpen={showViewModal}
-        onClose={() => setShowViewModal(false)}
+        onCloseAction={() => setShowViewModal(false)}
         collectionId={data._id}
       />
 

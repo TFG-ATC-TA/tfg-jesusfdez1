@@ -90,7 +90,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     if (passwords.new === '' && passwords.confirm === '') return true;
     // Otherwise, needs to match and have enough strength
     return passwords.new === passwords.confirm && strengthScore >= 3;
-  }, [passwords, passwordsMatch, strengthScore]);
+  }, [passwords, strengthScore]);
 
   // Controlador de cambio de página separado para evitar actualizaciones conflictivas
   const handlePageChange = useCallback((newPage: number) => {

@@ -197,7 +197,7 @@ const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isS
   );
 };
 
-const _PageSelector = ({ table }: { table: Record<string, unknown> }) => {
+const _PageSelector = ({ table }: { table: any }) => {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
 
@@ -245,6 +245,15 @@ export default function NotificationsList() {
     hasNext: false,
     hasPrev: false
   })
+  
+  // Estado para rastrear las estadísticas actuales
+  const [currentStats, setCurrentStats] = useState({
+    total: 0,
+    info: 0,
+    warning: 0,
+    error: 0,
+    unread: 0
+  });
   
   // Variables para el control de paginación y filtros como en DataTable
   const [pageChangeTriggered, setPageChangeTriggered] = useState(false)
@@ -348,6 +357,9 @@ export default function NotificationsList() {
         hasPrev: data.pagination.hasPrev
       });
 
+      // Actualizar estadísticas locales
+      setCurrentStats(data.stats);
+
       // Disparar evento personalizado para actualizar estadísticas en la página principal
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('notificationsUpdated', { 
@@ -363,7 +375,7 @@ export default function NotificationsList() {
   };
 
   // Marcar notificación como leída
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (notificationId: string, skipLocalUpdate = false) => {
     if (!session?.accessToken) return;
 
     try {
@@ -375,15 +387,34 @@ export default function NotificationsList() {
         },
       });
 
-      if (response.ok) {
-        // Actualizar localmente
-        setNotificationData(prev => 
-          prev.map(notification => 
+      if (response.ok && !skipLocalUpdate) {
+        // Actualizar localmente solo si no se debe saltar la actualización local
+        setNotificationData(prev => {
+          const updatedData = prev.map(notification => 
             notification.id === notificationId 
               ? { ...notification, read: true, readDate: new Date().toISOString() }
               : notification
-          )
-        );
+          );
+          
+          return updatedData;
+        });
+        
+        // Actualizar estadísticas locales (solo decrementar unread)
+        setCurrentStats(prev => {
+          const newStats = {
+            ...prev,
+            unread: Math.max(0, prev.unread - 1)
+          };
+          
+          // Disparar evento personalizado para actualizar estadísticas en la página principal
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('notificationReadStatusChanged', { 
+              detail: newStats 
+            }));
+          }
+          
+          return newStats;
+        });
       }
     } catch (error) {
       console.error('Error al marcar notificación como leída:', error);
@@ -489,9 +520,41 @@ export default function NotificationsList() {
     if (notificationData.length > 0) {
       const timer = setTimeout(() => {
         const unreadNotifications = notificationData.filter(n => !n.read);
-        unreadNotifications.forEach(notification => {
-          markAsRead(notification.id);
-        });
+        if (unreadNotifications.length > 0) {
+          // Marcar todas las notificaciones no leídas de una vez
+          const unreadIds = unreadNotifications.map(n => n.id);
+          
+          // Actualizar el estado local primero
+          setNotificationData(prev => 
+            prev.map(notification => 
+              unreadIds.includes(notification.id)
+                ? { ...notification, read: true, readDate: new Date().toISOString() }
+                : notification
+            )
+          );
+          
+          // Actualizar estadísticas locales
+          setCurrentStats(prev => {
+            const newStats = {
+              ...prev,
+              unread: Math.max(0, prev.unread - unreadNotifications.length)
+            };
+            
+            // Disparar evento personalizado para actualizar estadísticas en la página principal
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('notificationReadStatusChanged', { 
+                detail: newStats 
+              }));
+            }
+            
+            return newStats;
+          });
+          
+          // Enviar las peticiones al servidor de forma asíncrona (con skipLocalUpdate=true)
+          unreadNotifications.forEach(notification => {
+            markAsRead(notification.id, true);
+          });
+        }
       }, 3000);
 
       return () => clearTimeout(timer);

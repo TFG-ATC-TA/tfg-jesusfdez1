@@ -37,4 +37,4 @@ RUN npm ci --omit=dev
 EXPOSE 3000
 
 # Iniciar la aplicación
-CMD ["npm", "start"]
+CMD ["sh", "-c", "NODE_ENV=production npm run start:docker"]

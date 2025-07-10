@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const { InfluxDB } = require('@influxdata/influxdb-client');
 const mqtt = require('mqtt');
 require('dotenv').config();
+const User = require('../models/User');
 
 // Importar el sistema de console personalizado
 const devConsole = require('../utils/console');
@@ -12,6 +13,22 @@ const connectMongoDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     devConsole.log('MongoDB connected successfully');
+    
+    // Crear usuario administrador si es la primera vez que se accede a la base de datos
+    const adminExists = await User.findOne({ role: 'Administrador' });
+    
+    if (!adminExists) {
+      const adminUser = new User({
+        name: 'Administrador',
+        surname: 'Sistema',
+        email: 'admin@admin.com',
+        passwordHash: '1234567aA', // Se encriptará automáticamente por el pre-save hook
+        role: 'Administrador',
+        farms: [] // Los administradores no tienen granjas según la validación
+      });
+      
+      await adminUser.save();
+    }
   } catch (error) {
     devConsole.error('Error connecting to MongoDB:', error);
     process.exit(1);

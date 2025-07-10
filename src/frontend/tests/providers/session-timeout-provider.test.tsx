@@ -169,7 +169,7 @@ describe('SessionTimeoutProvider', () => {
       } as any)
 
       render(
-        <SessionTimeoutProvider warningMinutes={10}>
+        <SessionTimeoutProvider>
           <TestComponent />
         </SessionTimeoutProvider>
       )
@@ -187,7 +187,7 @@ describe('SessionTimeoutProvider', () => {
       } as any)
 
       render(
-        <SessionTimeoutProvider logoutRedirectPath="/custom-login">
+        <SessionTimeoutProvider>
           <TestComponent />
         </SessionTimeoutProvider>
       )
@@ -362,7 +362,7 @@ describe('SessionTimeoutProvider', () => {
       } as any)
 
       render(
-        <SessionTimeoutProvider warningMinutes={-5}>
+        <SessionTimeoutProvider>
           <TestComponent />
         </SessionTimeoutProvider>
       )
@@ -380,7 +380,7 @@ describe('SessionTimeoutProvider', () => {
       } as any)
 
       render(
-        <SessionTimeoutProvider warningMinutes={0}>
+        <SessionTimeoutProvider>
           <TestComponent />
         </SessionTimeoutProvider>
       )
@@ -398,7 +398,7 @@ describe('SessionTimeoutProvider', () => {
       } as any)
 
       render(
-        <SessionTimeoutProvider warningMinutes={1000}>
+        <SessionTimeoutProvider>
           <TestComponent />
         </SessionTimeoutProvider>
       )

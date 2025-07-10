@@ -140,7 +140,7 @@ export default function NonAdminView({ farmData }: { farmData: Farm }) {
         <Tabs defaultValue="overview" className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="overview">Vista general</TabsTrigger>
+              <TabsTrigger value="overview">General</TabsTrigger>
               <TabsTrigger value="analytics">Estadísticas</TabsTrigger>
             </TabsList>
           </div>
@@ -165,7 +165,7 @@ export default function NonAdminView({ farmData }: { farmData: Farm }) {
                     if (column.id === 'actions') {
                       return {
                         ...column,
-                        cell: ({ row }) => <CellAction data={row.original} onRefresh={fetchMilkCollections} />
+                        cell: ({ row }) => <CellAction data={row.original} onRefreshAction={fetchMilkCollections} />
                       };
                     }
                     return column;

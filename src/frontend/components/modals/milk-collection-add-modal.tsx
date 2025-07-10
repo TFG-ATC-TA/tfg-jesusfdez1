@@ -343,7 +343,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                                 </SelectTrigger>
                                 <SelectContent>
                                   {tanks.map(t => (
-                                    <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
+                                    <SelectItem key={t._id} value={t._id}>{t.identifier}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>

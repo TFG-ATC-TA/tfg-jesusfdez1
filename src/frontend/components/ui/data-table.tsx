@@ -291,7 +291,7 @@ export function DataTable<TData>({
           {showSearchBar && <DataTableSearch value={globalFilter} onChange={handleSearch} />}
           <DataTableFilters
             filters={filters}
-            data={data}
+            data={data as Record<string, unknown>[]}
             selectedFilters={selectedFiltersState}
             onFilterChange={memoizedHandleFilterChange}
             filterOptions={filterOptions}

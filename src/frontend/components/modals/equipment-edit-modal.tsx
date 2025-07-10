@@ -703,7 +703,7 @@ const deviceColumns = [
                               filters={["type"]}
                               filterOptions={deviceTypeFilterOptions}
                               onFilterChange={handleFilterChange}
-                              loading={loading}
+                              _loading={loading}
                               key={`device-table-${equipmentInfo.type}`}
                             />
                           </div>
@@ -735,7 +735,7 @@ const deviceColumns = [
                               totalItems={tanksTotalItems} 
                               containerClassName="w-full border rounded-md shadow-sm"
                               showSearchBar={true}
-                              loading={loading}
+                              _loading={loading}
                               key="tank-table"
                             />
                           </div>

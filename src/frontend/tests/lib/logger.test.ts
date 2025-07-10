@@ -21,7 +21,7 @@ describe('Logger Utility', () => {
 
   afterEach(() => {
     // Restore original NODE_ENV
-    process.env.NODE_ENV = originalEnv
+    ;(process.env as any).NODE_ENV = originalEnv
     
     // Restore console methods
     jest.restoreAllMocks()
@@ -29,7 +29,7 @@ describe('Logger Utility', () => {
 
   describe('Development environment', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development'
+      ;(process.env as any).NODE_ENV = 'development'
     })
 
     it('should log messages in development', () => {
@@ -77,7 +77,7 @@ describe('Logger Utility', () => {
 
   describe('Production environment', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'production'
+      ;(process.env as any).NODE_ENV = 'production'
     })
 
     it('should not log messages in production', () => {
@@ -113,7 +113,7 @@ describe('Logger Utility', () => {
 
   describe('Other environments', () => {
     it('should not log in test environment', () => {
-      process.env.NODE_ENV = 'test'
+      ;(process.env as any).NODE_ENV = 'test'
       
       logger.log('Test message')
       
@@ -121,7 +121,7 @@ describe('Logger Utility', () => {
     })
 
     it('should not log in staging environment', () => {
-      process.env.NODE_ENV = 'staging'
+      ;(process.env as any).NODE_ENV = 'staging'
       
       logger.log('Test message')
       
@@ -129,7 +129,7 @@ describe('Logger Utility', () => {
     })
 
     it('should not log when NODE_ENV is undefined', () => {
-      delete process.env.NODE_ENV
+      delete (process.env as any).NODE_ENV
       
       logger.log('Test message')
       
@@ -149,7 +149,7 @@ describe('Logger Utility', () => {
 
   describe('Data types handling', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development'
+      ;(process.env as any).NODE_ENV = 'development'
     })
 
     it('should handle strings', () => {
