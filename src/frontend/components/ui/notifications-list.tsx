@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { logger } from '@/lib/logger'
 import {
@@ -197,7 +197,7 @@ const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isS
   );
 };
 
-const _PageSelector = ({ table }: { table: any }) => {
+const _PageSelector = ({ table }: { table: { getState: () => { pagination: { pageIndex: number } }; getPageCount: () => number; setPageIndex: (index: number) => void } }) => {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
 
@@ -247,7 +247,7 @@ export default function NotificationsList() {
   })
   
   // Estado para rastrear las estadísticas actuales
-  const [currentStats, setCurrentStats] = useState({
+  const [_currentStats, setCurrentStats] = useState({
     total: 0,
     info: 0,
     warning: 0,
@@ -266,10 +266,10 @@ export default function NotificationsList() {
     prevGlobalFilterRef.current = globalFilter;
     prevSelectedTypeFiltersRef.current = selectedTypeFilters;
     prevSelectedFarmFiltersRef.current = selectedFarmFilters;
-  }, []);
+  }, [globalFilter, selectedTypeFilters, selectedFarmFilters]);
 
   // Función para obtener las granjas disponibles
-  const fetchFarms = async () => {
+  const fetchFarms = useCallback(async () => {
     if (!session?.accessToken) return;
 
     try {
@@ -290,10 +290,10 @@ export default function NotificationsList() {
     } catch (error) {
       console.error('Error al obtener granjas:', error);
     }
-  };
+  }, [session?.accessToken]);
 
   // Función para obtener notificaciones del servidor
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!session?.accessToken) return;
 
     setIsLoading(true);
@@ -372,10 +372,10 @@ export default function NotificationsList() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.accessToken, pagination.pageIndex, pagination.pageSize, globalFilter, selectedTypeFilters, selectedFarmFilters]);
 
   // Marcar notificación como leída
-  const markAsRead = async (notificationId: string, skipLocalUpdate = false) => {
+  const markAsRead = useCallback(async (notificationId: string, skipLocalUpdate = false) => {
     if (!session?.accessToken) return;
 
     try {
@@ -419,7 +419,7 @@ export default function NotificationsList() {
     } catch (error) {
       console.error('Error al marcar notificación como leída:', error);
     }
-  };
+  }, [session?.accessToken]);
 
   // Funciones auxiliares para el manejo de paginación y búsqueda (similar a DataTable)
   const handlePageChange = (newPage: number) => {
@@ -438,7 +438,7 @@ export default function NotificationsList() {
     if (session?.accessToken) {
       fetchFarms();
     }
-  }, [session]);
+  }, [session, fetchFarms]);
 
   // Actualizar pageIndex cuando serverPagination.currentPage cambia
   useEffect(() => {
@@ -513,7 +513,7 @@ export default function NotificationsList() {
   // Efecto para cargar datos cuando cambian los filtros o paginación
   useEffect(() => {
     fetchNotifications();
-  }, [session, pagination.pageIndex, pagination.pageSize, globalFilter, selectedTypeFilters, selectedFarmFilters]);
+  }, [session, pagination.pageIndex, pagination.pageSize, globalFilter, selectedTypeFilters, selectedFarmFilters, fetchNotifications]);
 
   // Auto-marcar como leídas después de 3 segundos
   useEffect(() => {
@@ -559,7 +559,7 @@ export default function NotificationsList() {
 
       return () => clearTimeout(timer);
     }
-  }, [notificationData]);
+  }, [notificationData, markAsRead]);
 
   const columns: ColumnDef<Notification>[] = [
     {

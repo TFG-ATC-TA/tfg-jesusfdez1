@@ -105,7 +105,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     setPage(1);
   }, []);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!session?.accessToken) {
       console.error('No hay sesión iniciada');
       toast({
@@ -147,7 +147,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
       });
       onClose(); // Close the modal since we can't load the data
     }
-  };
+  }, [session?.accessToken, userId, toast, onClose]);
 
   const fetchFarms = useCallback(async () => {
     if (!session?.accessToken || isFetchingRef.current) {
@@ -193,13 +193,13 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     } finally {
       isFetchingRef.current = false;
     }
-  }, [session, searchTerm]);
+  }, [session, searchTerm, toast]);
 
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserData();
     }
-  }, [isOpen, session, userId]);
+  }, [isOpen, session, userId, fetchUserData]);
 
   useEffect(() => {
     if (isOpen) {

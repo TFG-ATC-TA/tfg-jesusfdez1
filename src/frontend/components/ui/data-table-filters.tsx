@@ -92,7 +92,7 @@ export function DataTableFilters({ filters, data, selectedFilters, onFilterChang
   // Update key when selectedFilters changes to force re-render
   useEffect(() => {
     setFilterKey(prev => prev + 1);
-  }, [JSON.stringify(selectedFilters)]);
+  }, [selectedFilters]);
 
   return (
     <div className="flex space-x-2">

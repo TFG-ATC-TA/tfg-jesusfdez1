@@ -86,7 +86,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       };
       fetchDeviceData();
     }
-  }, [isOpen, session, deviceId]);
+  }, [isOpen, session, deviceId, onClose, toast]);
 
   useEffect(() => {
     if (isOpen && farms.length === 0) {
@@ -126,7 +126,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       };
       fetchFarms();
     }
-  }, [isOpen, session, farms.length]);
+  }, [isOpen, session, farms.length, toast]);
 
   useEffect(() => {
     if (isOpen && equipments.length === 0) {
@@ -166,7 +166,7 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       };
       fetchEquipments();
     }
-  }, [isOpen, session, equipments.length]);
+  }, [isOpen, session, equipments.length, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setDeviceInfo({ ...deviceInfo, [e.target.id]: e.target.value });

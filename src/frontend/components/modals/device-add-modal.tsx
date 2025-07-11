@@ -89,7 +89,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
         variant: "destructive",
       });
     }
-  }, [session, selectedFilters]);
+  }, [session, selectedFilters, toast]);
 
   useEffect(() => {
     if (isOpen && farms.length === 0) {
@@ -129,7 +129,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       };
       fetchFarms();
     }
-  }, [isOpen, session, farms.length]);
+  }, [isOpen, session, farms.length, toast]);
 
   useEffect(() => {
     if (isOpen && equipments.length === 0) {
@@ -169,7 +169,7 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       };
       fetchEquipments();
     }
-  }, [isOpen, session, equipments.length]);
+  }, [isOpen, session, equipments.length, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setDeviceInfo({ ...deviceInfo, [e.target.id]: e.target.value });

@@ -93,7 +93,7 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
       
       fetchCollectionData();
     }
-  }, [isOpen, session, collectionId]);
+  }, [isOpen, session, collectionId, onCloseAction, toast]);
 
   if (loading || !collection) {
     return (

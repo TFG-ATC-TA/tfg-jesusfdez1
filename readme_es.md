@@ -9,14 +9,9 @@ Aplicación web de código abierto para la gestión de vaquerías, dispositivos 
 # Lactokeeper
 
 > [!NOTE]
-> **🇬🇧 English**: To read this document in English, visit [README.md](README.md)
+> **English**: To read this document in English, visit [README.md](README.md)
 
 Este proyecto tiene como objetivo desarrollar una aplicación web para la gestión de vaquerías, equipamiento relacionado, recogidas de leche y dispositivos IoT que permiten monitorear distintos aspectos del proceso de producción láctea. La aplicación está diseñada para diferentes roles de usuario, como administradores, veterinarios y ganaderos, cada uno con permisos y vistas personalizadas.
-
-> [!NOTE]
-> _Esta plataforma online forma parte de mi Trabajo de Fin de Grado (TFG)_
-
-
 
 ## Estructura del proyecto
 
@@ -68,4 +63,4 @@ docker-compose down
 
 ## Seguridad
 
-Si crees que has encontrado una vulnerabilidad de seguridad, por favor, notifícalo de manera responsable creando un pull request o un issue en el repositorio. Investigaremos todos los reportes legítimos. 
+Si crees que has encontrado una vulnerabilidad de seguridad, por favor, notifícalo de creando un pull request o un issue en el repositorio. Investigaremos todos los avisos que recibamos. 

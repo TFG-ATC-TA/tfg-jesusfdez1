@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { createChart, ColorType, type Time, type LineData, type IChartApi, type ISeriesApi } from "lightweight-charts"
@@ -162,7 +162,7 @@ export default function AccelerometerChart({ bucket }: { bucket: string }) {
     setIsClient(true)
   }, [])
 
-  const connectWebSocket = () => {
+  const connectWebSocket = useCallback(() => {
     if (status === "loading") return
     if (!session?.accessToken) {
       setError("No hay token de autenticación disponible")
@@ -226,7 +226,7 @@ export default function AccelerometerChart({ bucket }: { bucket: string }) {
         setLoading(false)
       }
     }
-  }
+  }, [status, session?.accessToken, bucket])
 
   useEffect(() => {
     if (status === "authenticated" && session?.accessToken) {
@@ -237,7 +237,7 @@ export default function AccelerometerChart({ bucket }: { bucket: string }) {
         wsRef.current.close()
       }
     }
-  }, [session, status])
+  }, [session, status, connectWebSocket])
 
   return (
     <Card className="w-full">
