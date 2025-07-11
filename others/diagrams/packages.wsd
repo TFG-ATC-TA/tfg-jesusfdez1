@@ -1,0 +1,94 @@
+
+
+
+@startuml
+skinparam linetype ortho
+
+package "Persistencia" {
+  package "Modelos" {
+    [ Conjunto de modelos .js]  <<component>> 
+  }
+  package "Config" {
+    [connection.js] <<component>>
+  }
+}
+
+package "Negocio" {
+  package "Rutas" {
+    [Otros archivos .js] <<component>>
+    [InfluxDB.js] <<component>>
+    [MQTT.js] <<component>>
+    [PostgreSQL.js] <<component>>
+  }
+  package "Middleware" {
+    [auth.js] <<component>>
+  }
+  [www] <<component>>
+  [app.js] <<component>>  
+}
+
+package "Presentación" {
+  [layout.tsx] <<component>>
+  [global.css] <<file>>
+  [not-found.tsx] <<component>>
+  package "UI de las secciones" {
+    [page.tsx]  <<component>> 
+  }
+  package "Autenticación" {
+    [ page.tsx]  <<component>> 
+  }
+  package "Componentes UI" {
+    package "charts" <<component>>
+    package "forms" <<component>>
+    package "layout" <<component>>
+    package "modals" <<component>>
+    package "tables" <<component>>
+    package "ui" <<component>>
+  }
+  package "static" {
+    package "videos" <<file>>
+    package "images" <<file>>
+  }
+  
+  package "Constants" {
+    [data.ts] <<file>>
+  }
+}
+
+
+
+' Relaciones entre rutas y modelos
+[Rutas] ..> [Modelos]
+[InfluxDB.js] ..> [InfluxDB]
+[MQTT.js] ..> [MQTT]
+[PostgreSQL.js] ..> [PostgreSQL]
+
+' Relación entre Rutas y Config (connection.js)
+[Rutas] ..> [connection.js]
+
+[Middleware] <.. [Rutas]
+
+[Rutas] <.. [UI de las secciones]
+[Autenticación] <.. [UI de las secciones]
+[UI de las secciones] ..> [Componentes UI]
+
+' Relación entre autenticación y el dashboard
+[layout.tsx] <.. [Autenticación]
+[Autenticación] ..> [Otros archivos .js]
+[Autenticación] ..> [Componentes UI]
+
+
+
+' Conexión de static con autenticación y componentes UI
+[static] <.. [Componentes UI]
+
+' Relación de app.js con rutas
+[app.js] <.. [Rutas]  
+[app.js] ..> [www]  
+
+[layout.tsx] ..> [layout]
+
+' Relación de constants con componentes
+[Constants] <.. [Componentes UI]
+
+@enduml
