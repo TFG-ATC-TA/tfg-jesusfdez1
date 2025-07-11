@@ -12,16 +12,21 @@ import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 
 const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: string; onRefresh: () => void }> = ({ isOpen, onClose, farmId, onRefresh }) => {
-  const { data: session } = useSession();  const [farmInfo, setFarmInfo] = useState({
+  const { data: session } = useSession();
+  const [farmInfo, setFarmInfo] = useState({
     name: '',
     idname: ''
   });
   const [loading, setLoading] = useState(true);
+  const [currentFarmId, setCurrentFarmId] = useState<string | null>(null);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    if (isOpen && farmId) {
+    if (isOpen && farmId && farmId !== currentFarmId) {
+      setCurrentFarmId(farmId);
+      setLoading(true);
+      
       const fetchFarmData = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
@@ -66,15 +71,18 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
 
       fetchFarmData();
     }
-  }, [isOpen, farmId, session, toast]);
+  }, [isOpen, farmId, currentFarmId, session, toast, onClose]);
 
   const handleFarmInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFarmInfo({ ...farmInfo, [e.target.id]: e.target.value });
-  };  const resetForm = () => {
+  };
+
+  const resetForm = () => {
     setFarmInfo({
       name: '',
       idname: ''
     });
+    setCurrentFarmId(null);
   };
 
   const handleClose = () => {
@@ -131,7 +139,9 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
       };
       updateFarm();
     }
-  };  const isFormValid = farmInfo.name && farmInfo.idname;
+  };
+
+  const isFormValid = farmInfo.name && farmInfo.idname;
 
   if (loading) {
     return null; // No renderizar nada mientras se cargan los datos

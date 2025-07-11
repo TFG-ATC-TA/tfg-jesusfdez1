@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,28 +76,6 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     };
   }, []);
 
-  // Reset states when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      mountedRef.current = true;
-      _setInitialLoading(true);
-      setEquipmentInfo({
-        name: '',
-        type: '',
-        farm: farmId,
-      });
-      setSelectedDevices({});
-      setSelectedTanks({});
-      setDevicesPage(1);
-      setTanksPage(1);
-      setDevicesSearchTerm('');
-      setTanksSearchTerm('');
-      
-      // Initialize data when opening modal
-      initData();
-    }
-  }, [isOpen, farmId]);
-
   const getDeviceTypesByEquipmentType = (equipmentType: string) => {
     switch (equipmentType) {
       case "Tanque de leche":
@@ -125,13 +103,13 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     setSelectedDevices({});
   };
 
-  // Asegurar que los filtros se establecen correctamente al cambiar el tipo
-  useEffect(() => {
-    if (isOpen) {
-      const deviceTypes = getDeviceTypesByEquipmentType(equipmentInfo.type);
-      setSelectedFilters({ type: deviceTypes });
-    }
-  }, [isOpen, equipmentInfo.type]);
+  // Eliminar el useEffect problemático que causaba el ciclo infinito
+  // useEffect(() => {
+  //   if (isOpen) {
+  //     const deviceTypes = getDeviceTypesByEquipmentType(equipmentInfo.type);
+  //     setSelectedFilters({ type: deviceTypes });
+  //   }
+  // }, [isOpen, equipmentInfo.type]);
 
   // Columnas para la tabla de dispositivos
   const deviceColumns = [
@@ -159,13 +137,22 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     },
   ];
 
-  const deviceTypeFilterOptions = {
+  // Mover deviceTypeFilterOptions fuera del render para evitar recálculos
+  const deviceTypeFilterOptions = useMemo(() => ({
     type: getDeviceTypesByEquipmentType(equipmentInfo.type),
-  };
+  }), [equipmentInfo.type]);
 
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
-    type: [...deviceTypeFilterOptions.type],
+    type: getDeviceTypesByEquipmentType(equipmentInfo.type),
   });
+
+  // Sincronizar selectedFilters cuando cambie equipmentInfo.type
+  useEffect(() => {
+    if (equipmentInfo.type) {
+      const deviceTypes = getDeviceTypesByEquipmentType(equipmentInfo.type);
+      setSelectedFilters({ type: deviceTypes });
+    }
+  }, [equipmentInfo.type]);
 
   // Evitar re-renderizados innecesarios al manejar los filtros
   const handleFilterChange = useCallback((filters: Record<string, string[]>) => {
@@ -241,14 +228,14 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
         isFetchingRef.current = false;
       }
     }
-  }, [session, selectedFilters, toast]);
+  }, [session?.accessToken, selectedFilters, toast]);
 
   // Asegurar que los datos no se borren al cambiar filtros o paginación
   useEffect(() => {
-    if (isOpen && farmId) {
+    if (isOpen && farmId && equipmentInfo.type && selectedFilters.type.length > 0) {
       fetchDevices(farmId, devicesPage, devicesSearchTerm);
     }
-  }, [devicesPage, devicesSearchTerm, isOpen, farmId, fetchDevices]);
+  }, [devicesPage, devicesSearchTerm, isOpen, farmId, equipmentInfo.type, selectedFilters.type, fetchDevices]);
 
   // Optimized fetchTanks to avoid race conditions
   const fetchTanks = useCallback(async (page = 1, searchTerm = '') => {
@@ -319,30 +306,31 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     }
   }, [session, farmId, toast]);
 
-  // Inicializar carga de datos cuando se abre el modal
-  const initData = useCallback(async () => {
-    if (!isOpen || !farmId || !session?.accessToken || !mountedRef.current) {
-      return;
-    }
-    
-    try {
+  // Reset states when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      mountedRef.current = true;
       _setInitialLoading(true);
+      setEquipmentInfo({
+        name: '',
+        type: '',
+        farm: farmId,
+      });
+      setSelectedDevices({});
+      setSelectedTanks({});
+      setDevicesPage(1);
+      setTanksPage(1);
+      setDevicesSearchTerm('');
+      setTanksSearchTerm('');
       
-      // Cargar dispositivos y tanques en paralelo
-      await Promise.all([
-        fetchDevices(farmId, 1, devicesSearchTerm),
-        fetchTanks(1, tanksSearchTerm)
-      ]);
-      
-    } catch (error) {
-      if (!mountedRef.current) return;
-      console.error("Error al cargar datos iniciales:", error);
-    } finally {
-      if (mountedRef.current) {
-        _setInitialLoading(false);
+      // Solo cargar tanques al abrir el modal, los dispositivos se cargarán cuando se seleccione el tipo
+      if (session?.accessToken) {
+        fetchTanks(1, tanksSearchTerm).catch(error => {
+          console.error("Error al cargar tanques iniciales:", error);
+        });
       }
     }
-  }, [isOpen, farmId, session, fetchDevices, fetchTanks, devicesSearchTerm, tanksSearchTerm]);
+  }, [isOpen, farmId, session, fetchTanks, tanksSearchTerm]);
 
   // Manejar cambios de paginación y búsqueda para dispositivos con useCallback para evitar re-renderizados innecesarios
   const handleDevicesPageChange = useCallback((newPage: number) => {

@@ -1,64 +1,60 @@
-# Backend - Lactokeeper
+> [!NOTE]
+> Para leer este documento en español, visita [readme_es.md](README_ES.md)
 
-El backend de Lactokeeper constituye una API RESTful robusta desarrollada con Node.js y Express, diseñada para gestionar la totalidad de las funcionalidades del servidor en el sistema de gestión de granjas lecheras. Esta aplicación proporciona una interfaz de programación completa para la administración de usuarios, granjas, equipos, dispositivos IoT, recolección de datos y sistema de notificaciones.
+# Backend
+The backend of Lactokeeper is a robust RESTful API developed with Node.js and Express, designed to manage all server functionalities in the dairy farm management system. This application provides a comprehensive programming interface for the administration of users, farms, equipment, IoT devices, data collection, and notification system.
 
-## Stack tecnológico
+## Technology Stack
 
-La aplicación se fundamenta en un stack tecnológico moderno que implementa una arquitectura híbrida para el manejo eficiente de diferentes tipos de datos:
+The application is based on a modern technology stack that implements a hybrid architecture for efficient handling of different types of data:
 
 - **Backend**: Node.js + Express.js
-- **Bases de datos**: 
-  - MongoDB (NoSQL principal con Mongoose)
-  - PostgreSQL (datos relacionales)
-  - InfluxDB (series temporales de sensores IoT)
-- **Comunicación**: MQTT (dispositivos IoT) + WebSockets (tiempo real)
-- **Seguridad**: JWT + bcryptjs
+- **Databases**:
+  - MongoDB (main NoSQL with Mongoose)
+  - PostgreSQL (relational data)
+  - InfluxDB (IoT sensor time series)
+- **Communication**: MQTT (IoT devices) + WebSockets (real-time)
+- **Security**: JWT + bcryptjs
 - **Logging**: Winston
 - **Testing**: Jest
-- **Despliegue**: Docker
+- **Deployment**: Docker
 
-## Estructura del proyecto
+## Project Structure
 
-El proyecto backend se organiza siguiendo una arquitectura modular que facilita el mantenimiento y la escalabilidad del código:
+The backend project is organized following a modular architecture that facilitates code maintenance and scalability:
 
 ```
-├── app.js              # Configuración principal de Express
-├── bin/                # Punto de entrada del servidor
-├── config/             # Configuraciones (DB, logging)
-├── models/             # Esquemas Mongoose (User, Farm, Equipment, Device, Collection, Notification)
-├── routes/             # Endpoints de la API
-├── middleware/         # Autenticación y validaciones
-├── utils/              # Utilidades del sistema
-├── tests/              # Suite de pruebas automatizadas
-└── logs/               # Archivos de log
+├── app.js              # Main Express configuration
+├── bin/                # Server entry point
+├── config/             # Configurations (DB, logging)
+├── models/             # Mongoose schemas (User, Farm, Equipment, Device, Collection, Notification)
+├── routes/             # API endpoints
+├── middleware/         # Authentication and validations
+├── utils/              # System utilities
+├── tests/              # Automated test suite
+└── logs/               # Log files
 ```
 
-## Instalación y configuración
+## Installation and Setup
 
+### System Prerequisites
 
-## Instalación y configuración
+The application requires Node.js version 16 or higher as the main runtime environment. For data storage, MongoDB, PostgreSQL, and InfluxDB must be running and accessible.
 
-### Prerrequisitos del sistema
+### Installation Process
 
-La aplicación requiere Node.js versión 16 o superior como entorno de ejecución principal. Para el almacenamiento de datos es necesario disponer de MongoDB, PostgreSQL e InfluxDB en funcionamiento. 
+Start by downloading all dependencies using `npm install`. Once package installation is complete, configure and verify the correct operation of MongoDB, PostgreSQL, and InfluxDB databases, ensuring all are up and accessible.
 
-### Proceso de instalación
-
-La instalación del proyecto comienza con la descarga de todas las dependencias mediante npm install. Una vez completada la instalación de paquetes, es necesario configurar y verificar el correcto funcionamiento de las bases de datos MongoDB, PostgreSQL e InfluxDB, asegurándose de que todas estén operativas y accesibles.
-
-
-## Scripts disponibles
+## Available Scripts
 
 ```bash
-npm start               # Producción
-npm run dev            # Desarrollo (nodemon)
-npm test               # Tests completos
-npm run test:watch     # Tests en modo watch
-npm run test:coverage  # Reporte de cobertura
+npm start               # Production
+npm run dev             # Development (nodemon)
+npm test                # Full tests
+npm run test:watch      # Watch mode tests
+npm run test:coverage   # Coverage report
 ```
 
-## Contenedorización y despliegue
+## Containerization and Deployment
 
-La aplicación está preparada para despliegue mediante Docker utilizando una imagen base de Node.js Alpine. El contenedor expone el puerto 3001 por defecto y está optimizado para entornos de producción.
-
-
+The application is ready for deployment using Docker with a Node.js Alpine base image. The container exposes port 3001 by default and is optimized for production environments.
