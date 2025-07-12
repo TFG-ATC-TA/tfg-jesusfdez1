@@ -53,7 +53,7 @@ describe('User Routes', () => {
         .set('Authorization', token)
         .expect(401);
 
-      expect(response.body.message).toBe('No tienes permisos para acceder a esta información');
+      expect(response.body.message).toBe('No tienes permisos para realizar esta acción');
     });
 
     test('debería filtrar usuarios por término de búsqueda', async () => {
@@ -202,7 +202,7 @@ describe('User Routes', () => {
         .post('/user')
         .set('Authorization', token)
         .send(userData)
-        .expect(200);
+        .expect(201);
 
       expect(response.body.message).toBe('Usuario creado correctamente');
 
@@ -289,9 +289,9 @@ describe('User Routes', () => {
         .post('/user')
         .set('Authorization', token)
         .send(userData)
-        .expect(400);
+        .expect(409);
 
-      expect(response.body.message).toContain('El email introducida ya está registrado');
+      expect(response.body.message).toContain('El email introducido ya está registrado');
     });
 
     test('debería validar fortaleza de contraseña', async () => {
@@ -312,7 +312,6 @@ describe('User Routes', () => {
         .expect(400);
 
       expect(response.body.message).toBe('La contraseña no cumple con los requisitos de seguridad');
-      expect(response.body.failedRequirements).toBeDefined();
     });
 
     test('debería validar formato de nombre', async () => {
@@ -352,7 +351,7 @@ describe('User Routes', () => {
         .post('/user')
         .set('Authorization', token)
         .send(userData)
-        .expect(200);
+        .expect(201);
 
       expect(response.body.message).toBe('Usuario creado correctamente');
 

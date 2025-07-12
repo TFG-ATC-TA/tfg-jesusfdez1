@@ -343,7 +343,7 @@ describe('Notification Routes', () => {
       const response = await request(app)
         .put(`/notification/${testNotification._id}/mark-read`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes acceso a esta notificación');
     });

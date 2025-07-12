@@ -1,3 +1,8 @@
+/**
+ * Rutas principales del sistema
+ * Incluye autenticación de usuarios con rate limiting y logging
+ */
+
 var express = require('express');
 var router = express.Router();
 const cors = require('cors');
@@ -16,7 +21,11 @@ dotenv.config();
 router.use(cors());
 router.use(express.json());
 
-
+/**
+ * Configuración de rate limiting para intentos de login
+ * Limita a 5 intentos por IP en 30 minutos
+ * Penalización de 24 horas tras exceder el límite
+ */
 const loginLimiter = rateLimit({
   windowMs: 30 * 60  * 1000, // 30 minutos
   max: 5, // máximo de intentos fallidos
@@ -30,7 +39,11 @@ const loginLimiter = rateLimit({
   resetTime: 24 * 60 * 60 * 1000 // 24 horas de penalización
 });
 
-
+/**
+ * POST /login - Autenticación de usuarios
+ * Incluye rate limiting, logging detallado y generación de JWT
+ * Valida credenciales y registra intentos de acceso
+ */
 router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
   const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;

@@ -397,7 +397,7 @@ describe('Farm Routes', () => {
       const response = await request(app)
         .get(`/farm/${farm._id}`)
         .set('Authorization', token)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes permisos para acceder a esta granja');
     });
@@ -448,7 +448,7 @@ describe('Farm Routes', () => {
         .send(farmData)
         .expect(500);
 
-      expect(response.body.message).toContain('Error al crear la granja:');
+      expect(response.body.message).toContain('Error al crear la granja');
       
       // Restaurar el mock
       Farm.prototype.save.mockRestore();

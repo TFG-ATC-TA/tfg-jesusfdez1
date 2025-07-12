@@ -156,7 +156,7 @@ describe('Collection Routes', () => {
       const response = await request(app)
         .get(`/collection/list?farmId=${testFarm._id}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes acceso a esta granja');
     });
@@ -220,7 +220,7 @@ describe('Collection Routes', () => {
       const response = await request(app)
         .get(`/collection/${testCollection._id}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes acceso a esta recogida de leche');
     });
@@ -255,8 +255,8 @@ describe('Collection Routes', () => {
         .expect(201);
 
       expect(response.body.message).toBe('Recogida de leche creada con éxito');
-      expect(response.body.collection).toHaveProperty('_id');
-      expect(response.body.collection.sampleLabel).toBe('NEW_SAMPLE_001');
+      expect(response.body.data).toHaveProperty('_id');
+      expect(response.body.data.sampleLabel).toBe('NEW_SAMPLE_001');
 
       // Verificar que se creó en la BD
       const createdCollection = await Collection.findOne({ sampleLabel: 'NEW_SAMPLE_001' });
@@ -387,7 +387,7 @@ describe('Collection Routes', () => {
         .post('/collection')
         .set('Authorization', `Bearer ${userToken}`)
         .send(collectionData)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes permiso para crear recogidas en esta granja');
     });
@@ -423,9 +423,9 @@ describe('Collection Routes', () => {
         .expect(200);
 
       expect(response.body.message).toBe('Recogida de leche actualizada con éxito');
-      expect(response.body.collection.sampleLabel).toBe('UPDATED_SAMPLE');
-      expect(response.body.collection.collectionCompany).toBe('Empresa Actualizada');
-      expect(response.body.collection.milkTemperature).toBe(4.5);
+      expect(response.body.data.sampleLabel).toBe('UPDATED_SAMPLE');
+      expect(response.body.data.collectionCompany).toBe('Empresa Actualizada');
+      expect(response.body.data.milkTemperature).toBe(4.5);
 
       // Verificar en BD
       const updatedCollection = await Collection.findById(testCollection._id);
@@ -491,7 +491,7 @@ describe('Collection Routes', () => {
           sampleLabel: 'UNAUTHORIZED_UPDATE',
           farmId: testFarm._id 
         })
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes permiso para actualizar recogidas en esta granja');
     });
@@ -536,7 +536,7 @@ describe('Collection Routes', () => {
       const response = await request(app)
         .delete(`/collection/${testCollection._id}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes permiso para eliminar recogidas en esta granja');
     });

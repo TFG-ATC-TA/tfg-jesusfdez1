@@ -1,93 +1,83 @@
+/**
+ * Rutas para gestión de recolección de leche
+ * Incluye operaciones CRUD con control de acceso basado en granjas
+ */
+
 var express = require('express');
 var router = express.Router();
 const cors = require('cors');
-const { verifyToken, isAdmin } = require('../middleware/auth');
+const { verifyToken } = require('../middleware/auth');
 const Collection = require('../models/Collection');
 const Farm = require('../models/Farm');
 const Equipment = require('../models/Equipment');
 
 // Importar el sistema de console personalizado
 const devConsole = require('../utils/console');
+const { trimFields, validateRequiredFields } = require('../utils/validators');
+const { 
+  paginatedResponse, 
+  badRequest, 
+  unauthorized, 
+  forbidden,
+  notFound, 
+  conflict, 
+  internalError, 
+  created, 
+  updated, 
+  deleted 
+} = require('../utils/responseHandler');
+const { buildCompleteQuery, handlePaginatedResponse } = require('../utils/pagination');
 
-// Token generation imports
-const dotenv = require('dotenv');
-// get config vars
-dotenv.config();
 // Middleware
 router.use(cors());
 router.use(express.json());
 
-// Obtener listado de recogidas con paginación y búsqueda
+/**
+ * GET /collection/list - Obtener listado de recogidas con paginación y búsqueda
+ * Control de acceso basado en granjas del usuario
+ * Incluye filtros por granja y búsqueda por múltiples campos
+ */
 router.get('/list', verifyToken, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const searchTerm = req.query.searchTerm || '';
-    const farmId = req.query.farmId;
-
+    const searchFields = ['sampleLabel', 'collectionCompany', 'cisternLicensePlate', 'driver'];
+    let baseQuery = {};
+    
     // Si se proporciona un farmId, verificar acceso del usuario a esa granja
-    if (farmId) {
-      const farm = await Farm.findById(farmId);
+    if (req.query.farmId) {
+      const farm = await Farm.findById(req.query.farmId);
       if (!farm) {
-        return res.status(404).json({ message: 'Granja no encontrada' });
+        return notFound(res, 'Granja no encontrada');
       }
 
       const hasAccess = req.user.role === 'Administrador' || farm.users.includes(req.user.id);
       if (!hasAccess) {
-        return res.status(403).json({ message: 'No tienes acceso a esta granja' });
+        return unauthorized(res, 'No tienes acceso a esta granja');
       }
+      
+      baseQuery.farmId = req.query.farmId;
     }
 
-    // Construir query para la búsqueda
-    let query = {};
-    
-    // Si hay un farmId, buscar recogidas de esa granja
-    if (farmId) {
-      query.farmId = farmId;
-    }
-    
-    // Si hay término de búsqueda, buscar coincidencias en campos relevantes
-    if (searchTerm) {
-      query.$or = [
-        { sampleLabel: { $regex: searchTerm, $options: 'i' } },
-        { collectionCompany: { $regex: searchTerm, $options: 'i' } },
-        { cisternLicensePlate: { $regex: searchTerm, $options: 'i' } },
-        { driver: { $regex: searchTerm, $options: 'i' } }
-      ];
-    }
-
-    // Contar total de elementos que coinciden con la búsqueda
-    const totalItems = await Collection.countDocuments(query);
-    const totalPages = Math.ceil(totalItems / limit);
-    
-    // Si la página solicitada excede el total, usar la primera página
-    const adjustedPage = page > totalPages ? 1 : page;
-    const skip = (adjustedPage - 1) * limit;
-
-    // Obtener recogidas con paginación y población de referencias
-    const collections = await Collection.find(query)
-      .sort({ collectionDate: -1 }) // Ordenar por fecha descendente (más recientes primero)
-      .populate({
+    const query = buildCompleteQuery(req, searchFields, baseQuery);
+    const result = await handlePaginatedResponse(res, Collection, query, {
+      sort: { collectionDate: -1 }, // Ordenar por fecha descendente
+      populate: {
         path: 'litersPerTank.tankId',
         select: 'name',
         model: Equipment
-      })
-      .skip(skip)
-      .limit(limit);
-
-    res.json({
-      data: collections,
-      totalItems,
-      totalPages,
-      currentPage: adjustedPage
+      }
     });
+
+    return paginatedResponse(res, result.data, result.totalItems, result.totalPages, result.currentPage);
   } catch (error) {
     devConsole.error('Error al obtener recogidas de leche:', error);
-    res.status(500).json({ message: 'Error obteniendo datos de recogidas de leche' });
+    return internalError(res, 'Error obteniendo datos de recogidas de leche', error);
   }
 });
 
-// Obtener detalles de una recogida específica
+/**
+ * GET /collection/:id - Obtener detalles de una recogida específica
+ * Verifica permisos de acceso a la granja de la recogida
+ */
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -100,7 +90,7 @@ router.get('/:id', verifyToken, async (req, res) => {
       });
     
     if (!collection) {
-      return res.status(404).json({ message: 'Recogida de leche no encontrada' });
+      return notFound(res, 'Recogida de leche no encontrada');
     }
 
     // Si la colección tiene un farmId, verificar acceso
@@ -109,19 +99,23 @@ router.get('/:id', verifyToken, async (req, res) => {
       if (farm) {
         const hasAccess = req.user.role === 'Administrador' || farm.users.includes(req.user.id);
         if (!hasAccess) {
-          return res.status(403).json({ message: 'No tienes acceso a esta recogida de leche' });
+          return unauthorized(res, 'No tienes acceso a esta recogida de leche');
         }
       }
     }
 
-    res.json(collection);
+    return res.json(collection);
   } catch (error) {
     devConsole.error('Error al obtener detalles de recogida:', error);
-    res.status(500).json({ message: 'Error obteniendo detalles de la recogida de leche' });
+    return internalError(res, 'Error obteniendo detalles de la recogida de leche', error);
   }
 });
 
-// Crear una nueva recogida
+/**
+ * POST /collection - Crear una nueva recogida
+ * Incluye validaciones de campos obligatorios y permisos de granja
+ * Verifica que los tanques pertenezcan a la granja especificada
+ */
 router.post('/', verifyToken, async (req, res) => {
   try {
     const {
@@ -138,28 +132,33 @@ router.post('/', verifyToken, async (req, res) => {
     } = req.body;
 
     // Validar campos obligatorios
-    if (!collectionDate || !sampleLabel || !collectionCompany || !litersPerTank || litersPerTank.length === 0) {
-      return res.status(400).json({ 
-        message: 'La fecha, etiqueta de muestra, empresa de recogida y al menos un tanque con litros son obligatorios' 
-      });
+    const requiredFields = ['collectionDate', 'sampleLabel', 'collectionCompany', 'litersPerTank'];
+    const validation = validateRequiredFields({ collectionDate, sampleLabel, collectionCompany, litersPerTank }, requiredFields);
+    if (!validation.isValid) {
+      return badRequest(res, 'La fecha, etiqueta de muestra, empresa de recogida y al menos un tanque con litros son obligatorios');
+    }
+
+    // Validar que litersPerTank tenga al menos un elemento
+    if (!litersPerTank || litersPerTank.length === 0) {
+      return badRequest(res, 'Debe proporcionar al menos un tanque con litros');
     }
 
     // Validar que sampleLabel sea único
     const existingCollection = await Collection.findOne({ sampleLabel });
     if (existingCollection) {
-      return res.status(409).json({ message: 'Ya existe una recogida con esta etiqueta de muestra' });
+      return conflict(res, 'Ya existe una recogida con esta etiqueta de muestra');
     }
 
     // Si se proporciona un farmId, verificar que exista y que el usuario tenga acceso
     if (farmId) {
       const farm = await Farm.findById(farmId);
       if (!farm) {
-        return res.status(404).json({ message: 'Granja no encontrada' });
+        return notFound(res, 'Granja no encontrada');
       }
 
       const hasAccess = req.user.role === 'Administrador' || farm.users.includes(req.user.id);
       if (!hasAccess) {
-        return res.status(403).json({ message: 'No tienes permiso para crear recogidas en esta granja' });
+        return unauthorized(res, 'No tienes permiso para crear recogidas en esta granja');
       }
     }
 
@@ -168,14 +167,12 @@ router.post('/', verifyToken, async (req, res) => {
       if (tankEntry.tankId) {
         const tank = await Equipment.findById(tankEntry.tankId);
         if (!tank) {
-          return res.status(404).json({ message: `Tanque con ID ${tankEntry.tankId} no encontrado` });
+          return notFound(res, `Tanque con ID ${tankEntry.tankId} no encontrado`);
         }
         
         // Verificar que el tanque pertenezca a la granja proporcionada
         if (farmId && tank.farm && tank.farm.toString() !== farmId) {
-          return res.status(400).json({ 
-            message: `El tanque ${tank.name} no pertenece a la granja proporcionada` 
-          });
+          return badRequest(res, `El tanque ${tank.name} no pertenece a la granja proporcionada`);
         }
       }
     }
@@ -186,31 +183,27 @@ router.post('/', verifyToken, async (req, res) => {
       cisternLicensePlate,
       collectionCompany,
       driver,
-      tankId, // Este campo parece redundante con litersPerTank
+      tankId,
       sampleLabel,
       milkTemperature,
       inhibitorSampleTaken,
       litersPerTank,
-      farmId // Añadir referencia a la granja
+      farmId
     });
 
-    // Guardar la nueva recogida
     await newCollection.save();
     
-    res.status(201).json({
-      message: 'Recogida de leche creada con éxito',
-      collection: newCollection
-    });
+    return created(res, newCollection, 'Recogida de leche creada con éxito');
   } catch (error) {
     devConsole.error('Error al crear recogida de leche:', error);
-    res.status(500).json({ 
-      message: 'Error al crear la recogida de leche',
-      error: error.message
-    });
+    return internalError(res, 'Error al crear la recogida de leche', error);
   }
 });
 
-// Actualizar una recogida existente
+/**
+ * PUT /collection/:id - Actualizar una recogida existente
+ * Verifica permisos de acceso y valida la integridad de los datos
+ */
 router.put('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -230,19 +223,19 @@ router.put('/:id', verifyToken, async (req, res) => {
     // Buscar la recogida a actualizar
     const collection = await Collection.findById(id);
     if (!collection) {
-      return res.status(404).json({ message: 'Recogida de leche no encontrada' });
+      return notFound(res, 'Recogida de leche no encontrada');
     }
 
     // Verificar acceso a la granja
     if (farmId) {
       const farm = await Farm.findById(farmId);
       if (!farm) {
-        return res.status(404).json({ message: 'Granja no encontrada' });
+        return notFound(res, 'Granja no encontrada');
       }
 
       const hasAccess = req.user.role === 'Administrador' || farm.users.includes(req.user.id);
       if (!hasAccess) {
-        return res.status(403).json({ message: 'No tienes permiso para actualizar recogidas en esta granja' });
+        return unauthorized(res, 'No tienes permiso para actualizar recogidas en esta granja');
       }
     }
 
@@ -250,7 +243,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (sampleLabel && sampleLabel !== collection.sampleLabel) {
       const existingCollection = await Collection.findOne({ sampleLabel });
       if (existingCollection && existingCollection._id.toString() !== id) {
-        return res.status(409).json({ message: 'Ya existe otra recogida con esta etiqueta de muestra' });
+        return conflict(res, 'Ya existe otra recogida con esta etiqueta de muestra');
       }
     }
 
@@ -260,14 +253,12 @@ router.put('/:id', verifyToken, async (req, res) => {
         if (tankEntry.tankId) {
           const tank = await Equipment.findById(tankEntry.tankId);
           if (!tank) {
-            return res.status(404).json({ message: `Tanque con ID ${tankEntry.tankId} no encontrado` });
+            return notFound(res, `Tanque con ID ${tankEntry.tankId} no encontrado`);
           }
           
           // Verificar que el tanque pertenezca a la granja proporcionada
           if (farmId && tank.farm && tank.farm.toString() !== farmId) {
-            return res.status(400).json({ 
-              message: `El tanque ${tank.name} no pertenece a la granja proporcionada` 
-            });
+            return badRequest(res, `El tanque ${tank.name} no pertenece a la granja proporcionada`);
           }
         }
       }
@@ -295,20 +286,17 @@ router.put('/:id', verifyToken, async (req, res) => {
       model: Equipment
     });
 
-    res.json({
-      message: 'Recogida de leche actualizada con éxito',
-      collection: updatedCollection
-    });
+    return updated(res, updatedCollection, 'Recogida de leche actualizada con éxito');
   } catch (error) {
     devConsole.error('Error al actualizar recogida de leche:', error);
-    res.status(500).json({ 
-      message: 'Error al actualizar la recogida de leche',
-      error: error.message
-    });
+    return internalError(res, 'Error al actualizar la recogida de leche', error);
   }
 });
 
-// Eliminar una recogida
+/**
+ * DELETE /collection/:id - Eliminar una recogida
+ * Verifica permisos de acceso a la granja antes de eliminar
+ */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -316,7 +304,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     // Buscar la recogida a eliminar
     const collection = await Collection.findById(id);
     if (!collection) {
-      return res.status(404).json({ message: 'Recogida de leche no encontrada' });
+      return notFound(res, 'Recogida de leche no encontrada');
     }
 
     // Verificar acceso si hay farmId
@@ -325,7 +313,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
       if (farm) {
         const hasAccess = req.user.role === 'Administrador' || farm.users.includes(req.user.id);
         if (!hasAccess) {
-          return res.status(403).json({ message: 'No tienes permiso para eliminar recogidas en esta granja' });
+          return unauthorized(res, 'No tienes permiso para eliminar recogidas en esta granja');
         }
       }
     }
@@ -333,13 +321,10 @@ router.delete('/:id', verifyToken, async (req, res) => {
     // Eliminar la recogida
     await Collection.findByIdAndDelete(id);
     
-    res.json({ message: 'Recogida de leche eliminada con éxito' });
+    return deleted(res, 'Recogida de leche eliminada con éxito');
   } catch (error) {
     devConsole.error('Error al eliminar recogida de leche:', error);
-    res.status(500).json({ 
-      message: 'Error al eliminar la recogida de leche',
-      error: error.message
-    });
+    return internalError(res, 'Error al eliminar la recogida de leche', error);
   }
 });
 

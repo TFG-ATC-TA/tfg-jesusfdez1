@@ -246,7 +246,7 @@ describe('Equipment Routes', () => {
       const response = await request(app)
         .get(`/equipment/listTanks?farmId=${testFarm._id}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes acceso a esta granja');
     });
@@ -278,8 +278,8 @@ describe('Equipment Routes', () => {
         .expect(201);
 
       expect(response.body.message).toBe('Equipo creado con éxito');
-      expect(response.body.equipment).toHaveProperty('_id');
-      expect(response.body.equipment.name).toBe('Nuevo Tanque');
+      expect(response.body.data).toHaveProperty('_id');
+      expect(response.body.data.name).toBe('Nuevo Tanque');
 
       // Verificar que el equipo fue creado en la BD
       const createdEquipment = await Equipment.findOne({ name: 'Nuevo Tanque' });
@@ -309,8 +309,8 @@ describe('Equipment Routes', () => {
         .send(equipmentData)
         .expect(201);
 
-      expect(response.body.equipment.associatedTanks).toHaveLength(1);
-      expect(response.body.equipment.associatedTanks[0].toString()).toBe(tank._id.toString());
+      expect(response.body.data.associatedTanks).toHaveLength(1);
+      expect(response.body.data.associatedTanks[0].toString()).toBe(tank._id.toString());
     });
 
     it('should require mandatory fields', async () => {
@@ -380,7 +380,7 @@ describe('Equipment Routes', () => {
         .post('/equipment')
         .set('Authorization', `Bearer ${userToken}`)
         .send(equipmentData)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes acceso a esta granja');
     });
@@ -425,7 +425,7 @@ describe('Equipment Routes', () => {
       const response = await request(app)
         .get(`/equipment/${testEquipment._id}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes acceso a este equipo');
     });
@@ -458,7 +458,7 @@ describe('Equipment Routes', () => {
         .expect(200);
 
       expect(response.body.message).toBe('Equipo actualizado con éxito');
-      expect(response.body.equipment.name).toBe('Equipo Actualizado');
+      expect(response.body.data.name).toBe('Equipo Actualizado');
 
       // Verificar en BD
       const updatedEquipment = await Equipment.findById(testEquipment._id);
@@ -484,8 +484,8 @@ describe('Equipment Routes', () => {
         .send(updateData)
         .expect(200);
 
-      expect(response.body.equipment.type).toBe('Estación de lavado');
-      expect(response.body.equipment.associatedTanks).toHaveLength(1);
+      expect(response.body.data.type).toBe('Estación de lavado');
+      expect(response.body.data.associatedTanks).toHaveLength(1);
     });
 
     it('should clear associated tanks for non-washing stations', async () => {
@@ -511,8 +511,8 @@ describe('Equipment Routes', () => {
         .send(updateData)
         .expect(200);
 
-      expect(response.body.equipment.type).toBe('Tanque de leche');
-      expect(response.body.equipment.associatedTanks).toHaveLength(0);
+      expect(response.body.data.type).toBe('Tanque de leche');
+      expect(response.body.data.associatedTanks).toHaveLength(0);
     });
 
     it('should return 404 for non-existent equipment', async () => {
@@ -541,7 +541,7 @@ describe('Equipment Routes', () => {
         .put(`/equipment/${testEquipment._id}`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ name: 'Unauthorized Update' })
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes acceso a este equipo');
     });
@@ -585,7 +585,7 @@ describe('Equipment Routes', () => {
       const response = await request(app)
         .delete(`/equipment/${testEquipment._id}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
 
       expect(response.body.message).toBe('No tienes permisos para eliminar este equipo');
     });

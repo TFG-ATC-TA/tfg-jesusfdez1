@@ -1,6 +1,15 @@
+/**
+ * Modelo de Equipment - Gestión de equipos de la granja
+ * Maneja tanques de leche y estaciones de lavado con sus dispositivos asociados
+ */
+
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
+/**
+ * Esquema de Equipment
+ * Define la estructura de datos para los equipos de la granja
+ */
 var equipmentSchema = new Schema({
     _id: {
         type: Schema.Types.ObjectId,
@@ -40,7 +49,10 @@ var equipmentSchema = new Schema({
     }]
 });
 
-// Validación pre-save para verificar que solo estaciones de lavado pueden tener tanques asociados
+/**
+ * Validación pre-save para verificar que solo estaciones de lavado pueden tener tanques asociados
+ * Se ejecuta antes de guardar para asegurar la integridad de los datos
+ */
 equipmentSchema.pre('save', function(next) {
     if (this.associatedTanks && this.associatedTanks.length > 0 && this.type !== 'Estación de lavado') {
         const error = new Error('Solo las estaciones de lavado pueden tener tanques asociados');

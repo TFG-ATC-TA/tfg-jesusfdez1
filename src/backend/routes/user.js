@@ -1,3 +1,8 @@
+/**
+ * Rutas para gestión de usuarios
+ * Incluye operaciones CRUD con validaciones y control de acceso
+ */
+
 var express = require('express');
 var router = express.Router();
 const cors = require('cors');
@@ -6,8 +11,29 @@ const Farm = require('../models/Farm');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { verifyToken } = require('../middleware/auth');
-
-
+const { 
+  validatePasswordStrength, 
+  validateUserName, 
+  validateEmail, 
+  trimFields, 
+  validateRequiredFields 
+} = require('../utils/validators');
+const { 
+  paginatedResponse, 
+  badRequest, 
+  unauthorized, 
+  forbidden,
+  notFound, 
+  conflict, 
+  internalError, 
+  created, 
+  updated, 
+  deleted 
+} = require('../utils/responseHandler');
+const { 
+  buildCompleteQuery, 
+  handlePaginatedResponse 
+} = require('../utils/pagination');
 
 // Token generation imports
 const dotenv = require('dotenv');
@@ -17,204 +43,178 @@ dotenv.config();
 router.use(cors());
 router.use(express.json());
 
-// Función para validar la seguridad de la contraseña
-const validatePasswordStrength = (password) => {
-  const requirements = [
-    { regex: /.{8,}/, text: "Al menos 8 caracteres" },
-    { regex: /[0-9]/, text: "Al menos 1 número" },
-    { regex: /[a-z]/, text: "Al menos 1 letra minúscula" },
-    { regex: /[A-Z]/, text: "Al menos 1 letra mayúscula" },
-  ];
-
-  const failedRequirements = requirements
-    .filter(req => !req.regex.test(password))
-    .map(req => req.text);
-
-  return {
-    isValid: failedRequirements.length === 0,
-    failedRequirements
-  };
-};
-
+/**
+ * GET /user/list - Obtener lista paginada de usuarios
+ * Solo accesible por administradores
+ * Incluye filtros por roles y granjas
+ */
 router.get('/list', verifyToken, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const searchTerm = req.query.searchTerm || '';
-    const roles = req.query.roles ? req.query.roles.split(',') : [];
-    const filters = req.query.filters ? JSON.parse(decodeURIComponent(req.query.filters)) : {};
-
-    let query = {
-      _id: { $ne: req.user.id } // Exclude the requesting user
-    };
-    
-    if (req.user.role === 'Administrador') { 
-      if (searchTerm) {
-        query.$or = [
-          { name: { $regex: searchTerm, $options: 'i' } },
-          { surname: { $regex: searchTerm, $options: 'i' } },
-          { email: { $regex: searchTerm, $options: 'i' } }
-        ];
-      }
-      if (roles.length > 0) {
-        query.role = { $in: roles };
-      }
-
-      if (req.query.farmId) {
-        query.farms = req.query.farmId;
-      }
-
-      // Aplicar filtros adicionales
-      Object.keys(filters).forEach(key => {
-        if (filters[key].length > 0) {
-          query[key] = { $in: filters[key] };
-        }
-      });
-
-      const totalItems = await User.countDocuments(query);
-      const totalPages = Math.ceil(totalItems / limit);
-      
-      // Si la página solicitada excede el total, usar la primera página
-      const adjustedPage = page > totalPages ? 1 : page;
-      const skip = (adjustedPage - 1) * limit;
-
-      const users = await User.find(query)
-        .select('_id name surname email role')
-        .sort({ surname: 1 })
-        .skip(skip)
-        .limit(limit);
-
-      res.json({ data: users, totalItems, totalPages, currentPage: adjustedPage });
-    } else {
-      res.status(401).json({ message: 'No tienes permisos para acceder a esta información' });
+    if (req.user.role !== 'Administrador') {
+      return unauthorized(res);
     }
+
+    const searchFields = ['name', 'surname', 'email'];
+    const baseQuery = { _id: { $ne: req.user.id } }; // Exclude the requesting user
+    
+    // Añadir filtros específicos
+    if (req.query.roles) {
+      const roles = req.query.roles.split(',');
+      if (roles.length > 0) {
+        baseQuery.role = { $in: roles };
+      }
+    }
+
+    if (req.query.farmId) {
+      baseQuery.farms = req.query.farmId;
+    }
+
+    const query = buildCompleteQuery(req, searchFields, baseQuery);
+    const result = await handlePaginatedResponse(res, User, query, {
+      select: '_id name surname email role',
+      sort: { surname: 1 }
+    });
+
+    return paginatedResponse(res, result.data, result.totalItems, result.totalPages, result.currentPage);
   } catch (error) {
-    res.status(500).json({ message: 'Error obteniendo datos de los usuarios' });
+    return internalError(res, 'Error obteniendo datos de los usuarios', error);
   }
 });
 
-
+/**
+ * POST /user - Crear nuevo usuario
+ * Solo accesible por administradores
+ * Incluye validaciones completas de datos
+ */
 router.post('/', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'Administrador') {
-      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+      return unauthorized(res);
     }
 
-    let { name, surname, email, password, role, farms } = req.body;
+    let { name, surname, email, password, role, farms } = trimFields(req.body);
     
-    // Trim all input fields
-    name = name ? name.trim() : '';
-    surname = surname ? surname.trim() : '';
-    email = email ? email.trim() : '';
-    
-    if (!name || !email || !role || !password) { 
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    // Validar campos obligatorios
+    const requiredFields = ['name', 'email', 'role', 'password'];
+    const validation = validateRequiredFields({ name, email, role, password }, requiredFields);
+    if (!validation.isValid) {
+      return badRequest(res, validation.message);
     }
 
-    // Validate name and surname format
-    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{2,50}$/;
-    if (!nameRegex.test(name)) {
-      return res.status(400).json({ 
-        message: 'El nombre debe contener al menos 2 caracteres y solo puede contener letras' 
-      });
+    // Validar nombre
+    const nameValidation = validateUserName(name);
+    if (!nameValidation.isValid) {
+      return badRequest(res, nameValidation.message);
     }
 
-    if (surname && !nameRegex.test(surname)) {
-      return res.status(400).json({ 
-        message: 'El apellido debe contener al menos 2 caracteres y solo puede contener letras' 
-      });
+    // Validar apellido si se proporciona
+    if (surname) {
+      const surnameValidation = validateUserName(surname);
+      if (!surnameValidation.isValid) {
+        return badRequest(res, surnameValidation.message);
+      }
     }
 
-    // Validate email format
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'El formato del email no es válido' });
+    // Validar email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      return badRequest(res, emailValidation.message);
     }
 
+    // Verificar si el email ya existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'El email introducida ya está registrado en el sistema. Introduce otro distinto' });
+      return conflict(res, 'El email introducido ya está registrado en el sistema. Introduce otro distinto');
     }
 
+    // Validar contraseña
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
-      return res.status(400).json({ 
-        message: 'La contraseña no cumple con los requisitos de seguridad',
+      return badRequest(res, 'La contraseña no cumple con los requisitos de seguridad', {
         failedRequirements: passwordValidation.failedRequirements
       });
     }
 
-    const passwordHash = password;
-    const newUser = new User({ name, surname, email, passwordHash, role, farms: farms || [] });
+    const newUser = new User({ 
+      name, 
+      surname, 
+      email, 
+      passwordHash: password, 
+      role, 
+      farms: farms || [] 
+    });
 
     await newUser.save();
 
-    res.json({ message: 'Usuario creado correctamente' });
+    return created(res, null, 'Usuario creado correctamente');
   } catch (error) {
-    res.status(500).json({ message: 'Error creando el usuario: ' + error });
+    return internalError(res, 'Error creando el usuario', error);
   }
 });
 
+/**
+ * PUT /user/:userId - Actualizar usuario existente
+ * Solo accesible por administradores
+ * No permite auto-modificación
+ */
 router.put('/:userId', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'Administrador') {
-      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+      return unauthorized(res);
     }
 
     const { userId } = req.params;
 
     if (userId === req.user.id) {
-      return res.status(403).json({ message: 'No puedes modificarte a ti mismo por esta ruta. Usa /update-basic en su lugar' });
+      return forbidden(res, 'No puedes modificarte a ti mismo por esta ruta. Usa /update-basic en su lugar');
     }
 
-    let { name, surname, email, password, role, farms } = req.body;
+    let { name, surname, email, password, role, farms } = trimFields(req.body);
 
-    // Trim all input fields
-    name = name ? name.trim() : '';
-    surname = surname ? surname.trim() : '';
-    email = email ? email.trim() : '';
-
-    if (!name || !email || !role) {
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    // Validar campos obligatorios
+    const requiredFields = ['name', 'email', 'role'];
+    const validation = validateRequiredFields({ name, email, role }, requiredFields);
+    if (!validation.isValid) {
+      return badRequest(res, validation.message);
     }
 
-    // Validate name and surname format
-    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{2,50}$/;
-    if (!nameRegex.test(name)) {
-      return res.status(400).json({ 
-        message: 'El nombre debe contener al menos 2 caracteres y solo puede contener letras' 
-      });
+    // Validar nombre
+    const nameValidation = validateUserName(name);
+    if (!nameValidation.isValid) {
+      return badRequest(res, nameValidation.message);
     }
 
-    if (surname && !nameRegex.test(surname)) {
-      return res.status(400).json({ 
-        message: 'El apellido debe contener al menos 2 caracteres y solo puede contener letras' 
-      });
+    // Validar apellido si se proporciona
+    if (surname) {
+      const surnameValidation = validateUserName(surname);
+      if (!surnameValidation.isValid) {
+        return badRequest(res, surnameValidation.message);
+      }
     }
 
-    // Validate email format
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'El formato del email no es válido' });
+    // Validar email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      return badRequest(res, emailValidation.message);
     }
 
     const user = await User.findById(userId);
-
     if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+      return notFound(res, 'Usuario no encontrado');
     }
 
+    // Actualizar campos
     user.name = name;
     user.email = email;
     user.role = role;
     user.surname = surname;
     user.farms = farms;
 
+    // Validar y actualizar contraseña si se proporciona
     if (password) {
       const passwordValidation = validatePasswordStrength(password);
       if (!passwordValidation.isValid) {
-        return res.status(400).json({ 
-          message: 'La contraseña no cumple con los requisitos de seguridad',
+        return badRequest(res, 'La contraseña no cumple con los requisitos de seguridad', {
           failedRequirements: passwordValidation.failedRequirements
         });
       }
@@ -223,90 +223,104 @@ router.put('/:userId', verifyToken, async (req, res) => {
 
     await user.save();
 
-    res.json({ message: 'Usuario actualizado correctamente' });
+    return updated(res, null, 'Usuario actualizado correctamente');
   } catch (error) {
-    res.status(500).json({ message: 'Error actualizando el usuario: ' + error});
+    return internalError(res, 'Error actualizando el usuario', error);
   }
 });
 
+/**
+ * DELETE /user/:userId - Eliminar usuario
+ * Solo accesible por administradores
+ * No permite auto-eliminación
+ */
 router.delete('/:userId', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'Administrador') {
-      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+      return unauthorized(res);
     }
 
     const { userId } = req.params;
 
     // Evitar que un usuario se borre a sí mismo
     if (userId === req.user.id) {
-      return res.status(403).json({ message: 'No puedes eliminarte a ti mismo' });
+      return forbidden(res, 'No puedes eliminarte a ti mismo');
     }
 
     const user = await User.findByIdAndDelete(userId);
-
     if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+      return notFound(res, 'Usuario no encontrado');
     }
 
-    res.json({ message: 'Usuario eliminado correctamente' });
+    return deleted(res, 'Usuario eliminado correctamente');
   } catch (error) {
-    res.status(500).json({ message: 'Error eliminando el usuario' });
+    return internalError(res, 'Error eliminando el usuario', error);
   }
 });
 
+/**
+ * GET /user/:userId - Obtener usuario específico
+ * Solo accesible por administradores
+ */
 router.get('/:userId', verifyToken, async (req, res) => {
   try {
-    let user;
-    if (req.user.role === 'Administrador') {
-      user = await User.findOne({ _id: req.params.userId }).select('_id name surname email role farms'); 
-      res.json(user);
-    } else {
-      res.status(401).json({ message: 'No tienes permisos para acceder a esta información' });
+    if (req.user.role !== 'Administrador') {
+      return unauthorized(res);
     }
+
+    const user = await User.findOne({ _id: req.params.userId })
+      .select('_id name surname email role farms');
+    
+    if (!user) {
+      return notFound(res, 'Usuario no encontrado');
+    }
+
+    return res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Error obteniendo datos de los usuarios' });
+    return internalError(res, 'Error obteniendo datos de los usuarios', error);
   }
 });
 
 
+/**
+ * POST /user/update-basic - Actualizar datos básicos del usuario actual
+ * Permite a cualquier usuario actualizar su información personal
+ * Genera un nuevo token con los datos actualizados
+ */
 router.post('/update-basic', verifyToken, async (req, res) => {
   try {
-    let { name, surname, email } = req.body;
-    
-    // Trim all input fields to remove extra whitespace
-    name = name ? name.trim() : '';
-    surname = surname ? surname.trim() : '';
-    email = email ? email.trim() : '';
+    let { name, surname, email } = trimFields(req.body);
 
-    // Validate required fields
-    if (!name || !email) {
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    // Validar campos obligatorios
+    const requiredFields = ['name', 'email'];
+    const validation = validateRequiredFields({ name, email }, requiredFields);
+    if (!validation.isValid) {
+      return badRequest(res, validation.message);
     }
 
-    // Validate name (at least 2 characters, only letters, spaces and some accents)
-    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{2,50}$/;
-    if (!nameRegex.test(name)) {
-      return res.status(400).json({ 
-        message: 'El nombre debe contener al menos 2 caracteres y solo puede contener letras' 
-      });
+    // Validar nombre
+    const nameValidation = validateUserName(name);
+    if (!nameValidation.isValid) {
+      return badRequest(res, nameValidation.message);
     }
 
-    // Validate surname if provided
-    if (surname && !nameRegex.test(surname)) {
-      return res.status(400).json({ 
-        message: 'El apellido debe contener al menos 2 caracteres y solo puede contener letras' 
-      });
+    // Validar apellido si se proporciona
+    if (surname) {
+      const surnameValidation = validateUserName(surname);
+      if (!surnameValidation.isValid) {
+        return badRequest(res, surnameValidation.message);
+      }
     }
 
-    // Validate email format
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'El formato del email no es válido' });
+    // Validar email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      return badRequest(res, emailValidation.message);
     }
 
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+      return notFound(res, 'Usuario no encontrado');
     }
 
     user.name = name;
@@ -328,7 +342,7 @@ router.post('/update-basic', verifyToken, async (req, res) => {
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ 
+    return res.json({ 
       message: 'Datos básicos actualizados correctamente',
       token,
       user: {
@@ -340,42 +354,49 @@ router.post('/update-basic', verifyToken, async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error actualizando los datos básicos: ' + error });
+    return internalError(res, 'Error actualizando los datos básicos', error);
   }
 });
 
+/**
+ * POST /user/update-password - Actualizar contraseña del usuario actual
+ * Requiere la contraseña actual para validar la identidad
+ * Incluye validaciones de fortaleza de contraseña
+ */
 router.post('/update-password', verifyToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    
+    // Validar campos obligatorios
+    const requiredFields = ['currentPassword', 'newPassword'];
+    const validation = validateRequiredFields({ currentPassword, newPassword }, requiredFields);
+    if (!validation.isValid) {
+      return badRequest(res, validation.message);
     }
 
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+      return notFound(res, 'Usuario no encontrado');
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Contraseña actual incorrecta' });
+      return badRequest(res, 'Contraseña actual incorrecta');
     }
 
     const passwordValidation = validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
-      return res.status(400).json({ 
-        message: 'La nueva contraseña no cumple con los requisitos de seguridad',
+      return badRequest(res, 'La nueva contraseña no cumple con los requisitos de seguridad', {
         failedRequirements: passwordValidation.failedRequirements
       });
     }
 
     user.passwordHash = newPassword;
     await user.save();
-    res.json({ message: 'Contraseña actualizada correctamente' });
     
-
+    return res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) {
-    res.status(500).json({ message: 'Error actualizando la contraseña: ' + error });
+    return internalError(res, 'Error actualizando la contraseña', error);
   }
 });
 

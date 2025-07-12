@@ -1,201 +1,225 @@
+/**
+ * Rutas para gestión de dispositivos IoT
+ * Incluye operaciones CRUD con control de acceso por roles
+ */
+
 var express = require('express');
 var router = express.Router();
 const cors = require('cors');
 const { verifyToken } = require('../middleware/auth');
 const Device = require('../models/Device');
+const { validateRequiredFields } = require('../utils/validators');
+const { 
+  paginatedResponse, 
+  badRequest, 
+  unauthorized, 
+  notFound, 
+  conflict, 
+  internalError, 
+  created, 
+  updated, 
+  deleted 
+} = require('../utils/responseHandler');
+const { buildCompleteQuery } = require('../utils/pagination');
 
-// Token generation imports
-const dotenv = require('dotenv');
-// get config vars
-dotenv.config();
 // Middleware
 router.use(cors());
 router.use(express.json());
 
-
+/**
+ * GET /device/list - Obtener lista paginada de dispositivos
+ * Solo accesible por administradores
+ * Incluye filtros por granja y tipo de dispositivo
+ */
 router.get("/list", verifyToken, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const searchTerm = req.query.searchTerm || '';
-    const types = req.query.types ? req.query.types.split(',') : [];
-    const filters = req.query.filters ? JSON.parse(decodeURIComponent(req.query.filters)) : {};
-    const farmId = req.query.farmId;
-
-    let query = {};
-    if (req.user.role === "Administrador") {
-      // Filtrar por granja específica si se proporciona
-      if (farmId) {
-        query.farm = farmId;
-      }
-      
-      if (searchTerm) {
-        query.boardId = { $regex: searchTerm, $options: 'i' };
-      }
-      if (types.length > 0) {
-        query.type = { $in: types };
-      }
-      // Aplicar filtros adicionales
-      Object.keys(filters).forEach(key => {
-        if (filters[key].length > 0) {
-          query[key] = { $in: filters[key] };
-        }
-      });
-      
-      const totalItems = await Device.countDocuments(query);
-      const totalPages = Math.ceil(totalItems / limit);
-      
-      // Si la página solicitada excede el total, usar la primera página
-      const adjustedPage = page > totalPages ? 1 : page;
-      const skip = (adjustedPage - 1) * limit;
-
-      const devices = await Device.aggregate([
-        { $match: query },
-        {
-          $lookup: {
-            from: 'farms',
-            localField: 'farm',
-            foreignField: '_id',
-            as: 'farm'
-          }
-        },
-        { $unwind: { path: '$farm', preserveNullAndEmptyArrays: true } },
-        { $sort: { 'farm.name': 1, 'boardId': 1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            _id: 1,
-            boardId: 1,
-            type: 1,
-            farm: { name: '$farm.name' }
-          }
-        }
-      ]);
-
-      res.json({ 
-        data: devices, 
-        totalItems, 
-        totalPages, 
-        currentPage: adjustedPage 
-      });
-    } else {
-      res.status(403).json({ message: 'No tienes permisos para esta acción' });
+    if (req.user.role !== "Administrador") {
+      return unauthorized(res, 'No tienes permisos para esta acción');
     }
+
+    const searchFields = ['boardId'];
+    let baseQuery = {};
+    
+    // Filtrar por granja específica si se proporciona
+    if (req.query.farmId) {
+      baseQuery.farm = req.query.farmId;
+    }
+
+    // Añadir filtros de tipos si se proporcionan
+    if (req.query.types) {
+      const types = req.query.types.split(',');
+      if (types.length > 0) {
+        baseQuery.type = { $in: types };
+      }
+    }
+
+    const query = buildCompleteQuery(req, searchFields, baseQuery);
+    
+    // Usar aggregate para incluir información de granjas
+    const { page, limit } = require('../utils/pagination').getPaginationParams(req);
+    const totalItems = await Device.countDocuments(query);
+    const { skip, totalPages, adjustedPage } = require('../utils/pagination').calculatePagination(page, limit, totalItems);
+
+    const devices = await Device.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: 'farms',
+          localField: 'farm',
+          foreignField: '_id',
+          as: 'farm'
+        }
+      },
+      { $unwind: { path: '$farm', preserveNullAndEmptyArrays: true } },
+      { $sort: { 'farm.name': 1, 'boardId': 1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          boardId: 1,
+          type: 1,
+          farm: { name: '$farm.name' }
+        }
+      }
+    ]);
+
+    return paginatedResponse(res, devices, totalItems, totalPages, adjustedPage);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error obteniendo datos de los dispositivos" });
+    return internalError(res, "Error obteniendo datos de los dispositivos", error);
   }
 });
 
+/**
+ * GET /device/:deviceId - Obtener dispositivo específico
+ * Solo accesible por administradores
+ */
 router.get('/:deviceId', verifyToken, async (req, res) => {
   try {
-   let device;
-    if (req.user.role === 'Administrador') {
-      device = await Device.findOne({ _id: req.params.deviceId }).select('_id boardId type description equipment sensors farm');
-    } else {
-     // devices = await Device.find({ users: req.user.id }).select('_id name idname'); // Regular users see only their farms
+    if (req.user.role !== 'Administrador') {
+      return unauthorized(res, 'No tienes permisos para acceder a esta información');
     }
-    res.json(device);
+
+    const device = await Device.findOne({ _id: req.params.deviceId })
+      .select('_id boardId type description equipment sensors farm');
+    
+    if (!device) {
+      return notFound(res, 'Dispositivo no encontrado');
+    }
+
+    return res.json(device);
   } catch (error) {
-    res.status(500).json({ message: 'Error obteniendo datos del dispositivo' });
+    return internalError(res, 'Error obteniendo datos del dispositivo', error);
   }
 });
 
+/**
+ * PUT /device/:deviceId - Actualizar dispositivo existente
+ * Solo accesible por administradores
+ * Incluye validaciones de campos obligatorios
+ */
 router.put('/:deviceId', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'Administrador') {
-      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+      return unauthorized(res);
     }
 
     const { deviceId } = req.params;
     const { boardId, type, description, sensors, equipment, farm } = req.body;
-    const device = await Device.findById(deviceId);
-
-    if (!device) {
-      return res.status(404).json({ message: 'Dispositivo no encontrado' });
-    }
-
-    if (boardId && type && sensors) {
-      device.boardId = boardId;
-      device.type = type;
-      device.sensors = sensors;
-
-    }
-    else {
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
-    }
-
-    if (equipment) {
-      device.equipment = equipment;
-    } else{
-      device.equipment = null;
-    }
     
-    if (farm) {
-      device.farm = farm;
-    } else  {
-      device.farm = null;
+    // Validar campos obligatorios
+    const requiredFields = ['boardId', 'type', 'sensors'];
+    const validation = validateRequiredFields({ boardId, type, sensors }, requiredFields);
+    if (!validation.isValid) {
+      return badRequest(res, 'Faltan campos obligatorios');
     }
 
+    const device = await Device.findById(deviceId);
+    if (!device) {
+      return notFound(res, 'Dispositivo no encontrado');
+    }
+
+    // Actualizar campos obligatorios
+    device.boardId = boardId;
+    device.type = type;
+    device.sensors = sensors;
     device.description = description;
+
+    // Manejar campos opcionales
+    device.equipment = equipment || null;
+    device.farm = farm || null;
     
     await device.save();
-    res.json({ message: 'Dispositivo actualizado correctamente' });
+    
+    return updated(res, null, 'Dispositivo actualizado correctamente');
   } catch (error) {
-    res.status(500).json({ message: 'Error actualizando el dispositivo: ' + error });
+    return internalError(res, 'Error actualizando el dispositivo', error);
   }
 });
 
+/**
+ * DELETE /device/:deviceId - Eliminar dispositivo
+ * Solo accesible por administradores
+ */
 router.delete('/:deviceId', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'Administrador') {
-      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+      return unauthorized(res);
     }
 
     const { deviceId } = req.params;
     const device = await Device.findByIdAndDelete(deviceId);
 
     if (!device) {
-      return res.status(404).json({ message: 'Dispositivo no encontrado' });
+      return notFound(res, 'Dispositivo no encontrado');
     }
 
-    res.json({ message: 'Dispositivo eliminado correctamente' });
+    return deleted(res, 'Dispositivo eliminado correctamente');
   } catch (error) {
-    res.status(500).json({ message: 'Error eliminando el dispositivo' });
+    return internalError(res, 'Error eliminando el dispositivo', error);
   }
 });
 
-
+/**
+ * POST /device - Crear nuevo dispositivo
+ * Solo accesible por administradores
+ * Incluye validación de boardId único
+ */
 router.post('/', verifyToken, async(req,res) => {
   try {
     if (req.user.role !== 'Administrador') {
-      return res.status(401).json({ message: 'No tienes permisos para realizar esta acción' });
+      return unauthorized(res);
     }
 
     const { boardId, type, description, sensors, equipment, farm } = req.body;
-    if (!boardId || !type ) {
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    
+    // Validar campos obligatorios
+    const requiredFields = ['boardId', 'type'];
+    const validation = validateRequiredFields({ boardId, type }, requiredFields);
+    if (!validation.isValid) {
+      return badRequest(res, 'Faltan campos obligatorios');
     }
+
+    // Verificar si ya existe un dispositivo con este boardId
     const existingDevice = await Device.findOne({ boardId });  
     if (existingDevice) {
-      return res.status(400).json({ message: 'El identificador ya existe en la base de datos' });
+      return conflict(res, 'El identificador ya existe en la base de datos');
     }
-    const device = new Device({ boardId, type, description, sensors, equipment, farm });
-    if (!equipment) {
-      device.equipment = null;
-    }
-    
-    if (!farm) {
-      device.farm = null;
-    }
+
+    const device = new Device({ 
+      boardId, 
+      type, 
+      description, 
+      sensors, 
+      equipment: equipment || null, 
+      farm: farm || null 
+    });
 
     await device.save();
-    res.json({ message: 'Dispositivo creado correctamente' });
-
+    
+    return created(res, null, 'Dispositivo creado correctamente');
   } catch (error) {
-    res.status(500).json({ message: 'Error creando el dispositivo: ' + error });
+    return internalError(res, 'Error creando el dispositivo', error);
   }
 });
 

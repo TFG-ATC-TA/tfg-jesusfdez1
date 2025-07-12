@@ -1,3 +1,8 @@
+/**
+ * Rutas para consulta de datos históricos en InfluxDB
+ * Proporciona acceso a datos de sensores y métricas en tiempo real
+ */
+
 var express = require('express');
 var router = express.Router();
 const { connectInfluxDB } = require('../config/connection');
@@ -10,7 +15,11 @@ const devConsole = require('../utils/console');
 /* GET home page. */
 router.use(cors());
   
-// Function to construct the InfluxDB query string
+/**
+ * Construye la consulta de InfluxDB basada en los parámetros de la petición
+ * @param {object} req - Objeto request con parámetros de consulta
+ * @returns {string} - Consulta de InfluxDB formateada
+ */
 function constructQuery(req) {
     const {
         bucket,
@@ -66,6 +75,11 @@ function constructQuery(req) {
     return query;
 }
 
+/**
+ * GET /history/data - Obtener datos históricos de InfluxDB
+ * Construye consultas dinámicas basadas en parámetros de la petición
+ * Incluye filtros por bucket, rango de tiempo, campos y tags
+ */
 router.get('/data', verifyToken, async function(req, res, next) {
     try {
     const query = constructQuery(req); // Call the function to get the query string

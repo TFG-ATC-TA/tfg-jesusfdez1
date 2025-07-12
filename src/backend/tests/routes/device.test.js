@@ -106,7 +106,7 @@ describe('Device Routes', () => {
       await request(app)
         .get('/device/list')
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(403);
+        .expect(401);
     });
 
     it('should require authentication', async () => {
@@ -145,7 +145,7 @@ describe('Device Routes', () => {
       await request(app)
         .get(`/device/${fakeId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(200); // La implementación actual devuelve 200 con null si no encuentra el device
+        .expect(404);
     });
 
     it('should require authentication', async () => {
@@ -172,7 +172,7 @@ describe('Device Routes', () => {
         .post('/device')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(deviceData)
-        .expect(200);
+        .expect(201);
 
       expect(response.body.message).toBe('Dispositivo creado correctamente');
 
@@ -203,7 +203,7 @@ describe('Device Routes', () => {
           boardId: 'DUPLICATE_ID',
           type: 'Monitor de tanque'
         })
-        .expect(400);
+        .expect(409);
 
       expect(response.body.message).toBe('El identificador ya existe en la base de datos');
     });

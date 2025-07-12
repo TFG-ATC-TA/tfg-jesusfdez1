@@ -1,8 +1,14 @@
+/**
+ * Archivo principal de la aplicación Express
+ * Configura el servidor, middleware y rutas de la API
+ */
+
 var createError = require('http-errors');
 var express = require('express');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
+// Importación de todas las rutas de la API
 var indexRouter = require('./routes/index');
 var userRouter = require('./routes/user');
 var farmRouter = require('./routes/farm'); 
@@ -13,7 +19,7 @@ var postgresRouter = require('./routes/postgresql');
 var collectionRouter = require('./routes/collection');
 var notificationRouter = require('./routes/notification');
 
-// Importar el sistema de console personalizado
+// Importar el sistema de console personalizado para logging
 const devConsole = require('./utils/console');
 
 var app = express();
@@ -25,36 +31,35 @@ devConsole.log(`🚀 Servidor iniciando en modo: ${currentMode.toUpperCase()}`);
 devConsole.log(`📝 Logs de consola: ${currentMode === 'development' || currentMode === 'dev' ? 'ACTIVADOS' : 'DESACTIVADOS'}`);
 devConsole.log(`📋 Logs de Winston (inicio de sesión): SIEMPRE ACTIVOS`);
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+// Configuración de middleware básico
+app.use(logger('dev')); // Middleware de logging para desarrollo
+app.use(express.json()); // Parsear JSON en el body de las peticiones
+app.use(express.urlencoded({ extended: false })); // Parsear datos de formularios
+app.use(cookieParser()); // Parsear cookies
 
-app.use('/', indexRouter);
-app.use('/user', userRouter);
-app.use('/farm', farmRouter); 
-app.use('/device', deviceRouter);
-app.use('/equipment', equipmentRouter);
-app.use('/history', influxdbRouter);
-app.use('/postgres', postgresRouter);
-app.use('/collection', collectionRouter);
-app.use('/notification', notificationRouter);
+// Configuración de rutas de la API
+app.use('/', indexRouter); // Ruta principal
+app.use('/user', userRouter); // Gestión de usuarios
+app.use('/farm', farmRouter); // Gestión de granjas
+app.use('/device', deviceRouter); // Gestión de dispositivos
+app.use('/equipment', equipmentRouter); // Gestión de equipamiento
+app.use('/history', influxdbRouter); // Historial de datos (InfluxDB)
+app.use('/postgres', postgresRouter); // Datos de PostgreSQL
+app.use('/collection', collectionRouter); // Gestión de recolección de leche
+app.use('/notification', notificationRouter); // Gestión de notificaciones
 
-
-
-// Conectar a la base de datos
+// Conectar a la base de datos MongoDB al iniciar la aplicación
 connectDB.connectMongoDB();
-// Catch 404 and forward to error handler
+
+// Middleware para manejar rutas no encontradas (404)
 app.use((req, res, next) => next(createError(404)));
 
-// Error handler
+// Middleware global para manejo de errores
 app.use((err, req, res, next) => {
-
-  // Send JSON response with error details
+  // Enviar respuesta JSON con detalles del error
   res.status(err.status || 500).json({
     error: err.message,
   });
 });
-
 
 module.exports = app;
