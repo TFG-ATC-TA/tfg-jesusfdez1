@@ -27,9 +27,9 @@ const connectDB = require('./config/connection'); // Ruta hacia el archivo de co
 
 // Mostrar modo de ejecución al iniciar
 const currentMode = process.env.NODE_ENV || 'production';
-devConsole.log(`🚀 Servidor iniciando en modo: ${currentMode.toUpperCase()}`);
-devConsole.log(`📝 Logs de consola: ${currentMode === 'development' || currentMode === 'dev' ? 'ACTIVADOS' : 'DESACTIVADOS'}`);
-devConsole.log(`📋 Logs de Winston (inicio de sesión): SIEMPRE ACTIVOS`);
+devConsole.log(` Servidor iniciando en modo: ${currentMode.toUpperCase()}`);
+devConsole.log(` Logs de consola: ${currentMode === 'development' || currentMode === 'dev' ? 'ACTIVADOS' : 'DESACTIVADOS'}`);
+devConsole.log(` Logs de Winston (inicio de sesión): SIEMPRE ACTIVOS`);
 
 // Configuración de middleware básico
 app.use(logger('dev')); // Middleware de logging para desarrollo

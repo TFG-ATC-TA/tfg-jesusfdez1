@@ -1,8 +1,19 @@
+/**
+ * Contexto de usuario para la aplicación
+ * Maneja el estado global del usuario autenticado y sus permisos
+ * Proporciona acceso centralizado a información del usuario y roles
+ */
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 
+/**
+ * Tipo para los detalles completos del usuario
+ * Incluye información personal y permisos del sistema
+ * Define la estructura completa de datos del usuario autenticado
+ */
 type UserDetails = {
   id: string;
   name: string;
@@ -12,6 +23,11 @@ type UserDetails = {
   permissions: string[];
 };
 
+/**
+ * Tipo para el contexto de usuario
+ * Define la interfaz del contexto con estado y métodos
+ * Incluye helpers booleanos para verificación de roles
+ */
 type UserContextType = {
   user: UserDetails | null;
   updateUser: (newData: Partial<UserDetails>) => void;
@@ -21,9 +37,15 @@ type UserContextType = {
   isVeterinario: boolean;
 };
 
+// Crear el contexto de React
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Función para obtener permisos basados en el rol
+/**
+ * Función para obtener permisos basados en el rol del usuario
+ * Define permisos específicos para cada rol del sistema
+ * @param role - Rol del usuario (Ganadero, Administrador, Veterinario)
+ * @returns Array de permisos asociados al rol
+ */
 function getPermissionsByRole(role: string): string[] {
   switch (role) {
     case 'Ganadero':
@@ -37,12 +59,22 @@ function getPermissionsByRole(role: string): string[] {
   }
 }
 
+/**
+ * Proveedor del contexto de usuario
+ * Maneja la inicialización del estado y la sincronización con next-auth
+ * Proporciona el contexto a toda la aplicación
+ * @param children - Componentes hijos que tendrán acceso al contexto
+ */
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { data: session, update, status } = useSession();
   const [user, setUser] = useState<UserDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Inicializar el estado del usuario desde la sesión
+  /**
+   * Inicializar el estado del usuario desde la sesión
+   * Sincroniza datos de next-auth con el contexto local
+   * Calcula permisos basados en el rol del usuario
+   */
   useEffect(() => {
     if (session?.user) {
       const role = session.user.role;
@@ -60,7 +92,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session, status]);
 
-  // Función para actualizar el usuario en el contexto y en next-auth
+  /**
+   * Función para actualizar el usuario en el contexto y en next-auth
+   * Permite actualizaciones parciales del perfil de usuario
+   * Sincroniza cambios con la sesión de next-auth
+   * @param newData - Datos parciales del usuario a actualizar
+   */
   const updateUser = async (newData: Partial<UserDetails>) => {
     if (!user) return;
 
@@ -98,6 +135,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Hook para usar el contexto de usuario
+ * Proporciona acceso seguro al contexto de usuario
+ * @returns Contexto de usuario con estado y métodos
+ * @throws Error si se usa fuera del UserProvider
+ */
 export function useUser() {
   const context = useContext(UserContext);
   if (context === undefined) {

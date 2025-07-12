@@ -1,9 +1,18 @@
+/**
+ * Componente de botón reutilizable
+ * Permite variantes de estilo y tamaños personalizables
+ */
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Definición de variantes de estilo y tamaño para el botón
+ * Utiliza class-variance-authority para gestionar clases condicionales
+ */
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
@@ -34,12 +43,24 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * Props del componente Button
+ * Permite variantes, tamaños y uso como hijo (asChild)
+ */
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
 }
 
+/**
+ * Componente Button principal
+ * Permite renderizar como <button> o como cualquier otro componente (asChild)
+ * @param className - Clases adicionales
+ * @param variant - Variante de estilo
+ * @param size - Tamaño del botón
+ * @param asChild - Si es true, renderiza como Slot (hereda el componente padre)
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"

@@ -1,3 +1,9 @@
+/**
+ * Componente de acciones para celdas de la tabla de granjas
+ * Proporciona funcionalidades de edición, eliminación y navegación
+ * Incluye validaciones de permisos y gestión de errores
+ */
+
 'use client';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
@@ -25,11 +31,18 @@ import FarmEditModal from '@/components/modals/farm-edit-modal';
 import { Farm } from '@/types';
 import { useRouter } from 'next/navigation';
 
+/**
+ * Props del componente de acciones de celda
+ */
 interface CellActionProps {
   data: Farm;
   onRefresh: () => void;
 }
 
+/**
+ * Componente que maneja las acciones disponibles para cada granja
+ * Incluye edición, eliminación y navegación a detalles
+ */
 export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
   const { data: session } = useSession();
   const router = useRouter();
@@ -37,6 +50,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { toast } = useToast()
 
+  /**
+   * Maneja la eliminación de una granja
+   * Incluye validaciones de sesión y gestión de errores
+   */
   const onDelete = async () => {
     try {
       if (!session?.accessToken) {
@@ -94,7 +111,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={onDelete} className="bg-red-600 text-white hover:bg-red-700">Borrar</AlertDialogAction>
           </AlertDialogFooter>        </AlertDialogContent>
-      </AlertDialog>      <div className="flex items-center gap-2">
+      </AlertDialog>      
+      <div className="flex items-center gap-2">
         <Button  
           className="h-6 w-12 p-0 flex items-center"   
           onClick={() => router.push(`/farms/${data.idname}`)}

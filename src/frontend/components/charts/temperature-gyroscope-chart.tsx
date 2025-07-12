@@ -1,3 +1,10 @@
+/**
+ * Gráfico de temperatura y giroscopio
+ * Visualiza datos de sensores de temperatura y giroscopio con filtros interactivos
+ * Permite analizar patrones de temperatura y movimiento en tiempo real
+ * Integra múltiples fuentes de datos y proporciona estadísticas en tiempo real
+ */
+
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from "react"
@@ -12,6 +19,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type React from "react"
 import { useSession } from "next-auth/react"
 
+/**
+ * Tipo para puntos de datos del sensor
+ * Combina lecturas de temperatura y giroscopio con timestamps
+ * Permite el manejo de valores nulos para datos faltantes
+ */
 type DataPoint = {
   timestamp: number
   surfaceTemperature: number | null
@@ -19,25 +31,28 @@ type DataPoint = {
   gyroX: number | null
 }
 
-interface TemperatureGyroscopeProps {
-  bucket: string
-  startDate?: Date
-  endDate?: Date
-}
-
+/**
+ * Props del componente de renderizado del gráfico
+ * Define la estructura de datos y configuración para el renderizado
+ */
 interface ChartRendererProps {
   data: {
-    surface: Array<{ time: number; value: number }>
-    overSurface: Array<{ time: number; value: number }>
-    gyro: Array<{ time: number; value: number }>
+    surface: Array<{ time: Time; value: number }>
+    overSurface: Array<{ time: Time; value: number }>
+    gyro: Array<{ time: Time; value: number }>
   }
   showSurfaceTemp: boolean
   showOverSurfaceTemp: boolean
   showGyroX: boolean
-  theme?: string
-  systemTheme?: string
+  theme: string
+  systemTheme: string
 }
 
+/**
+ * Componente interno que renderiza el gráfico de temperatura y giroscopio
+ * Maneja la creación y actualización del gráfico con lightweight-charts
+ * Gestiona la configuración de tema, series y eventos de redimensionamiento
+ */
 const ChartRenderer: React.FC<ChartRendererProps> = ({
   data,
   showSurfaceTemp,
@@ -50,6 +65,11 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<Record<string, ISeriesApi<'Line'>>>({})
 
+  /**
+   * Inicializa el gráfico con configuración de tema y series
+   * Configura colores, escalas y formato de tiempo según el tema activo
+   * Crea las series de datos para temperatura y giroscopio
+   */
   useEffect(() => {
     if (!chartContainerRef.current) return
 
@@ -96,7 +116,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
 
     chartRef.current = chart
 
-    // Create series
+    // Create series with appropriate colors and configuration
     seriesRef.current.surface = chart.addLineSeries({
       color: isDarkMode ? "rgba(239, 68, 68, 0.8)" : "rgba(185, 28, 28, 0.8)",
       lineWidth: 1,
@@ -118,6 +138,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
       title: "Giroscopio X",
     })
 
+    // Configure price scales for better visualization
     chart.priceScale("left").applyOptions({
       scaleMargins: { top: 0.2, bottom: 0.2 },
     })
@@ -126,6 +147,10 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
       scaleMargins: { top: 0.2, bottom: 0.2 },
     })
 
+    /**
+     * Manejador de redimensionamiento para mantener el gráfico responsive
+     * Ajusta el tamaño del gráfico cuando cambia el tamaño de la ventana
+     */
     const handleResize = () => {
       if (chartRef.current && chartContainerRef.current) {
         chartRef.current.applyOptions({
@@ -146,7 +171,11 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
     }
   }, [theme, systemTheme])
 
-  // Update data when filters or data change
+  /**
+   * Actualiza los datos del gráfico cuando cambian los filtros o datos
+   * Utiliza setTimeout para asegurar que se ejecute después de la inicialización completa
+   * Maneja la visibilidad de cada serie según los filtros activos
+   */
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current.surface) return
 
@@ -175,6 +204,21 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   return <div ref={chartContainerRef} className="h-[355px] w-full" />
 }
 
+/**
+ * Props del componente principal del gráfico
+ * Define los parámetros necesarios para obtener y visualizar los datos
+ */
+interface TemperatureGyroscopeProps {
+  bucket: string
+  startDate?: Date
+  endDate?: Date
+}
+
+/**
+ * Componente principal del gráfico de temperatura y giroscopio
+ * Maneja la obtención de datos, filtros y renderizado del gráfico
+ * Proporciona estadísticas en tiempo real y manejo de errores
+ */
 const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket, startDate, endDate }) => {
   const [data, setData] = useState<DataPoint[]>([])
   const [showSurfaceTemp, setShowSurfaceTemp] = useState(true)
@@ -191,7 +235,11 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
     setIsClient(true)
   }, [])
 
-  // Memoize expensive data processing
+  /**
+   * Procesa los datos de forma memoizada para optimizar el rendimiento
+   * Calcula estadísticas y formatea datos para el gráfico
+   * Filtra valores nulos y calcula mínimos y máximos para cada serie
+   */
   const { processedData, surfaceStats, overSurfaceStats } = useMemo(() => {
     if (!data.length) {
       return {
@@ -201,6 +249,10 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
       }
     }
 
+    /**
+     * Función auxiliar para formatear datos de una serie específica
+     * Filtra valores nulos y convierte timestamps a formato compatible
+     */
     const formatData = (data: DataPoint[], key: keyof DataPoint) => {
       return data
         .filter((point) => point[key] !== null)
@@ -215,9 +267,9 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
 
     return {
       processedData: {
-        surface: formatData(data, "surfaceTemperature"),
-        overSurface: formatData(data, "overSurfaceTemperature"),
-        gyro: formatData(data, "gyroX"),
+        surface: formatData(data, "surfaceTemperature") as Array<{ time: Time; value: number }>,
+        overSurface: formatData(data, "overSurfaceTemperature") as Array<{ time: Time; value: number }>,
+        gyro: formatData(data, "gyroX") as Array<{ time: Time; value: number }>,
       },
       surfaceStats: {
         min: surfaceValues.length ? Math.min(...surfaceValues) : null,
@@ -230,6 +282,11 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
     }
   }, [data])
 
+  /**
+   * Obtiene datos de temperatura y giroscopio desde la API
+   * Realiza peticiones paralelas para optimizar el rendimiento
+   * Combina y procesa los datos de diferentes fuentes
+   */
   useEffect(() => {
     const fetchData = async () => {
       if (!session?.accessToken) {
@@ -238,15 +295,16 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
       }
 
       try {
-        const start = startDate?.toISOString()
-        const stop = endDate?.toISOString()
+        const start = startDate?.toISOString() || ''
+        const stop = endDate?.toISOString() || ''
 
+        // Realizar peticiones paralelas para optimizar rendimiento
         const [probeResponse, gyroResponse] = await Promise.all([
           fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/history/data?bucket=${bucket}&start=${start}&stop=${stop}&_measurement=temperature_probe&fields=fields_surface_temperature,fields_over_surface_temperature&every=1m0s&fn=last&createEmpty=false&yieldName=last`,
             {
               headers: {
-                Authorization: `${session.accessToken}`,
+                Authorization: `${session.accessToken || ''}`,
               },
             },
           ),
@@ -263,8 +321,10 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
         const probeData = await probeResponse.json()
         const gyroData = await gyroResponse.json()
 
+        // Combinar datos de diferentes fuentes por timestamp
         const combinedData: { [key: string]: DataPoint } = {}
 
+        // Procesar datos de temperatura
         probeData?.forEach((item: {
           _time: string;
           _field: string;
@@ -286,6 +346,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
           }
         })
 
+        // Procesar datos de giroscopio
         gyroData?.forEach((item: {
           _time: string;
           _field: string;
@@ -366,6 +427,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
         )}
       </CardHeader>
 
+      {/* Mensaje de error cuando no hay datos disponibles */}
       {fetchError && (
         <div className="mb-4 mx-4 max-w-[calc(100%-2rem)] px-4 py-3 rounded-md bg-destructive dark:bg-red-900 border border-destructive dark:border-red-800 text-white flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 inline-block flex-shrink-0" aria-hidden="true" />
@@ -375,6 +437,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
         </div>
       )}
 
+      {/* Estado de carga con skeletons */}
       {isLoading ? (
         <CardContent className="px-6 flex flex-col items-center justify-center h-[375px]">
           <Skeleton className="h-[375px] w-full" />
@@ -409,6 +472,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
         !fetchError && (
           <>
             <CardContent className="px-6 flex flex-col">
+              {/* Contenedor del gráfico con renderizado condicional */}
               <ChartContainer className="h-[355px] w-full" config={{}}>
                 {isClient ? (
                   <ChartRenderer
@@ -423,6 +487,8 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
                   <div className="h-[355px] w-full bg-gray-100 dark:bg-gray-800 animate-pulse rounded" />
                 )}
               </ChartContainer>
+              
+              {/* Tarjetas de estadísticas con valores mínimos y máximos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <Card className="bg-white/50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow md:my-2 md:mx-2 overflow-hidden">
                   <CardHeader className="flex flex-row items-center justify-between p-3 pb-0">

@@ -1,3 +1,10 @@
+/**
+ * Modal para crear nuevas granjas en el sistema
+ * Permite configurar datos básicos de la granja como nombre e identificador
+ * Incluye validaciones de formulario y gestión de errores
+ * Proporciona una interfaz sencilla para la gestión de granjas
+ */
+
 'use client';
 
 import { useState } from 'react';
@@ -11,8 +18,16 @@ import { Separator } from "@/components/ui/separator";
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 
+/**
+ * Componente modal para crear nuevas granjas
+ * Gestiona la creación de granjas con validaciones básicas
+ * Permite registrar granjas con nombre e identificador único
+ */
 const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: () => void }> = ({ isOpen, onClose, onRefresh }) => {
   const { data: session } = useSession();
+  
+  // Estado para la información de la granja
+  // Almacena los datos básicos de la granja a crear
   const [farmInfo, setFarmInfo] = useState({
     name: '',
     idname: ''
@@ -20,10 +35,19 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
 
   const { toast } = useToast();
 
+  /**
+   * Maneja los cambios en los campos del formulario
+   * Actualiza el estado local con los nuevos valores del input
+   * @param e - Evento de cambio del input
+   */
   const handleFarmInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFarmInfo({ ...farmInfo, [e.target.id]: e.target.value });
   };
 
+  /**
+   * Reinicia el formulario a sus valores iniciales
+   * Limpia todos los campos y restaura valores por defecto
+   */
   const resetForm = () => {
     setFarmInfo({
       name: '',
@@ -31,11 +55,20 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     });
   };
 
+  /**
+   * Maneja el cierre del modal y reinicia el formulario
+   * Llama a la función de cierre proporcionada por el padre
+   */
   const handleClose = () => {
     resetForm();
     onClose();
   };
 
+  /**
+   * Maneja el envío del formulario
+   * Valida los datos y crea la granja en el sistema
+   * @param e - Evento de envío del formulario
+   */
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const target = (e as React.FormEvent<HTMLFormElement> & { nativeEvent: SubmitEvent }).nativeEvent.submitter as HTMLButtonElement;
@@ -86,6 +119,10 @@ const FarmAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     }
   };
 
+  /**
+   * Valida que el formulario esté completo
+   * Verifica que todos los campos obligatorios estén llenos
+   */
   const isFormValid = farmInfo.name && farmInfo.idname;
 
   return (

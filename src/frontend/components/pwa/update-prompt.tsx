@@ -1,3 +1,9 @@
+/**
+ * Componente de prompt de actualización para Progressive Web App (PWA)
+ * Maneja las actualizaciones de la aplicación cuando hay una nueva versión disponible
+ * Se muestra solo cuando hay una actualización pendiente
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,13 +11,17 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X } from 'lucide-react';
 
+/**
+ * Componente que maneja el prompt de actualización de la PWA
+ * Se muestra cuando hay una nueva versión de la aplicación disponible
+ */
 export default function UpdatePrompt() {
   const pathname = usePathname();
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  // Solo mostrar en la página de login
+  // Solo mostrar en la página de login para no interferir con la experiencia principal
   const shouldShowOnCurrentPage = pathname === '/login';
 
   useEffect(() => {
@@ -20,13 +30,13 @@ export default function UpdatePrompt() {
       return;
     }
 
-    // Verificar si fue descartado previamente
+    // Verificar si fue descartado previamente para evitar spam
     const dismissed = sessionStorage.getItem('pwa-update-dismissed') === 'true';
     setIsDismissed(dismissed);
 
     if (dismissed) return;
 
-    // No mostrar update si install prompt está visible
+    // No mostrar update si install prompt está visible para evitar conflictos
     const installPromptDismissed = sessionStorage.getItem('pwa-install-dismissed') === 'true';
     if (!installPromptDismissed) return;
 
@@ -35,10 +45,12 @@ export default function UpdatePrompt() {
         if (reg) {
           setRegistration(reg);
           
+          // Escuchar cuando se encuentra una nueva versión del service worker
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
+                // Mostrar prompt cuando hay una nueva versión instalada y hay un controlador activo
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                   setUpdateAvailable(true);
                 }
@@ -48,12 +60,17 @@ export default function UpdatePrompt() {
         }
       });
 
+      // Recargar la página cuando el nuevo service worker tome control
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         window.location.reload();
       });
     }
   }, [shouldShowOnCurrentPage]);
 
+  /**
+   * Maneja la actualización de la aplicación
+   * Envía mensaje al service worker para activar la nueva versión
+   */
   const handleUpdate = () => {
     if (registration && registration.waiting) {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -61,6 +78,10 @@ export default function UpdatePrompt() {
     }
   };
 
+  /**
+   * Maneja el descarte del prompt de actualización
+   * Guarda el estado en sessionStorage para evitar mostrar de nuevo
+   */
   const handleDismiss = () => {
     setUpdateAvailable(false);
     setIsDismissed(true);

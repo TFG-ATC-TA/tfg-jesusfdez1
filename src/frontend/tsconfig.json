@@ -1,26 +1,78 @@
+/**
+ * Configuración de TypeScript para el proyecto frontend
+ * Define las opciones del compilador y rutas de alias
+ * Optimiza el desarrollo con Next.js y proporciona mejor experiencia de desarrollo
+ */
 {
   "compilerOptions": {
+    // Librerías disponibles para el compilador
+    // Incluye APIs del DOM y características modernas de JavaScript
     "lib": ["dom", "dom.iterable", "esnext"],
+    
+    // Permitir archivos JavaScript junto con TypeScript
+    // Facilita la migración gradual y compatibilidad con librerías JS
     "allowJs": true,
+    
+    // Omitir verificación de tipos en archivos de librerías
+    // Mejora el rendimiento de compilación y evita errores de tipos externos
     "skipLibCheck": true,
+    
+    // Habilitar modo estricto para mejor detección de errores
+    // Proporciona verificaciones de tipo más rigurosas y mejor calidad de código
     "strict": true,
+    
+    // No generar archivos de salida (Next.js maneja la compilación)
+    // Optimiza el flujo de trabajo con Next.js
     "noEmit": true,
+    
+    // Interoperabilidad con módulos ES
+    // Permite importar módulos CommonJS como ES modules
     "esModuleInterop": true,
+    
+    // Sistema de módulos ES6
+    // Utiliza la sintaxis moderna de importación/exportación
     "module": "esnext",
+    
+    // Resolución de módulos optimizada para bundlers
+    // Mejora la resolución de módulos para herramientas como Webpack
     "moduleResolution": "bundler",
+    
+    // Permitir importar archivos JSON como módulos
+    // Facilita el uso de archivos de configuración y datos JSON
     "resolveJsonModule": true,
+    
+    // Aislar módulos para mejor compatibilidad
+    // Garantiza que cada archivo sea un módulo independiente
     "isolatedModules": true,
+    
+    // Preservar JSX para Next.js
+    // Permite que Next.js maneje la transformación de JSX
     "jsx": "preserve",
+    
+    // Compilación incremental para mejor rendimiento
+    // Recompila solo los archivos modificados para builds más rápidos
     "incremental": true,
+    
+    // Plugin de Next.js para optimizaciones específicas
+    // Proporciona mejoras específicas para el framework Next.js
     "plugins": [
       {
         "name": "next"
       }
     ],
+    
+    // Alias de rutas para importaciones más limpias
+    // Permite usar @/ para importar desde la raíz del proyecto
     "paths": {
       "@/*": ["./*"]
     }
   },
+  
+  // Archivos incluidos en la compilación
+  // Incluye todos los archivos TypeScript y definiciones de tipos
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  
+  // Archivos excluidos de la compilación
+  // Evita procesar dependencias y archivos innecesarios
   "exclude": ["node_modules"]
 }

@@ -1,9 +1,19 @@
+/**
+ * Provider personalizado para manejo de temas
+ * Extiende next-themes con funcionalidad de colores primarios personalizados
+ */
+
 'use client';
 
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { type ThemeProviderProps } from 'next-themes/dist/types';
 import { useEffect, useCallback, useRef } from 'react';
 
+/**
+ * Provider de temas que maneja colores primarios personalizados y preferencias
+ * @param children - Componentes hijos
+ * @param props - Props adicionales para next-themes
+ */
 export default function ThemeProvider({
   children,
   ...props
@@ -12,7 +22,11 @@ export default function ThemeProvider({
   const isInitializedRef = useRef(false);
   const priorityLoadAttemptedRef = useRef(false);
 
-  // Función para cargar y aplicar el color primario
+  /**
+   * Función para cargar y aplicar el color primario desde localStorage
+   * Aplica el color a variables CSS y genera colores para gráficos
+   * @returns boolean - True si se aplicó correctamente
+   */
   const loadAndApplyPrimaryColor = useCallback(() => {
     try {
       const savedColor = localStorage.getItem('theme-primary-color');
@@ -45,7 +59,10 @@ export default function ThemeProvider({
     return false;
   }, []);
 
-  // Función para cargar la preferencia de tema (claro/oscuro)
+  /**
+   * Función para cargar la preferencia de tema (claro/oscuro)
+   * next-themes maneja automáticamente la aplicación del tema
+   */
   const loadAndApplyThemePreference = useCallback(() => {
     try {
       const themePreference = localStorage.getItem('user-theme-preference');
@@ -66,7 +83,10 @@ export default function ThemeProvider({
     }
   }, [loadAndApplyPrimaryColor]);
 
-  // Configuración principal de eventos y cargas con retraso
+  /**
+   * Configuración principal de eventos y cargas con retraso
+   * Maneja múltiples escenarios para asegurar que los colores se apliquen correctamente
+   */
   useEffect(() => {
     // Priorizar la carga del color al inicio
     if (!isInitializedRef.current) {
@@ -81,8 +101,10 @@ export default function ThemeProvider({
       }
     };
 
-    // Para asegurarnos de que se aplique correctamente, ejecutamos con varios tiempos
-    // Esto ayuda en situaciones donde otros scripts pueden interferir o la carga es lenta
+    /**
+     * Función para aplicar preferencias con múltiples retrasos
+     * Ayuda en situaciones donde otros scripts pueden interferir
+     */
     const applyPreferencesWithDelays = () => {
       // Inmediatamente 
       loadAndApplyThemePreference();

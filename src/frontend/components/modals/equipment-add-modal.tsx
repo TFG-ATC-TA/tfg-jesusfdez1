@@ -1,3 +1,10 @@
+/**
+ * Modal para crear nuevo equipamiento en el sistema
+ * Permite configurar equipos con tipos específicos y asignación de dispositivos y tanques
+ * Incluye validaciones de compatibilidad y gestión de recursos
+ * Proporciona una interfaz completa para gestionar equipos de la granja
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -14,18 +21,12 @@ import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 import { DataTable } from '@/components/ui/data-table';
 import { devicesColors } from '@/constants/data';
+import { Device, AssociatedTank } from '@/types';
 
-interface Device {
-  _id: string;
-  boardId: string;
-  type: string;
-}
-
-interface AssociatedTank {
-  _id: string;
-  name: string;
-}
-
+/**
+ * Props del modal de añadir equipamiento
+ * Define la interfaz para controlar el estado del modal y la comunicación
+ */
 interface EquipmentAddModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +34,11 @@ interface EquipmentAddModalProps {
   onRefresh: () => void;
 }
 
+/**
+ * Componente modal para crear nuevo equipamiento
+ * Gestiona la creación de equipos con asignación de dispositivos y tanques compatibles
+ * Proporciona validaciones de compatibilidad y gestión de recursos
+ */
 const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -42,40 +48,58 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   const { data: session } = useSession();
   const { toast } = useToast();
   
+  // Referencias para control de montaje y fetching
+  // Evita operaciones en componentes desmontados y previene ciclos infinitos
   const mountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [_initialLoading, _setInitialLoading] = useState(true);
   
+  // Estado para la información del equipamiento
+  // Almacena los datos básicos del equipo a crear
   const [equipmentInfo, setEquipmentInfo] = useState({
     name: '',
     type: '',
     farm: farmId,
   });
   
+  // Estados para gestión de dispositivos y tanques
+  // Maneja las listas de dispositivos disponibles y tanques asociados
   const [devices, setDevices] = useState<Device[]>([]);
   const [associatedTanks, setAssociatedTanks] = useState<AssociatedTank[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Record<string, boolean>>({});
   const [selectedTanks, setSelectedTanks] = useState<Record<string, boolean>>({});
 
-  // Estados para paginación y búsqueda
+  // Estados para paginación y búsqueda de dispositivos
+  // Controla la paginación y filtrado de la lista de dispositivos
   const [devicesPage, setDevicesPage] = useState(1);
   const [devicesSearchTerm, setDevicesSearchTerm] = useState('');
   const [devicesTotalItems, setDevicesTotalItems] = useState(0);
   const [devicesTotalPages, setDevicesTotalPages] = useState(1);
   
+  // Estados para paginación y búsqueda de tanques
+  // Controla la paginación y filtrado de la lista de tanques
   const [tanksPage, setTanksPage] = useState(1);
   const [tanksSearchTerm, setTanksSearchTerm] = useState('');
   const [tanksTotalItems, setTanksTotalItems] = useState(0);
   const [tanksTotalPages, setTanksTotalPages] = useState(1);
 
-  // Reset state on unmount to avoid memory leaks
+  /**
+   * Reset state on unmount to avoid memory leaks
+   * Marca el componente como desmontado para evitar operaciones asíncronas
+   */
   useEffect(() => {
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
+  /**
+   * Obtiene los tipos de dispositivos compatibles según el tipo de equipamiento
+   * Define qué tipos de dispositivos pueden ser asignados a cada tipo de equipo
+   * @param equipmentType - Tipo de equipamiento seleccionado
+   * @returns Array de tipos de dispositivos compatibles
+   */
   const getDeviceTypesByEquipmentType = (equipmentType: string) => {
     switch (equipmentType) {
       case "Tanque de leche":
@@ -87,6 +111,11 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     }
   };
 
+  /**
+   * Maneja el cambio de tipo de equipamiento
+   * Actualiza los filtros de dispositivos y limpia selecciones previas
+   * @param value - Nuevo tipo de equipamiento seleccionado
+   */
   const handleTypeChange = (value: string) => {
     setEquipmentInfo({ ...equipmentInfo, type: value });
     // Actualizar filtros basados en el tipo de equipo
@@ -112,6 +141,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   // }, [isOpen, equipmentInfo.type]);
 
   // Columnas para la tabla de dispositivos
+  // Define la estructura y renderizado de la tabla de dispositivos disponibles
   const deviceColumns = [
     {
       id: "boardId",
@@ -138,6 +168,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   ];
 
   // Mover deviceTypeFilterOptions fuera del render para evitar recálculos
+  // Optimiza el rendimiento evitando recálculos innecesarios
   const deviceTypeFilterOptions = useMemo(() => ({
     type: getDeviceTypesByEquipmentType(equipmentInfo.type),
   }), [equipmentInfo.type]);
@@ -147,6 +178,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   });
 
   // Sincronizar selectedFilters cuando cambie equipmentInfo.type
+  // Mantiene los filtros actualizados con el tipo de equipo seleccionado
   useEffect(() => {
     if (equipmentInfo.type) {
       const deviceTypes = getDeviceTypesByEquipmentType(equipmentInfo.type);
@@ -155,12 +187,14 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   }, [equipmentInfo.type]);
 
   // Evitar re-renderizados innecesarios al manejar los filtros
+  // Optimiza el rendimiento usando useCallback
   const handleFilterChange = useCallback((filters: Record<string, string[]>) => {
     setSelectedFilters(filters);
     setDevicesPage(1);
   }, []);
 
   // Columnas para la tabla de tanques asociados
+  // Define la estructura de la tabla de tanques disponibles
   const tankColumns = [
     {
       id: "name",
@@ -170,6 +204,7 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
   ];
 
   // Modificar el fetchDevices para que coincida con el patrón de page.tsx
+  // Obtiene la lista de dispositivos disponibles con filtros y paginación
   const fetchDevices = useCallback(async (farmId: string, page = 1, searchTerm = '') => {
     if (!session?.accessToken || !farmId || isFetchingRef.current) {
       return;

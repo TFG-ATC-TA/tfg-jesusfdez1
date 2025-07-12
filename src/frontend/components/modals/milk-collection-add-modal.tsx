@@ -1,3 +1,10 @@
+/**
+ * Modal para crear nuevas recogidas de leche en el sistema
+ * Permite configurar recogidas con múltiples tanques, cantidades y compartimentos
+ * Incluye validaciones de datos y gestión de tanques asociados
+ * Proporciona una interfaz completa para registrar recogidas de leche con trazabilidad
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,13 +22,21 @@ import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { Plus, Trash } from 'lucide-react';
 
-// Define un tipo para un tanque en la recogida
+/**
+ * Define un tipo para un tanque en la recogida
+ * Contiene información del tanque, cantidad y compartimento
+ * Permite registrar múltiples tanques con diferentes cantidades
+ */
 interface TankCollection {
   tankId: string;
   liters: number;
   compartment: string;
 }
 
+/**
+ * Props del modal de añadir recogida de leche
+ * Define la interfaz para controlar el estado del modal y la comunicación
+ */
 interface MilkCollectionAddModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -29,8 +44,16 @@ interface MilkCollectionAddModalProps {
   onRefresh: () => void;
 }
 
+/**
+ * Componente modal para crear nuevas recogidas de leche
+ * Maneja la creación de recogidas con múltiples tanques y validaciones
+ * Proporciona una interfaz intuitiva para registrar datos de recogida
+ */
 const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen, onClose, farmId, onRefresh }) => {
   const { data: session } = useSession();
+  
+  // Estado para la información de la recogida
+  // Incluye datos básicos, tanques y configuraciones específicas
   const [collectionInfo, setCollectionInfo] = useState({
     collectionDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     cisternLicensePlate: '',
@@ -42,11 +65,18 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     inhibitorSampleTaken: false,
     litersPerTank: [{ tankId: '', liters: 0, compartment: 'Único' }] as TankCollection[]
   });
+  
+  // Estado para los tanques disponibles en la granja
+  // Se carga dinámicamente desde la API
   const [tanks, setTanks] = useState<Array<{ _id: string; name: string; capacity: number }>>([]);
 
   const { toast } = useToast();
 
-  // Efecto para cargar los tanques al abrir el modal
+  /**
+   * Efecto para cargar los tanques al abrir el modal
+   * Obtiene la lista de tanques disponibles en la granja
+   * Establece el primer tanque como predeterminado si hay disponibles
+   */
   useEffect(() => {
     if (isOpen) {
       const fetchTanks = async () => {
@@ -98,6 +128,11 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     }
   }, [isOpen, session, farmId, toast]);
 
+  /**
+   * Maneja cambios en los campos de entrada del formulario
+   * Procesa diferentes tipos de datos (texto, números) según el campo
+   * @param e - Evento de cambio del input
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value, type } = e.target;
     
@@ -108,6 +143,13 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     }
   };
 
+  /**
+   * Maneja cambios en los datos de los tanques
+   * Actualiza campos específicos de un tanque en el array
+   * @param index - Índice del tanque a modificar
+   * @param field - Campo a actualizar
+   * @param value - Nuevo valor
+   */
   const handleTankChange = (index: number, field: keyof TankCollection, value: string | number) => {
     const updatedTanks = [...collectionInfo.litersPerTank];
     updatedTanks[index] = { 
@@ -117,6 +159,10 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     setCollectionInfo({ ...collectionInfo, litersPerTank: updatedTanks });
   };
 
+  /**
+   * Añade un nuevo tanque al formulario
+   * Crea una nueva entrada de tanque con valores por defecto
+   */
   const addTank = () => {
     if (tanks.length > 0) {
       setCollectionInfo({
@@ -129,12 +175,21 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     }
   };
 
+  /**
+   * Elimina un tanque del formulario
+   * Remueve el tanque del array de tanques
+   * @param index - Índice del tanque a eliminar
+   */
   const removeTank = (index: number) => {
     const updatedTanks = [...collectionInfo.litersPerTank];
     updatedTanks.splice(index, 1);
     setCollectionInfo({ ...collectionInfo, litersPerTank: updatedTanks });
   };
 
+  /**
+   * Resetea el formulario a sus valores iniciales
+   * Limpia todos los campos y restaura valores por defecto
+   */
   const resetForm = () => {
     setCollectionInfo({
       collectionDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
@@ -149,11 +204,20 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     });
   };
 
+  /**
+   * Maneja el cierre del modal
+   * Resetea el formulario y llama a la función de cierre
+   */
   const handleClose = () => {
     resetForm();
     onClose();
   };
 
+  /**
+   * Maneja el envío del formulario
+   * Valida los datos y crea la recogida de leche en el sistema
+   * @param e - Evento de envío del formulario
+   */
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -208,6 +272,11 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     createCollection();
   };
 
+  /**
+   * Valida que el formulario esté completo
+   * Verifica que todos los campos obligatorios estén llenos
+   * Asegura que cada tanque tenga datos válidos
+   */
   const isFormValid = 
     collectionInfo.collectionDate && 
     collectionInfo.sampleLabel && 
@@ -229,6 +298,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
               </div>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Campos básicos de la recogida */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="collectionDate">Fecha y hora de recogida <span className="text-red-500">*</span></Label>
@@ -254,6 +324,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                     </div>
                   </div>
                   
+                  {/* Información de la empresa y vehículo */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="collectionCompany">Empresa de recogida <span className="text-red-500">*</span></Label>
@@ -288,6 +359,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                     </div>
                   </div>
                   
+                  {/* Información técnica de la leche */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="milkTemperature">Temperatura de la leche (°C)</Label>
@@ -316,6 +388,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                   
                   <Separator />
                   
+                  {/* Sección de tanques y litros */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <CardTitle>Tanques y litros recogidos</CardTitle>
@@ -328,6 +401,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                       </Button>
                     </div>
                     
+                    {/* Lista dinámica de tanques */}
                     {collectionInfo.litersPerTank.map((tank, index) => (
                       <div key={index} className="flex items-start gap-4 mb-4">
                         <div className="flex-grow border p-4 rounded-md bg-gray-50 dark:bg-gray-900">
@@ -370,6 +444,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                             </div>
                           </div>
                         </div>
+                        {/* Botón para eliminar tanque (solo si hay más de uno) */}
                         {collectionInfo.litersPerTank.length > 1 && (
                           <Button 
                             type="button" 
@@ -383,6 +458,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                     ))}
                   </div>
                   
+                  {/* Botón de envío del formulario */}
                   <Button 
                     id="submit-collection" 
                     type="submit" 

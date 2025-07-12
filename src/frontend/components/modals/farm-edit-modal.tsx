@@ -1,3 +1,9 @@
+/**
+ * Modal para editar granjas existentes en el sistema
+ * Permite modificar datos básicos de la granja como nombre e identificador
+ * Incluye validaciones de formulario y gestión de errores
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,8 +17,14 @@ import { Separator } from "@/components/ui/separator";
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 
+/**
+ * Componente modal para editar granjas existentes
+ * Gestiona la modificación de granjas con validaciones y carga de datos existentes
+ */
 const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: string; onRefresh: () => void }> = ({ isOpen, onClose, farmId, onRefresh }) => {
   const { data: session } = useSession();
+  
+  // Estado para la información de la granja
   const [farmInfo, setFarmInfo] = useState({
     name: '',
     idname: ''
@@ -73,10 +85,17 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
     }
   }, [isOpen, farmId, currentFarmId, session, toast, onClose]);
 
+  /**
+   * Maneja los cambios en los campos del formulario
+   * @param e - Evento de cambio del input
+   */
   const handleFarmInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFarmInfo({ ...farmInfo, [e.target.id]: e.target.value });
   };
 
+  /**
+   * Reinicia el formulario a sus valores iniciales
+   */
   const resetForm = () => {
     setFarmInfo({
       name: '',
@@ -85,6 +104,9 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
     setCurrentFarmId(null);
   };
 
+  /**
+   * Maneja el cierre del modal y reinicia el formulario
+   */
   const handleClose = () => {
     resetForm();
     setLoading(true);

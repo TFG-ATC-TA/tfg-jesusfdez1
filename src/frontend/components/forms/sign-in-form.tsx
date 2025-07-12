@@ -1,3 +1,9 @@
+/**
+ * Formulario de inicio de sesión
+ * Maneja la autenticación de usuarios con validación y manejo de errores
+ * Integra con NextAuth para gestión de sesiones y proporciona UX optimizada
+ */
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +24,11 @@ import * as z from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+/**
+ * Esquema de validación para el formulario de login
+ * Define las reglas de validación para email y contraseña
+ * Utiliza Zod para validación en tiempo real y mensajes de error personalizados
+ */
 const formSchema = z.object({
   email: z
     .string()
@@ -28,8 +39,18 @@ const formSchema = z.object({
     .min(1, { message: 'La contraseña es obligatoria' })
 });
 
+/**
+ * Tipo inferido del esquema de validación
+ * Define la estructura de datos del formulario
+ * Garantiza type safety en toda la aplicación
+ */
 type UserFormValues = z.infer<typeof formSchema>;
 
+/**
+ * Componente principal del formulario de inicio de sesión
+ * Maneja la autenticación con next-auth y validación de formularios
+ * Proporciona feedback visual y manejo de errores robusto
+ */
 export default function Component() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +58,18 @@ export default function Component() {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   
-  // Set isMounted to true once component is mounted on client side
+  /**
+   * Marcar el componente como montado para evitar errores de hidratación
+   * Garantiza que los componentes del lado del cliente se rendericen correctamente
+   */
   useEffect(() => {
     setIsMounted(true);
   }, []);
   
+  /**
+   * Configuración del formulario con react-hook-form y validación zod
+   * Proporciona validación en tiempo real y manejo de estado optimizado
+   */
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -50,6 +78,11 @@ export default function Component() {
     },
   });
 
+  /**
+   * Función que maneja el envío del formulario de login
+   * Integra con NextAuth para autenticación y maneja errores de forma segura
+   * @param data - Datos del formulario validados
+   */
   const onSubmit = async (data: UserFormValues) => {
     setLoading(true);
     setError(null);
@@ -86,6 +119,7 @@ export default function Component() {
     <div className="w-full max-w-md mx-auto space-y-2">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* Campo de email con validación en tiempo real */}
           <FormField
             control={form.control}
             name="email"
@@ -101,7 +135,7 @@ export default function Component() {
                     {...field}
                     onChange={(e) => {
                       field.onChange(e);
-                      setError(null);
+                      setError(null); // Limpiar errores al escribir
                     }}
                   />
                 </FormControl>
@@ -110,6 +144,7 @@ export default function Component() {
             )}
           />
 
+          {/* Campo de contraseña con toggle de visibilidad */}
           <FormField
             control={form.control}
             name="password"
@@ -126,9 +161,10 @@ export default function Component() {
                       {...field}
                       onChange={(e) => {
                         field.onChange(e);
-                        setError(null);
+                        setError(null); // Limpiar errores al escribir
                       }}
                     />
+                    {/* Botón de toggle para mostrar/ocultar contraseña */}
                     {isMounted && (
                       <button
                         type="button"
@@ -145,10 +181,12 @@ export default function Component() {
             )}
           />
 
+          {/* Mensaje de error del servidor */}
           {error && (
             <div className="text-red-500 text-sm">{error}</div>
           )}
 
+          {/* Botón de envío con estado de carga */}
           <Button disabled={loading} className="w-full" type="submit">
             {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </Button>

@@ -1,3 +1,9 @@
+/**
+ * Modal para editar equipamiento existente en el sistema
+ * Permite modificar equipos con tipos específicos y reasignación de dispositivos y tanques
+ * Incluye validaciones de compatibilidad y gestión de recursos
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -14,18 +20,11 @@ import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 import { DataTable } from '@/components/ui/data-table';
 import { devicesColors } from '@/constants/data';
+import { Device, AssociatedTank } from '@/types';
 
-interface Device {
-  _id: string;
-  boardId: string;
-  type: string;
-}
-
-interface AssociatedTank {
-  _id: string;
-  name: string;
-}
-
+/**
+ * Props del modal de editar equipamiento
+ */
 interface EquipmentEditModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +32,10 @@ interface EquipmentEditModalProps {
   onRefresh: () => void;
 }
 
+/**
+ * Componente modal para editar equipamiento existente
+ * Gestiona la modificación de equipos con reasignación de dispositivos y tanques compatibles
+ */
 const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -42,11 +45,13 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
   const { data: session } = useSession();
   const { toast } = useToast();
   
+  // Referencias para control de montaje y fetching
   const mountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   
+  // Estado para la información del equipamiento
   const [equipmentInfo, setEquipmentInfo] = useState({
     name: '',
     type: '',
@@ -54,30 +59,38 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     description: ''
   });
   
+  // Estados para gestión de dispositivos y tanques
   const [devices, setDevices] = useState<Device[]>([]);
   const [associatedTanks, setAssociatedTanks] = useState<AssociatedTank[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Record<string, boolean>>({});
   const [selectedTanks, setSelectedTanks] = useState<Record<string, boolean>>({});
 
-  // Estados para paginación y búsqueda
+  // Estados para paginación y búsqueda de dispositivos
   const [devicesPage, setDevicesPage] = useState(1);
   const [devicesSearchTerm, setDevicesSearchTerm] = useState('');
   const [devicesTotalItems, setDevicesTotalItems] = useState(0);
   const [devicesTotalPages, setDevicesTotalPages] = useState(1);
   
+  // Estados para paginación y búsqueda de tanques
   const [tanksPage, setTanksPage] = useState(1);
   const [tanksSearchTerm, setTanksSearchTerm] = useState('');
   const [tanksTotalItems, setTanksTotalItems] = useState(0);
   const [tanksTotalPages, setTanksTotalPages] = useState(1);
 
-  // Reset state on unmount to avoid memory leaks
+  /**
+   * Reset state on unmount to avoid memory leaks
+   */
   useEffect(() => {
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  // Helper to get device types based on equipment type
+  /**
+   * Helper to get device types based on equipment type
+   * @param equipmentType - Tipo de equipamiento seleccionado
+   * @returns Array de tipos de dispositivos compatibles
+   */
   function getDeviceTypesByEquipmentType(equipmentType: string): string[] {
     switch (equipmentType) {
       case "Tanque de leche":

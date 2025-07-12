@@ -1,6 +1,19 @@
+/**
+ * Configuración de Tailwind CSS para la aplicación
+ * Incluye temas personalizados, animaciones y variables CSS
+ * Define el sistema de diseño y estilos visuales de la aplicación
+ */
+
 import type { Config } from "tailwindcss";
 const { default: flattenColorPalette } = require("tailwindcss/lib/util/flattenColorPalette");
 
+/**
+ * Función para añadir variables CSS para todos los colores del tema
+ * Permite usar colores como variables CSS en el proyecto
+ * Crea variables CSS dinámicas basadas en la paleta de colores de Tailwind
+ * @param addBase - Función de Tailwind para añadir estilos base
+ * @param theme - Función para acceder al tema actual
+ */
 function addVariablesForColors({ addBase, theme }: any) {
   let allColors = flattenColorPalette(theme("colors"));
   let newVars = Object.fromEntries(
@@ -12,15 +25,28 @@ function addVariablesForColors({ addBase, theme }: any) {
   });
 }
 
+/**
+ * Configuración principal de Tailwind CSS
+ * Define el tema, contenido a procesar y extensiones personalizadas
+ * Incluye sistema de colores, animaciones y utilidades personalizadas
+ */
 const config: Config = {
+  // Habilita el modo oscuro basado en clases
+  // Permite cambiar entre temas claro y oscuro dinámicamente
   darkMode: ["class"],
+  
+  // Archivos donde buscar clases de Tailwind
+  // Incluye todos los archivos de componentes y páginas
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  
   theme: {
     extend: {
+      // Sistema de colores personalizado con variables CSS
+      // Permite temas dinámicos y consistencia visual
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
@@ -63,12 +89,19 @@ const config: Config = {
           '5': 'hsl(var(--chart-5))'
         }
       },
+      
+      // Bordes redondeados personalizados
+      // Define radios de borde consistentes en toda la aplicación
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)'
       },
+      
+      // Animaciones personalizadas
+      // Incluye animaciones para componentes UI y efectos visuales
       keyframes: {
+        // Animación de acordeón para componentes colapsables
         'accordion-down': {
           from: {
             height: '0'
@@ -85,6 +118,9 @@ const config: Config = {
             height: '0'
           }
         },
+        
+        // Animaciones de aurora para efectos de fondo dinámicos
+        // Crea efectos visuales fluidos y atractivos
         aurora: {
           '0%': {
             transform: 'translate(0%, 0%) rotate(0deg) scale(1)',
@@ -117,6 +153,9 @@ const config: Config = {
             filter: 'blur(40px) brightness(1)'
           }
         },
+        
+        // Flujos de aurora para efectos dinámicos y variados
+        // Cada flujo tiene diferentes patrones de movimiento
         'aurora-flow-1': {
           '0%': {
             transform: 'translate(-25%, 0%) scale(1.1)',
@@ -203,6 +242,9 @@ const config: Config = {
           }
         }
       },
+      
+      // Definición de animaciones con duraciones y easings
+      // Permite usar las animaciones definidas en keyframes
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
@@ -214,6 +256,9 @@ const config: Config = {
       }
     }
   },
+  
+  // Plugins de Tailwind
+  // Incluye animaciones y variables de colores
   plugins: [
     require("tailwindcss-animate"),
     addVariablesForColors

@@ -1,3 +1,10 @@
+/**
+ * Modal de configuración de la aplicación
+ * Permite al usuario modificar su perfil, contraseña y personalizar el tema
+ * Incluye validaciones de seguridad, personalización de colores y gestión de sesión
+ * Proporciona una interfaz completa para la configuración del usuario
+ */
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -17,33 +24,54 @@ import { useUser } from '@/hooks/useUserContext';
 import { notifyProfileUpdate, getUserLocalData } from '@/services/user-service';
 import { useTheme } from 'next-themes';
 
-
+/**
+ * Props del modal de configuración
+ * Define la interfaz para controlar el estado del modal
+ */
 export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { data: session } = useSession();
   const { user } = useUser();
   const { setTheme, theme } = useTheme();
+  
+  // Estado para la pestaña activa del modal
   const [activeTab, setActiveTab] = useState('');
+  
+  // Estado para la información personal del usuario
   const [personalInfo, setPersonalInfo] = useState({
     name: '',
     surname: '',
     email: ''
   });
+  
+  // Estado para el cambio de contraseña
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
     confirm: ''
   });
+  
+  // Estado para el color primario personalizado
   const [primaryColor, setPrimaryColor] = useState({ hue: 240, saturation: 100, lightness: 50 });
+  
+  // Referencias para el control del selector de color
   const colorFieldRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+  
+  // Estados para validación y visibilidad de contraseñas
   const [passwordsMatch, setPasswordsMatch] = useState(true);
   const [showPassword, setShowPassword] = useState({
     current: false,
     new: false,
     confirm: false
   });
+  
   const { toast } = useToast();
 
+  /**
+   * Presets de colores predefinidos para personalización rápida
+   * Cada color tiene valores HSL (Hue, Saturation, Lightness) para consistencia
+   * Proporciona opciones de colores populares y accesibles
+   */
   const colorPresets = [
     { name: "Azul", hue: 240, saturation: 100, lightness: 50 },
     { name: "Cielo", hue: 199, saturation: 100, lightness: 70 },
@@ -61,10 +89,20 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     { name: "Café", hue: 30, saturation: 50, lightness: 30 },
   ];
 
+  /**
+   * Valor CSS del color primario seleccionado
+   * Convierte los valores HSL a formato CSS para aplicación
+   */
   const selectedColorCSS = useMemo(() => {
     return `hsl(${primaryColor.hue}, ${primaryColor.saturation}%, ${primaryColor.lightness}%)`;
   }, [primaryColor]);
 
+  /**
+   * Verifica la fortaleza de la contraseña según criterios de seguridad
+   * Implementa validaciones estándar de seguridad para contraseñas
+   * @param pass - Contraseña a verificar
+   * @returns Array con los criterios cumplidos
+   */
   const checkStrength = (pass: string) => {
     const requirements = [
       { regex: /.{8,}/, text: "Al menos 8 caracteres" },
@@ -79,15 +117,29 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     }));
   };
 
+  /**
+   * Criterios de fortaleza de la contraseña actual
+   * Se recalcula automáticamente cuando cambia la contraseña
+   */
   const strength = useMemo(() =>
     checkStrength(passwords.new),
     [passwords.new]
   );
 
+  /**
+   * Puntuación de fortaleza de la contraseña (0-4)
+   * Cuenta cuántos criterios de seguridad se cumplen
+   */
   const strengthScore = useMemo(() => {
     return strength.filter((req) => req.met).length;
   }, [strength]);
 
+  /**
+   * Obtiene el color CSS para la barra de fortaleza
+   * Proporciona feedback visual sobre la seguridad de la contraseña
+   * @param score - Puntuación de fortaleza
+   * @returns Clase CSS del color
+   */
   const getStrengthColor = (score: number) => {
     if (score === 0) return "bg-border";
     if (score <= 1) return "bg-red-500";
@@ -96,6 +148,12 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     return "bg-emerald-500";
   };
 
+  /**
+   * Obtiene el texto descriptivo de la fortaleza
+   * Proporciona feedback textual sobre la seguridad de la contraseña
+   * @param score - Puntuación de fortaleza
+   * @returns Texto descriptivo
+   */
   const getStrengthText = (score: number) => {
     if (score === 0) return "Ingrese una contraseña";
     if (score <= 2) return "Contraseña débil";
@@ -103,6 +161,10 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     return "Contraseña fuerte";
   };
 
+  /**
+   * Verifica si el cambio de contraseña está habilitado
+   * Valida que todos los campos estén completos y las contraseñas coincidan
+   */
   const isPasswordChangeEnabled = useMemo(() => {
     return passwords.current.length > 0 &&
       passwords.new.length > 0 &&
@@ -111,10 +173,19 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       strengthScore == 4;
   }, [passwords, passwordsMatch, strengthScore]);
 
+  /**
+   * Verifica si el cambio de información personal está habilitado
+   * Valida que los campos obligatorios estén completos
+   */
   const isPersonalInfoChangeEnabled = useMemo(() => {
     return personalInfo.name.length > 0 && personalInfo.email.length > 0;
   }, [personalInfo]);
 
+  /**
+   * Inicializa los datos del modal cuando se abre
+   * Carga la información del usuario desde múltiples fuentes
+   * Prioriza datos locales sobre datos de sesión para persistencia
+   */
   useEffect(() => {
     if (isOpen) {
       const localData = getUserLocalData();
@@ -143,6 +214,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
         setActiveTab("apariencia");
       }
 
+      // Cargar color primario actual desde CSS
       const root = document.documentElement;
       const cssVarValue = getComputedStyle(root).getPropertyValue('--primary').trim();
       const hslMatch = cssVarValue.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
@@ -156,10 +228,18 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     }
   }, [isOpen, user, session, activeTab]);
 
+  /**
+   * Maneja cambios en la información personal
+   * Actualiza el estado local con los nuevos valores del input
+   */
   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPersonalInfo({ ...personalInfo, [e.target.id]: e.target.value });
   };
 
+  /**
+   * Maneja cambios en los campos de contraseña
+   * Actualiza el estado local con los nuevos valores del input
+   */
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     const updated = { ...passwords, [id]: value };
@@ -167,13 +247,40 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     setPasswordsMatch(updated.new === updated.confirm);
   };
 
+  /**
+   * Alterna la visibilidad de los campos de contraseña
+   * Maneja la visibilidad de la contraseña actual, nueva y de confirmación
+   */
   const toggleShowPassword = (field: keyof typeof showPassword) => {
     setShowPassword(prevState => ({ ...prevState, [field]: !prevState[field] }));
   };
 
+  /**
+   * Maneja el cambio de preset de color
+   * Aplica un color predefinido al selector de color
+   */
   const handleColorPresetChange = (preset: typeof colorPresets[0]) => {
     setPrimaryColor(preset);
     applyThemeColor(preset);
+  };
+
+  /**
+   * Aplica el color del tema a las variables CSS
+   * Actualiza las variables CSS del documento raíz para aplicar el color personalizado
+   * @param color - Objeto con valores HSL del color
+   */
+  const applyThemeColor = (color: { hue: number, saturation: number, lightness: number }) => {
+    const { hue, saturation, lightness } = color;
+    const hslValue = `${hue} ${saturation}% ${lightness}%`;
+
+    document.documentElement.style.setProperty('--primary', hslValue);
+    document.documentElement.style.setProperty('--ring', hslValue);
+
+    localStorage.setItem('theme-primary-color', JSON.stringify(color));
+
+    document.documentElement.style.setProperty('--primary-foreground', `${hue} ${saturation}% 98%`);
+
+    window.dispatchEvent(new CustomEvent('theme-color-changed', { detail: color }));
   };
 
   const _handleHueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,20 +299,6 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     const newColor = { ...primaryColor, lightness: parseInt(e.target.value, 10) };
     setPrimaryColor(newColor);
     applyThemeColor(newColor);
-  };
-
-  const applyThemeColor = (color: { hue: number, saturation: number, lightness: number }) => {
-    const { hue, saturation, lightness } = color;
-    const hslValue = `${hue} ${saturation}% ${lightness}%`;
-
-    document.documentElement.style.setProperty('--primary', hslValue);
-    document.documentElement.style.setProperty('--ring', hslValue);
-
-    localStorage.setItem('theme-primary-color', JSON.stringify(color));
-
-    document.documentElement.style.setProperty('--primary-foreground', `${hue} ${saturation}% 98%`);
-
-    window.dispatchEvent(new CustomEvent('theme-color-changed', { detail: color }));
   };
 
   const _handleColorFieldMouseDown = useCallback((e: React.MouseEvent) => {

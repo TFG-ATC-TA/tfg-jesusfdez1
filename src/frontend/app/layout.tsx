@@ -1,3 +1,9 @@
+/**
+ * Layout principal de la aplicación
+ * Define la estructura HTML base y metadatos para SEO y PWA
+ * Incluye configuración de viewport, metadatos, iconos y estructura de providers
+ */
+
 import Providers from '@/components/layout/providers';
 import { Toaster } from '@/components/ui/toaster';
 import PWAWrapper from '@/components/pwa/pwa-wrapper';
@@ -7,8 +13,14 @@ import { SessionTimeoutProvider } from "@/providers/session-timeout-provider";
 
 import './globals.css';
 
+// Configuración de la fuente Inter para optimizar rendimiento y consistencia visual
 const inter = Inter({ subsets: ['latin'] });
 
+/**
+ * Configuración del viewport para dispositivos móviles
+ * Optimiza la visualización en diferentes tamaños de pantalla
+ * Previene zoom no deseado y mejora la experiencia PWA
+ */
 export const viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
@@ -21,6 +33,11 @@ export const viewport = {
   viewportFit: 'cover',
 };
 
+/**
+ * Metadatos de la aplicación para SEO y PWA
+ * Incluye información para redes sociales, iconos y configuración de app
+ * Optimiza el posicionamiento y la experiencia de instalación PWA
+ */
 export const metadata: Metadata = {
   metadataBase: new URL('https://lactokeeper.com'),
   title: "Lactokeeper",
@@ -72,6 +89,12 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Componente de layout raíz
+ * Envuelve toda la aplicación con providers y configuración PWA
+ * Estructura la aplicación con HTML semántico y metadatos optimizados
+ * @param children - Componentes hijos de la aplicación
+ */
 export default function RootLayout({
   children
 }: {
@@ -80,12 +103,15 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
+        {/* Meta tags para PWA y configuración móvil */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Lactokeeper" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-tap-highlight" content="no" />
+        
+        {/* Iconos y manifest para PWA */}
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
@@ -93,6 +119,7 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/favicon.ico" />
       </head>
       <body className={inter.className}>
+        {/* Providers para contexto global y PWA */}
         <Providers>
           <SessionTimeoutProvider>
             <PWAWrapper />

@@ -1,3 +1,10 @@
+/**
+ * Gráfico de giroscopio en tiempo real
+ * Visualiza datos de sensores IMU (Inertial Measurement Unit) en tiempo real
+ * Utiliza WebSocket para recibir datos continuos y lightweight-charts para renderizado
+ * Proporciona monitoreo en vivo de la velocidad angular en los tres ejes
+ */
+
 "use client"
 
 import type React from "react"
@@ -12,6 +19,11 @@ import { AlertTriangle, Wifi, WifiOff } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSession } from "next-auth/react"
 
+/**
+ * Tipo para datos del giroscopio
+ * Representa las lecturas de los ejes X, Y, Z del sensor
+ * Incluye timestamp para sincronización temporal
+ */
 type GyroData = {
   timestamp: number
   gyro_x: number
@@ -19,17 +31,31 @@ type GyroData = {
   gyro_z: number
 }
 
+/**
+ * Props del componente de gráfico de giroscopio
+ * Define los datos y configuración de tema para el renderizado
+ */
 interface TemperatureGyroscopeLive {
   data: GyroData[]
   theme?: string
   systemTheme?: string
 }
 
+/**
+ * Componente interno que renderiza el gráfico de giroscopio
+ * Maneja la creación y actualización del gráfico con lightweight-charts
+ * Configura series para cada eje del giroscopio con colores diferenciados
+ */
 const TemperatureGyroscopeLive: React.FC<TemperatureGyroscopeLive> = ({ data, theme, systemTheme }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<Record<string, ISeriesApi<'Line'>>>({})
 
+  /**
+   * Inicializa el gráfico con configuración de tema y series
+   * Configura colores, escalas y formato de tiempo según el tema activo
+   * Crea las series de datos para cada eje del giroscopio
+   */
   useEffect(() => {
     if (!chartContainerRef.current) return
 
@@ -78,7 +104,7 @@ const TemperatureGyroscopeLive: React.FC<TemperatureGyroscopeLive> = ({ data, th
 
     chartRef.current = chart
 
-    // Create series
+    // Create series for each gyroscope axis with distinct colors
     seriesRef.current.gyroX = chart.addLineSeries({
       color: isDarkMode ? "rgba(239, 68, 68, 0.8)" : "rgba(185, 28, 28, 0.8)",
       lineWidth: 1,
@@ -97,6 +123,10 @@ const TemperatureGyroscopeLive: React.FC<TemperatureGyroscopeLive> = ({ data, th
       title: "Eje Z",
     })
 
+    /**
+     * Maneja el redimensionamiento del gráfico
+     * Ajusta el tamaño cuando cambia el tamaño de la ventana
+     */
     const handleResize = () => {
       if (chartRef.current && chartContainerRef.current) {
         chartRef.current.applyOptions({
@@ -117,12 +147,22 @@ const TemperatureGyroscopeLive: React.FC<TemperatureGyroscopeLive> = ({ data, th
     }
   }, [theme, systemTheme])
 
-  // Update data when data changes
+  /**
+   * Actualiza los datos del gráfico cuando cambian
+   * Procesa y formatea los datos para lightweight-charts
+   * Filtra datos duplicados y mantiene orden cronológico
+   */
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current.gyroX) return
 
     // Use setTimeout to ensure this runs after the chart is fully initialized
     setTimeout(() => {
+      /**
+       * Formatea los datos para el gráfico
+       * @param data - Array de datos del giroscopio
+       * @param key - Clave del eje a formatear
+       * @returns Array de datos formateados para lightweight-charts
+       */
       const formatData = (data: GyroData[], key: "gyro_x" | "gyro_y" | "gyro_z"): LineData[] => {
         return data
           .map((point) => ({
@@ -132,6 +172,7 @@ const TemperatureGyroscopeLive: React.FC<TemperatureGyroscopeLive> = ({ data, th
           .sort((a, b) => (a.time as number) - (b.time as number))
       }
 
+      // Ordenar y filtrar datos duplicados para evitar ruido visual
       const sortedData = data
         .sort((a, b) => a.timestamp - b.timestamp)
         .filter((item, index, array) => index === 0 || item.timestamp !== array[index - 1].timestamp)
@@ -147,6 +188,12 @@ const TemperatureGyroscopeLive: React.FC<TemperatureGyroscopeLive> = ({ data, th
   return <div ref={chartContainerRef} className="h-[300px] sm:h-[400px] w-full" />
 }
 
+/**
+ * Componente principal del gráfico de giroscopio
+ * Maneja la conexión WebSocket y el estado de los datos en tiempo real
+ * Proporciona indicadores de estado de conexión y manejo de errores
+ * @param bucket - Bucket de InfluxDB para obtener los datos
+ */
 export default function GyroscopeChart({ bucket }: { bucket: string }) {
   const [data, setData] = useState<GyroData[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -162,6 +209,11 @@ export default function GyroscopeChart({ bucket }: { bucket: string }) {
     setIsClient(true)
   }, [])
 
+  /**
+   * Establece la conexión WebSocket para datos en tiempo real
+   * Configura event handlers para manejo de conexión y datos
+   * Incluye validación de autenticación y manejo de errores
+   */
   const connectWebSocket = useCallback(() => {
     if (status === "loading") return
     if (!session?.accessToken) {
@@ -228,6 +280,11 @@ export default function GyroscopeChart({ bucket }: { bucket: string }) {
     }
   }, [status, session?.accessToken, bucket])
 
+  /**
+   * Gestiona la conexión WebSocket basada en el estado de autenticación
+   * Se conecta automáticamente cuando el usuario está autenticado
+   * Limpia la conexión al desmontar el componente
+   */
   useEffect(() => {
     if (status === "authenticated" && session?.accessToken) {
       connectWebSocket()
@@ -249,6 +306,7 @@ export default function GyroscopeChart({ bucket }: { bucket: string }) {
             </CardTitle>
             <CardDescription className="mt-1">Velocidad angular en los ejes X, Y y Z (rad/s)</CardDescription>
           </div>
+          {/* Badge de estado de conexión */}
           <Badge
             variant={connectionStatus === "Conectado" ? "default" : "destructive"}
             className={`flex items-center gap-1 text-xs px-2.5 py-1 pointer-events-none w-fit shrink-0 ${
@@ -264,6 +322,7 @@ export default function GyroscopeChart({ bucket }: { bucket: string }) {
       </CardHeader>
 
       <CardContent className="px-4 sm:px-6">
+        {/* Mensaje de error */}
         {error ? (
           <div className="mb-4 px-3 sm:px-4 py-3 rounded-md bg-destructive dark:bg-red-900 border border-destructive dark:border-red-800 text-white flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 inline-block flex-shrink-0 mt-0.5" aria-hidden="true" />

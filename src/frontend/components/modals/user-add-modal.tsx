@@ -1,3 +1,10 @@
+/**
+ * Modal para crear nuevos usuarios en el sistema
+ * Permite configurar datos personales, contraseñas, roles y asignación de granjas
+ * Incluye validaciones de seguridad y gestión de permisos
+ * Proporciona una interfaz completa para la gestión de usuarios del sistema
+ */
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -17,48 +24,81 @@ import { columnsAlternative } from '@/components/tables/farm-tables/columns';
 import { useToast } from '@/components/ui/use-toast';
 import { Eye, EyeOff, Check, X, AlertTriangle } from 'lucide-react';
 
+/**
+ * Componente modal para crear nuevos usuarios
+ * Gestiona la creación completa de usuarios con validaciones y asignación de recursos
+ * Implementa control de acceso basado en roles y gestión de granjas
+ */
 const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: () => void }> = ({ isOpen, onClose, onRefresh }) => {
   const { data: session } = useSession();
+  
+  // Estados para información personal del usuario
+  // Almacena los datos básicos del usuario a crear
   const [personalInfo, setPersonalInfo] = useState({
     name: '',
     surname: '',
     email: ''
   });
+  
+  // Estados para gestión de contraseñas
+  // Maneja la creación de contraseñas con validaciones de seguridad
   const [passwords, setPasswords] = useState({
     new: '',
     confirm: ''
   });
   const [passwordsMatch, setPasswordsMatch] = useState(true);
-  const [role, setRole] = useState('');
-  const [farms, setFarms] = useState<Farm[]>([]);
-  const [selectedFarms, setSelectedFarms] = useState<Record<string, boolean>>({});
-  const [roleError, setRoleError] = useState(false);
   const [showPassword, setShowPassword] = useState({
     new: false,
     confirm: false
   });
+  
+  // Estados para gestión de roles y granjas
+  // Controla la asignación de roles y granjas al usuario
+  const [role, setRole] = useState('');
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [selectedFarms, setSelectedFarms] = useState<Record<string, boolean>>({});
+  const [roleError, setRoleError] = useState(false);
+  
+  // Estados para paginación y búsqueda de granjas
+  // Controla la paginación y filtrado de la lista de granjas disponibles
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  
+  // Referencias para evitar actualizaciones conflictivas
+  // Previene condiciones de carrera en las peticiones asíncronas
   const isFetchingRef = useRef(false);
   const lastRequestedPageRef = useRef(1);
 
   const { toast } = useToast();
 
-  // Controlador de cambio de página separado para evitar actualizaciones conflictivas
+  /**
+   * Controlador de cambio de página separado para evitar actualizaciones conflictivas
+   * Mantiene un registro de la última página solicitada para evitar condiciones de carrera
+   * @param newPage - Nueva página a cargar
+   */
   const handlePageChange = useCallback((newPage: number) => {
     lastRequestedPageRef.current = newPage;
     setPage(newPage);
   }, []);
 
-  // Controlador de cambio de búsqueda separado
+  /**
+   * Controlador de cambio de búsqueda separado
+   * Resetea la paginación cuando cambia el término de búsqueda
+   * @param term - Término de búsqueda
+   */
   const handleSearchChange = useCallback((term: string) => {
     setSearchTerm(term);
     lastRequestedPageRef.current = 1;
     setPage(1);
   }, []);
 
+  /**
+   * Obtiene la lista de granjas disponibles para asignación
+   * Implementa paginación y búsqueda para optimizar el rendimiento
+   * Previene peticiones duplicadas con control de estado
+   */
   const fetchFarms = useCallback(async () => {
     if (!session?.accessToken || isFetchingRef.current) {
       console.error('No hay sesión iniciada o ya se está realizando una petición');
@@ -98,17 +138,31 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     }
   }, [session, searchTerm]);
 
+  /**
+   * Efecto para cargar granjas cuando se abre el modal
+   * Se ejecuta cuando el modal se abre o cambia la página
+   */
   useEffect(() => {
     if (isOpen) {
       fetchFarms();
     }
   }, [isOpen, fetchFarms, page]);
 
+  /**
+   * Maneja cambios en la información personal del usuario
+   * Actualiza el estado local con los nuevos valores del input
+   * @param e - Evento de cambio del input
+   */
   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPersonalInfo({ ...personalInfo, [e.target.id]: e.target.value });
   };
 
-  // Password strength check logic
+  /**
+   * Verifica la fortaleza de la contraseña según criterios de seguridad
+   * Implementa validaciones estándar de seguridad para contraseñas
+   * @param pass - Contraseña a verificar
+   * @returns Array con los criterios cumplidos
+   */
   const checkStrength = (pass: string) => {
     const requirements = [
       { regex: /.{8,}/, text: "Al menos 8 caracteres" },
@@ -123,15 +177,29 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     }));
   };
 
+  /**
+   * Criterios de fortaleza de la contraseña actual
+   * Se recalcula automáticamente cuando cambia la contraseña
+   */
   const strength = useMemo(() => 
     checkStrength(passwords.new), 
     [passwords.new]
   );
 
+  /**
+   * Puntuación de fortaleza de la contraseña (0-4)
+   * Cuenta cuántos criterios de seguridad se cumplen
+   */
   const strengthScore = useMemo(() => {
     return strength.filter((req) => req.met).length;
   }, [strength]);
 
+  /**
+   * Obtiene el color CSS para la barra de fortaleza
+   * Proporciona feedback visual sobre la seguridad de la contraseña
+   * @param score - Puntuación de fortaleza
+   * @returns Clase CSS del color
+   */
   const getStrengthColor = (score: number) => {
     if (score === 0) return "bg-border";
     if (score <= 1) return "bg-red-500";
@@ -140,6 +208,12 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     return "bg-emerald-500";
   };
 
+  /**
+   * Obtiene el texto descriptivo de la fortaleza
+   * Proporciona feedback textual sobre la seguridad de la contraseña
+   * @param score - Puntuación de fortaleza
+   * @returns Texto descriptivo
+   */
   const getStrengthText = (score: number) => {
     if (score === 0) return "Ingrese una contraseña";
     if (score <= 2) return "Contraseña débil";
@@ -147,6 +221,10 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     return "Contraseña fuerte";
   };
 
+  /**
+   * Verifica si la contraseña es válida para el envío
+   * Valida que todos los campos estén completos y las contraseñas coincidan
+   */
   const isPasswordValid = useMemo(() => {
     return passwords.new.length > 0 && 
            passwords.confirm.length > 0 && 
@@ -154,6 +232,11 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
            strengthScore == 4;
   }, [passwords, passwordsMatch, strengthScore]);
 
+  /**
+   * Maneja cambios en los campos de contraseña
+   * Actualiza el estado local y verifica que las contraseñas coincidan
+   * @param e - Evento de cambio del input
+   */
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     const updated = { ...passwords, [id]: value };
@@ -161,16 +244,30 @@ const UserAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: 
     setPasswordsMatch(updated.new === updated.confirm);
   };
 
+  /**
+   * Maneja el cambio de rol del usuario
+   * Actualiza el rol y limpia selecciones de granjas si es necesario
+   * @param value - Nuevo rol seleccionado
+   */
   const handleRoleChange = (value: string) => {
     setRole(value);
     setRoleError(false);
     if (value === 'Administrador') setSelectedFarms({});
   };
 
+  /**
+   * Maneja cambios en la selección de granjas
+   * Actualiza el estado de granjas seleccionadas
+   * @param selectedRowIds - IDs de las granjas seleccionadas
+   */
   const handleSelectionChange = (selectedRowIds: Record<string, boolean>) => {
     setSelectedFarms(selectedRowIds);
   };
 
+  /**
+   * Resetea el formulario a sus valores iniciales
+   * Limpia todos los campos y restaura valores por defecto
+   */
   const resetForm = () => {
     setPersonalInfo({
       name: '',

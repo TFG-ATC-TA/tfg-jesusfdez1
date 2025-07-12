@@ -1,3 +1,10 @@
+/**
+ * Modal de advertencia de sesión
+ * Se muestra antes de que expire la sesión del usuario
+ * Incluye un countdown visual y permite al usuario extender su sesión
+ * Proporciona una advertencia visual y sonora para evitar la expiración inesperada
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,22 +12,34 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Clock } from 'lucide-react';
 
+/**
+ * Props del modal de advertencia de sesión
+ * Define la interfaz para controlar el estado del modal
+ */
 interface SessionWarningModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+/**
+ * Componente modal de advertencia de sesión
+ * Muestra un countdown y permite al usuario confirmar que ha visto la advertencia
+ * Incluye barra de progreso y feedback visual
+ */
 export const SessionWarningModal: React.FC<SessionWarningModalProps> = ({
   isOpen,
   onClose
 }) => {
-  // Constants
-  const COUNTDOWN_FROM = 5; // 5 seconds countdown
+  // Constantes para el countdown
+  const COUNTDOWN_FROM = 5; // 5 segundos de countdown
   
-  // State
+  // Estado del countdown
   const [countdown, setCountdown] = useState(COUNTDOWN_FROM);
   
-  // Reset and start countdown when modal opens
+  /**
+   * Reinicia y inicia el countdown cuando se abre el modal
+   * El timer se ejecuta cada segundo hasta llegar a 0
+   */
   useEffect(() => {
     if (!isOpen) {
       setCountdown(COUNTDOWN_FROM);
@@ -37,7 +56,10 @@ export const SessionWarningModal: React.FC<SessionWarningModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen]);
 
-  // Calculate progress percentage
+  /**
+   * Calcula el porcentaje de progreso para la barra visual
+   * Proporciona feedback visual del tiempo restante
+   */
   const progressPercentage = (countdown / COUNTDOWN_FROM) * 100;
 
   return (
@@ -45,7 +67,7 @@ export const SessionWarningModal: React.FC<SessionWarningModalProps> = ({
       <DialogContent 
         className="sm:max-w-md p-0 overflow-hidden gap-0 bg-background shadow-xl [&>button]:hidden"
       >
-        {/* Progress bar */}
+        {/* Barra de progreso visual */}
         <div className="h-1 bg-gray-200 dark:bg-gray-700 w-full">
           <div 
             className="h-full bg-amber-500 transition-all duration-1000 ease-linear"
@@ -64,7 +86,7 @@ export const SessionWarningModal: React.FC<SessionWarningModalProps> = ({
             </h2>
           </div>
           
-          {/* Message - Updated with more accurate information */}
+          {/* Mensaje de advertencia y countdown */}
           <div className="text-muted-foreground text-sm mb-6 space-y-3">
             <p>
               Su sesión está a punto de expirar. Por favor, guarde los cambios pendientes y ultime lo que está haciendo, ya que su sesión se cerrará automáticamente.
@@ -77,7 +99,7 @@ export const SessionWarningModal: React.FC<SessionWarningModalProps> = ({
             </div>
           </div>
           
-          {/* Action button */}
+          {/* Botón de acción para cerrar el modal */}
           <div className="flex justify-end mt-6">
             <Button 
               onClick={onClose}

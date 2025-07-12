@@ -1,3 +1,9 @@
+/**
+ * Modal para editar recogidas de leche existentes en el sistema
+ * Permite modificar recogidas con múltiples tanques, cantidades y compartimentos
+ * Incluye validaciones de datos y gestión de tanques asociados
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -25,7 +31,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { Plus, Trash } from 'lucide-react';
 
-// Define un tipo para un tanque en la recogida
+/**
+ * Define un tipo para un tanque en la recogida
+ * Contiene información del tanque, cantidad y compartimento
+ */
 interface TankCollection {
   tankId: string;
   liters: number;
