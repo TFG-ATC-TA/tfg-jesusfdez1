@@ -1,5 +1,5 @@
 > [!NOTE]
-> To read this document in English, visit [README.md](README.md)
+> To read this document in English, visit this [file](README.md)
 
 # Frontend
 La interfaz web de Lactokeeper está desarrollada con **Next.js** y **React**, proporcionando una experiencia moderna, responsiva y optimizada para la gestión de granjas lecheras. El frontend permite la visualización y administración de usuarios, granjas, dispositivos IoT, notificaciones y datos relevantes del sector lácteo, integrando autenticación segura y funcionalidades PWA.

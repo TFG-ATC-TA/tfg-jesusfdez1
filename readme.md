@@ -9,7 +9,7 @@ Open-source web application for dairy farm management, IoT devices and more.
 # Lactokeeper
 
 > [!NOTE]
-> Para leer este documento en español, visita [readme_es.md](README_ES.md)
+> Para leer este documento en español, visita este [archivo](readme_es.md)
 
 This project aims to develop a web application for managing dairy farms, related equipment, milk collection and IoT devices that allow monitoring different aspects of the dairy production process. The application is designed for different user roles, such as administrators, veterinarians and farmers, each with customized permissions and views.
 

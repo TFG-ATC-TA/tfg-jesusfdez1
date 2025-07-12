@@ -1,5 +1,5 @@
 > [!NOTE]
-> Para leer este documento en español, visita [readme_es.md](README_ES.md)
+> Para leer este documento en español, visita este [archivo](README_ES.md)
 
 # Frontend
 The Lactokeeper web interface is built with **Next.js** and **React**, delivering a modern, responsive, and optimized experience for dairy farm management. The frontend enables visualization and management of users, farms, IoT devices, notifications, and key sector data, integrating secure authentication and PWA features.

@@ -1,5 +1,5 @@
 > [!NOTE]
-> Para leer este documento en español, visita [readme_es.md](README_ES.md)
+> Para leer este documento en español, visita este [archivo](README_ES.md)
 
 # Backend
 The backend of Lactokeeper is a robust RESTful API developed with Node.js and Express, designed to manage all server functionalities in the dairy farm management system. This application provides a comprehensive programming interface for the administration of users, farms, equipment, IoT devices, data collection, and notification system.
