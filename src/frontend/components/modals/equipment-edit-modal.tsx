@@ -98,7 +98,7 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
   });
 
   // Define fetchDevicesAndMark and fetchTanksAndMark first to avoid circular references  // Optimized fetchDevices para marcar los dispositivos seleccionados
-  const fetchDevicesAndMark = useCallback(async (farmId: string, page = 1, searchTerm = '', selectedDeviceIds: string[] = []) => {
+  const fetchDevicesAndMark = useCallback(async (farmId: string, page = 1, searchTerm = '') => {
     if (!session?.accessToken || !farmId || isFetchingRef.current) {
       return;
     }
@@ -107,18 +107,8 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     try {
       const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
       const filtersQuery = JSON.stringify(selectedFilters);
-      const searchParams = new URLSearchParams();
-      searchParams.append('farmId', farmId);
-      searchParams.append('page', page.toString());
-      searchParams.append('limit', '10'); // Mantenemos la paginación original de 10 elementos
-      searchParams.append('types', typesQuery);
-      searchParams.append('filters', encodeURIComponent(filtersQuery));
-      if (searchTerm) {
-        searchParams.append('searchTerm', searchTerm);
-      }
-
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/device/list?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/device/list?page=${page}&limit=10&searchTerm=${searchTerm}&types=${typesQuery}&filters=${encodeURIComponent(filtersQuery)}&farmId=${farmId}`, 
         {
           method: 'GET',
           headers: {
@@ -139,7 +129,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       if (!mountedRef.current) return;
       
       console.log("Dispositivos obtenidos:", result.data);
-      console.log("Dispositivos seleccionados a marcar:", selectedDeviceIds);
       
       if (Array.isArray(result.data)) {
         setDevices(result.data);
@@ -160,25 +149,19 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
         isFetchingRef.current = false;
       }
     }
-  }, [session, selectedFilters, toast]);  // Optimized fetchTanks para marcar los tanques seleccionados
-  const fetchTanksAndMark = useCallback(async (farmId: string, page = 1, searchTerm = '', selectedTankIds: string[] = []) => {
+  }, [session, selectedFilters, toast]);
+
+  // Optimized fetchTanks para marcar los tanques seleccionados
+  const fetchTanksAndMark = useCallback(async (farmId: string, page = 1, searchTerm = '') => {
     if (!session?.accessToken || !farmId || !mountedRef.current) {
       return;
     }
 
     try {
       setLoading(true);
-
-      const searchParams = new URLSearchParams();
-      searchParams.append('farmId', farmId);
-      searchParams.append('page', page.toString());
-      searchParams.append('limit', '10'); // Mantenemos la paginación original de 10 elementos
-      if (searchTerm) {
-        searchParams.append('searchTerm', searchTerm);
-      }
       
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?page=${page}&limit=10&searchTerm=${searchTerm}&farmId=${farmId}`, 
         {
           method: 'GET',
           headers: {
@@ -199,7 +182,6 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       if (!mountedRef.current) return;
       
       console.log("Tanques obtenidos:", result);
-      console.log("Tanques seleccionados a marcar:", selectedTankIds);
       
       if (Array.isArray(result)) {
         setAssociatedTanks(result);
@@ -230,86 +212,34 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
         setLoading(false);
       }
     }
-  }, [session, toast]);  // Inicializar carga de datos cuando se abre el modal
-  const initData = useCallback(async (farmId: string, selectedDeviceIds: string[] = [], selectedTankIds: string[] = []) => {
+  }, [session, toast]);
+  // Inicializar carga de datos cuando se abre el modal
+  const initData = useCallback(async (farmId: string) => {
     if (!isOpen || !farmId || !session?.accessToken || !mountedRef.current) {
       return;
     }
     
     try {
-      setInitialLoading(true);
+      console.log("Cargando datos para farmId:", farmId);
       
-      console.log("Iniciando carga de datos con:");
-      console.log("- FarmId:", farmId);
-      console.log("- DeviceIds:", selectedDeviceIds);
-      console.log("- TankIds:", selectedTankIds);
-      
-      // Create initial selection maps based on the IDs
-      const initialDeviceSelections: Record<string, boolean> = {};
-      selectedDeviceIds.forEach(id => {
-        initialDeviceSelections[id] = true;
-      });
-      
-      const initialTankSelections: Record<string, boolean> = {};
-      selectedTankIds.forEach(id => {
-        initialTankSelections[id] = true;
-      });
-      
-      // Set selection states
-      setSelectedDevices(initialDeviceSelections);
-      setSelectedTanks(initialTankSelections);
-      
-      // Cargar dispositivos y tanques en paralelo
+      // Cargar dispositivos y tanques en paralelo (sin interferir con la selección)
       await Promise.all([
-        fetchDevicesAndMark(farmId, 1, '', selectedDeviceIds),
-        fetchTanksAndMark(farmId, 1, '', selectedTankIds)
+        fetchDevicesAndMark(farmId, 1, ''),
+        fetchTanksAndMark(farmId, 1, '')
       ]);
-      
-      // Verificar las selecciones después de cargar los datos
-      console.log("Estado de selección de dispositivos después de cargar:", initialDeviceSelections);
-      console.log("Estado de selección de tanques después de cargar:", initialTankSelections);
       
     } catch (error) {
       if (!mountedRef.current) return;
       console.error("Error al cargar datos iniciales:", error);
-    } finally {
-      if (mountedRef.current) {
-        setInitialLoading(false);
-      }
     }
-  }, [isOpen, session, fetchDevicesAndMark, fetchTanksAndMark]);// Reset states when modal opens and fetch equipment data
+  }, [isOpen, session, fetchDevicesAndMark, fetchTanksAndMark]);
+  // Reset states when modal opens and fetch equipment data
   useEffect(() => {
     if (isOpen && equipmentId) {
-      console.log("Modal abierto para equipamiento:", equipmentId);
-      mountedRef.current = true;
-      setInitialLoading(true);
-      
-      // Reset values
-      setDevicesPage(1);
-      setTanksPage(1);
-      setDevicesSearchTerm('');
-      setTanksSearchTerm('');
-      
-      // Limpiar completamente las selecciones anteriores antes de cargar nuevos datos
-      setSelectedDevices({});
-      setSelectedTanks({});
-      
-      // Resetear información del equipo
-      setEquipmentInfo({
-        name: '',
-        type: '',
-        farm: '',
-        description: ''
-      });
-      
-      // Fetch equipment data
       fetchEquipmentData();
-    } else if (!isOpen) {
-      // Si el modal se cierra, asegurarse de que loading se resetee
-      setLoading(false);
-      setInitialLoading(false);
     }
-  }, [isOpen, equipmentId]);// Fetch equipment data
+  }, [isOpen, equipmentId]);
+  // Fetch equipment data
   const fetchEquipmentData = async () => {
     if (!session?.accessToken || !equipmentId) {
       return;
@@ -365,19 +295,23 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       console.log("DeviceIds a marcar:", deviceIds);
       console.log("TankIds a marcar:", tankIds);
 
-      // Crear diccionarios para IDs seleccionados:
-      // En lugar de inicializar solo con los elementos visibles,
-      // creamos un mapa completo con todos los IDs seleccionados
+      // Crear diccionarios para IDs seleccionados y establecer el estado ANTES de cargar datos
       const initialDeviceSelection: Record<string, boolean> = {};
       deviceIds.forEach(id => { initialDeviceSelection[id] = true; });
-      setSelectedDevices(initialDeviceSelection);
       
       const initialTankSelection: Record<string, boolean> = {};
       tankIds.forEach(id => { initialTankSelection[id] = true; });
+      
+      // Establecer los estados de selección ANTES de cargar datos (como en user-edit-modal)
+      setSelectedDevices(initialDeviceSelection);
       setSelectedTanks(initialTankSelection);
 
-      // Cargar datos para la primera página de cada tabla
-      await initData(data.farm._id || data.farm, deviceIds, tankIds);
+      console.log("Estado de selección inicial establecido:");
+      console.log("- Dispositivos:", initialDeviceSelection);
+      console.log("- Tanques:", initialTankSelection);
+
+      // Cargar datos para la primera página de cada tabla DESPUÉS de establecer la selección
+      await initData(data.farm._id || data.farm);
       
     } catch (error) {
       if (!mountedRef.current) return;
@@ -394,6 +328,13 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       }
     }
   };
+
+  // Cargar datos cuando se establece el farm (como en user-edit-modal)
+  useEffect(() => {
+    if (isOpen && equipmentInfo.farm) {
+      initData(equipmentInfo.farm);
+    }
+  }, [isOpen, equipmentInfo.farm, initData]);
 
   const handleTypeChange = (value: string) => {
     setEquipmentInfo({ ...equipmentInfo, type: value });
@@ -418,6 +359,8 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       setSelectedFilters({ type: deviceTypes });
     }
   }, [isOpen, equipmentInfo.type]);
+
+
 const deviceColumns = [
     {
       id: "boardId",
@@ -456,68 +399,40 @@ const deviceColumns = [
   const handleFilterChange = useCallback((filters: Record<string, string[]>) => {
     setSelectedFilters(filters);
     // Avoid resetting the page when filters are applied
-    const selectedDeviceIds = Object.entries(selectedDevices)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([deviceId, _]) => deviceId);
-    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm, selectedDeviceIds);
-  }, [selectedDevices, equipmentInfo.farm, devicesPage, devicesSearchTerm, fetchDevicesAndMark]);
+    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm);
+  }, [equipmentInfo.farm, devicesPage, devicesSearchTerm, fetchDevicesAndMark]);
 
   // Asegurar que los datos no se borren al cambiar filtros o paginación
   useEffect(() => {
     if (isOpen && equipmentInfo.farm) {
-      // Obtener IDs seleccionados para mantener la selección al recargar
-      const selectedDeviceIds = Object.entries(selectedDevices)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([deviceId, _]) => deviceId);
-        
-      fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm, selectedDeviceIds);
+      fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm);
     }
-  }, [devicesPage, devicesSearchTerm, isOpen, equipmentInfo.farm, fetchDevicesAndMark, selectedDevices]);
+  }, [devicesPage, devicesSearchTerm, isOpen, equipmentInfo.farm, fetchDevicesAndMark]);
+
+
   // Manejar cambios de paginación y búsqueda para dispositivos
   const handleDevicesPageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= devicesTotalPages) {
       setDevicesPage(newPage);
-      
-      // Obtener IDs seleccionados actuales
-      const selectedDeviceIds = Object.entries(selectedDevices)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([deviceId, _]) => deviceId);
-        
-      // Cargar la nueva página manteniendo los dispositivos seleccionados
-      fetchDevicesAndMark(equipmentInfo.farm, newPage, devicesSearchTerm, selectedDeviceIds);
+      fetchDevicesAndMark(equipmentInfo.farm, newPage, devicesSearchTerm);
     }
-  }, [devicesTotalPages, selectedDevices, equipmentInfo.farm, devicesSearchTerm, fetchDevicesAndMark]);
+  }, [devicesTotalPages, equipmentInfo.farm, devicesSearchTerm, fetchDevicesAndMark]);
   const handleDevicesSearchChange = useCallback((term: string) => {
     setDevicesSearchTerm(term);
-    // Avoid resetting the page when search term changes
-    const selectedDeviceIds = Object.entries(selectedDevices)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([deviceId, _]) => deviceId);
-    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, term, selectedDeviceIds);
-  }, [selectedDevices, equipmentInfo.farm, devicesPage, fetchDevicesAndMark]);
+    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, term);
+  }, [equipmentInfo.farm, devicesPage, fetchDevicesAndMark]);
 
   const handleTanksPageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= tanksTotalPages) {
       setTanksPage(newPage);
-      
-      // Obtener IDs seleccionados para pasar a la siguiente función de carga
-      const selectedTankIds = Object.entries(selectedTanks)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([tankId, _]) => tankId);
-        
-      // Cargar la nueva página manteniendo los tanques seleccionados
-      fetchTanksAndMark(equipmentInfo.farm, newPage, tanksSearchTerm, selectedTankIds);
+      fetchTanksAndMark(equipmentInfo.farm, newPage, tanksSearchTerm);
     }
-  }, [tanksTotalPages, selectedTanks, equipmentInfo.farm, tanksSearchTerm, fetchTanksAndMark]);
+  }, [tanksTotalPages, equipmentInfo.farm, tanksSearchTerm, fetchTanksAndMark]);
 
   const handleTanksSearchChange = useCallback((term: string) => {
     setTanksSearchTerm(term);
-    // Avoid resetting the page when search term changes
-    const selectedTankIds = Object.entries(selectedTanks)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([tankId, _]) => tankId);
-    fetchTanksAndMark(equipmentInfo.farm, tanksPage, term, selectedTankIds);
-  }, [selectedTanks, equipmentInfo.farm, tanksPage, fetchTanksAndMark]);
+    fetchTanksAndMark(equipmentInfo.farm, tanksPage, term);
+  }, [equipmentInfo.farm, tanksPage, fetchTanksAndMark]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEquipmentInfo({ ...equipmentInfo, [e.target.id]: e.target.value });
@@ -525,12 +440,10 @@ const deviceColumns = [
   
   // Simplificando los manejadores de selección para evitar re-renderizados innecesarios
   const handleDeviceSelectionChange = (selectedRowIds: Record<string, boolean>) => {
-    // Simplificamos para imitar comportamiento de user-edit-modal
     setSelectedDevices(selectedRowIds);
   };
 
   const handleTankSelectionChange = (selectedRowIds: Record<string, boolean>) => {
-    // Simplificamos para imitar comportamiento de user-edit-modal
     setSelectedTanks(selectedRowIds);
   };
   

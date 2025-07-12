@@ -179,18 +179,8 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
     try {
       const typesQuery = selectedFilters['type'] ? selectedFilters['type'].join(',') : '';
       const filtersQuery = JSON.stringify(selectedFilters);
-      const searchParams = new URLSearchParams();
-      searchParams.append('farmId', farmId);
-      searchParams.append('page', page.toString());
-      searchParams.append('limit', '10');
-      searchParams.append('types', typesQuery);
-      searchParams.append('filters', encodeURIComponent(filtersQuery));
-      if (searchTerm) {
-        searchParams.append('searchTerm', searchTerm);
-      }
-
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/device/list?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/device/list?page=${page}&limit=10&searchTerm=${searchTerm}&types=${typesQuery}&filters=${encodeURIComponent(filtersQuery)}&farmId=${farmId}`, 
         {
           method: 'GET',
           headers: {
@@ -245,17 +235,9 @@ const EquipmentAddModal: React.FC<EquipmentAddModalProps> = ({
 
     try {
       setLoading(true);
-
-      const searchParams = new URLSearchParams();
-      searchParams.append('farmId', farmId);
-      searchParams.append('page', page.toString());
-      searchParams.append('limit', '10');
-      if (searchTerm) {
-        searchParams.append('searchTerm', searchTerm);
-      }
       
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?${searchParams.toString()}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?page=${page}&limit=10&searchTerm=${searchTerm}&farmId=${farmId}`, 
         {
           method: 'GET',
           headers: {

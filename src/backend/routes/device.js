@@ -20,9 +20,15 @@ router.get("/list", verifyToken, async (req, res) => {
     const searchTerm = req.query.searchTerm || '';
     const types = req.query.types ? req.query.types.split(',') : [];
     const filters = req.query.filters ? JSON.parse(decodeURIComponent(req.query.filters)) : {};
+    const farmId = req.query.farmId;
 
     let query = {};
     if (req.user.role === "Administrador") {
+      // Filtrar por granja específica si se proporciona
+      if (farmId) {
+        query.farm = farmId;
+      }
+      
       if (searchTerm) {
         query.boardId = { $regex: searchTerm, $options: 'i' };
       }
@@ -54,7 +60,7 @@ router.get("/list", verifyToken, async (req, res) => {
           }
         },
         { $unwind: { path: '$farm', preserveNullAndEmptyArrays: true } },
-        { $sort: { 'farm.name': 1 } },
+        { $sort: { 'farm.name': 1, 'boardId': 1 } },
         { $skip: skip },
         { $limit: limit },
         {

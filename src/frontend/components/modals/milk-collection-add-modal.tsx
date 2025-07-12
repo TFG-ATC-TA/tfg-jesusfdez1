@@ -42,7 +42,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
     inhibitorSampleTaken: false,
     litersPerTank: [{ tankId: '', liters: 0, compartment: 'Único' }] as TankCollection[]
   });
-  const [tanks, setTanks] = useState<Array<{ _id: string; identifier: string; capacity: number }>>([]);
+  const [tanks, setTanks] = useState<Array<{ _id: string; name: string; capacity: number }>>([]);
 
   const { toast } = useToast();
 
@@ -96,7 +96,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
       
       fetchTanks();
     }
-  }, [isOpen, session, farmId]);
+  }, [isOpen, session, farmId, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value, type } = e.target;
@@ -343,7 +343,7 @@ const MilkCollectionAddModal: React.FC<MilkCollectionAddModalProps> = ({ isOpen,
                                 </SelectTrigger>
                                 <SelectContent>
                                   {tanks.map(t => (
-                                    <SelectItem key={t._id} value={t._id}>{t.identifier}</SelectItem>
+                                    <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
