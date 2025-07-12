@@ -1,7 +1,12 @@
+/**
+ * Layout del dashboard principal
+ * Gestiona la autenticación, disponibilidad del servidor y estructura de navegación
+ * Incluye manejo de estados de carga y redirección automática
+ */
+
 'use client'
 
 import { useSession } from "next-auth/react"
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
@@ -9,22 +14,33 @@ import { MobileSidebar } from '@/components/layout/mobile-sidebar'
 import ThemeColorLoader from '@/components/layout/theme-color-loader'
 import { cn } from '@/lib/utils';
 
+/**
+ * Layout principal del dashboard que envuelve todas las páginas autenticadas
+ * Gestiona la verificación de sesión, disponibilidad del servidor y estructura responsive
+ * @param children - Componentes hijos del dashboard
+ */
 export default function DashboardLayout({
   children
 }: {
   children: React.ReactNode
 }) {
   const { data: session, status } = useSession()
-  const router = useRouter()
+  
+  // Estado para controlar si el servidor está disponible
   const [serverUnavailable, setServerUnavailable] = useState(false)
 
+  /**
+   * Verificar la disponibilidad del servidor
+   * Si el servidor no responde, redirige a la página offline
+   * Previene errores de red y mejora la experiencia offline
+   */
   useEffect(() => {
     const checkServerAvailability = async () => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
         
-        const response = await fetch('/api/auth/session', {
+        await fetch('/api/auth/session', {
           method: 'GET',
           cache: 'no-cache',
           signal: controller.signal
@@ -34,6 +50,7 @@ export default function DashboardLayout({
         // Si el servidor responde, aunque sea con error, está disponible
         setServerUnavailable(false);
       } catch (error) {
+        console.error('Server unavailable:', error);
         // Si no puede conectar con el servidor, redirigir a página offline estática
         setServerUnavailable(true);
         window.location.href = '/offline.html';
@@ -57,7 +74,7 @@ export default function DashboardLayout({
     return null;
   }
 
-  // Si aún está cargando, mostrar un spinner
+  // Si aún está cargando, mostrar un spinner de carga
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -71,14 +88,21 @@ export default function DashboardLayout({
 
   return (
     <div className="flex">
+      {/* Cargador de color de tema para PWA */}
       <ThemeColorLoader />
+      
+      {/* Sidebar para pantallas grandes */}
       <div className={cn('hidden lg:block')}>
         <Sidebar />
       </div>
+      
+      {/* Contenido principal con header y children */}
       <main className="w-full flex-1 overflow-hidden p-5 sm:p-0 lg:mb-0 lg:mx-4 md:mx-4">
         <Header />
         {children}
       </main>
+      
+      {/* Sidebar móvil para pantallas pequeñas */}
       <div className={cn('lg:hidden z-50')}>
         <MobileSidebar />
       </div>

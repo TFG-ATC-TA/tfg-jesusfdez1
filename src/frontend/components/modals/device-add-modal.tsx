@@ -1,3 +1,10 @@
+/**
+ * Modal para crear nuevos dispositivos IoT en el sistema
+ * Permite configurar dispositivos con sensores, asignación de granjas y equipos
+ * Incluye validaciones de compatibilidad y gestión de sensores
+ * Proporciona una interfaz completa para la gestión de dispositivos IoT
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,10 +22,22 @@ import { useToast } from '@/components/ui/use-toast';
 import { Trash, Plus, Icon } from 'lucide-react';
 import { broom } from '@lucide/lab';
 
+/**
+ * Clase CSS para contenedores de botones
+ * Mantiene consistencia en el diseño de botones
+ */
 const buttonContainer = "flex items-center space-x-2";
 
+/**
+ * Componente modal para crear nuevos dispositivos IoT
+ * Gestiona la creación de dispositivos con sensores y asignación de recursos
+ * Implementa validaciones de compatibilidad y gestión de sensores
+ */
 const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh: () => void }> = ({ isOpen, onClose, onRefresh }) => {
   const { data: session } = useSession();
+  
+  // Estado para la información del dispositivo
+  // Almacena todos los datos del dispositivo incluyendo sensores
   const [deviceInfo, setDeviceInfo] = useState({
     boardId: '',
     type: '',
@@ -27,26 +46,49 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
     sensors: [{ sensorId: '', name: '' }],
     equipment: '',
   });
+  
+  // Estados para gestión de granjas y equipos
+  // Maneja las listas de granjas y equipos disponibles para asignación
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmFilter, setFarmFilter] = useState('');
-  const [equipments, setEquipments] = useState<any[]>([]);
+  const [equipments, setEquipments] = useState<Array<{ _id: string; name: string; type: string }>>([]);
   const [equipmentFilter, setEquipmentFilter] = useState('');
 
   const { toast } = useToast();
 
+  /**
+   * Opciones de filtro para tipos de dispositivos
+   * Define los tipos de dispositivos disponibles en el sistema
+   */
   const filterOptions = {
     type: ["Monitor de leche", "Monitor de tanque", "Monitor de estación de lavado"],
   };
 
+  /**
+   * Estado para filtros seleccionados
+   * Controla qué tipos de dispositivos se muestran
+   */
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     type: [...filterOptions.type],
   });
 
-  const handleFilterChange = (filters: Record<string, string[]>) => {
+  /**
+   * Maneja cambios en los filtros de dispositivos
+   * Actualiza los filtros aplicados a la lista de dispositivos
+   * @param filters - Nuevos filtros a aplicar
+   */
+  const _handleFilterChange = (filters: Record<string, string[]>) => {
     setSelectedFilters(filters);
   };
 
-  const fetchDevices = useCallback(async (farmId: string, page: number = 1, searchTerm: string = '') => {
+  /**
+   * Obtiene la lista de dispositivos disponibles
+   * Implementa filtros y paginación para optimizar el rendimiento
+   * @param farmId - ID de la granja para filtrar dispositivos
+   * @param page - Página actual para paginación
+   * @param searchTerm - Término de búsqueda
+   */
+  const _fetchDevices = useCallback(async (farmId: string, page = 1, searchTerm = '') => {
     if (!session?.accessToken || !farmId) {
       return;
     }
@@ -89,8 +131,12 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
         variant: "destructive",
       });
     }
-  }, [session, selectedFilters]);
+  }, [session, selectedFilters, toast]);
 
+  /**
+   * Efecto para cargar granjas cuando se abre el modal
+   * Obtiene la lista de granjas disponibles para asignación
+   */
   useEffect(() => {
     if (isOpen && farms.length === 0) {
       const fetchFarms = async () => {
@@ -129,8 +175,12 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       };
       fetchFarms();
     }
-  }, [isOpen, session, farms.length]);
+  }, [isOpen, session, farms.length, toast]);
 
+  /**
+   * Efecto para cargar equipos cuando se abre el modal
+   * Obtiene la lista de equipos disponibles para asignación
+   */
   useEffect(() => {
     if (isOpen && equipments.length === 0) {
       const fetchEquipments = async () => {
@@ -169,12 +219,23 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
       };
       fetchEquipments();
     }
-  }, [isOpen, session, equipments.length]);
+  }, [isOpen, session, equipments.length, toast]);
 
+  /**
+   * Maneja cambios en los campos del dispositivo
+   * Actualiza el estado local con los nuevos valores del input
+   * @param e - Evento de cambio del input
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setDeviceInfo({ ...deviceInfo, [e.target.id]: e.target.value });
   };
 
+  /**
+   * Maneja cambios en los sensores del dispositivo
+   * Actualiza campos específicos de un sensor en el array
+   * @param index - Índice del sensor a modificar
+   * @param e - Evento de cambio del input
+   */
   const handleSensorChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const newSensors = [...deviceInfo.sensors];
     const { id, value } = e.target;
@@ -184,15 +245,29 @@ const DeviceAddModal: React.FC<{ isOpen: boolean; onClose: () => void; onRefresh
     }
   };
 
+  /**
+   * Añade un nuevo sensor al dispositivo
+   * Crea una nueva entrada de sensor con valores por defecto
+   */
   const handleAddSensor = () => {
     setDeviceInfo({ ...deviceInfo, sensors: [...deviceInfo.sensors, { sensorId: '', name: '' }] });
   };
 
+  /**
+   * Elimina un sensor del dispositivo
+   * Remueve el sensor del array de sensores
+   * @param index - Índice del sensor a eliminar
+   */
   const handleRemoveSensor = (index: number) => {
     const newSensors = deviceInfo.sensors.filter((_, i) => i !== index);
     setDeviceInfo({ ...deviceInfo, sensors: newSensors });
   };
 
+  /**
+   * Maneja el envío del formulario
+   * Valida los datos y crea el dispositivo en el sistema
+   * @param e - Evento de envío del formulario
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const createDevice = async () => {

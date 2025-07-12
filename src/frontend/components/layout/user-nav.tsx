@@ -1,3 +1,8 @@
+/**
+ * Componente de navegación de usuario
+ * Muestra el perfil del usuario con menú desplegable y opciones
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -23,10 +28,18 @@ import { Badge } from '@/components/ui/badge';
 import { roleColors } from '@/constants/data';
 import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/user-service';
 
+/**
+ * Props del componente UserNav
+ */
 type UserNavProps = {
   isMinimized: boolean;
 };
 
+/**
+ * Componente de navegación de usuario
+ * Muestra avatar, nombre y menú desplegable con opciones
+ * @param isMinimized - Estado de minimización del sidebar
+ */
 export function UserNav({ isMinimized }: UserNavProps) {
   const { data: session } = useSession();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -37,7 +50,10 @@ export function UserNav({ isMinimized }: UserNavProps) {
     role: ''
   });
 
-  // Inicializar datos de usuario con prioridad al localStorage sobre la sesión
+  /**
+   * Inicializar datos de usuario con prioridad al localStorage sobre la sesión
+   * Permite persistencia de datos entre sesiones
+   */
   useEffect(() => {
     const localData = getUserLocalData();
     
@@ -61,7 +77,10 @@ export function UserNav({ isMinimized }: UserNavProps) {
     }
   }, [session]);
 
-  // Suscribirse a actualizaciones del perfil de usuario
+  /**
+   * Suscribirse a actualizaciones del perfil de usuario
+   * Actualiza los datos cuando se modifica el perfil
+   */
   useUserProfileUpdates((updatedData: UserProfileUpdate) => {
     setUserData(prev => ({
       ...prev,
@@ -69,7 +88,10 @@ export function UserNav({ isMinimized }: UserNavProps) {
     }));
   });
 
-  // También escuchar el evento user-data-changed para actualizaciones directas
+  /**
+   * Escuchar el evento user-data-changed para actualizaciones directas
+   * Maneja cambios de datos desde otros componentes
+   */
   useEffect(() => {
     const handleUserDataChanged = (event: CustomEvent<UserProfileUpdate>) => {
       setUserData(prev => ({
@@ -91,7 +113,10 @@ export function UserNav({ isMinimized }: UserNavProps) {
     };
   }, []);
 
-  // Función personalizada para manejar el cierre de sesión
+  /**
+   * Función personalizada para manejar el cierre de sesión
+   * Limpia localStorage y cierra la sesión de next-auth
+   */
   const handleSignOut = () => {
     // Limpiar localStorage antes de cerrar sesión
     if (typeof window !== 'undefined') {
@@ -112,6 +137,7 @@ export function UserNav({ isMinimized }: UserNavProps) {
             "flex items-center w-full p-2 rounded-md border-2 border-input hover:bg-accent hover:text-accent-foreground bg-white dark:bg-gray-800 dark:text-white",
             isMinimized ? "justify-center" : "justify-start"
           )}>
+            {/* Avatar del usuario */}
             <Avatar className="h-8 w-8">
               <AvatarImage
                 alt={userData.name}
@@ -120,6 +146,7 @@ export function UserNav({ isMinimized }: UserNavProps) {
                 {userData.name?.[0]}
               </AvatarFallback>
             </Avatar>
+            {/* Nombre del usuario (solo visible cuando no está minimizado) */}
             {!isMinimized && (
               <span className="ml-3 truncate text-md font-semibold">
                 {`${userData.name} ${userData.surname}`}
@@ -127,6 +154,8 @@ export function UserNav({ isMinimized }: UserNavProps) {
             )}
           </button>
         </DropdownMenuTrigger>
+        
+        {/* Menú desplegable con información y opciones */}
         <DropdownMenuContent
           className={cn("mt-2", {
             "ml-10": !isMinimized,
@@ -140,6 +169,7 @@ export function UserNav({ isMinimized }: UserNavProps) {
               <p className="text-sm font-medium leading-none">
                 {userData.email}
               </p>
+              {/* Badge con el rol del usuario */}
               <Badge
                 className="text-xs leading-none pointer-events-none"
                 style={{ backgroundColor: roleColors[userData.role], color: 'white' }}
@@ -150,10 +180,12 @@ export function UserNav({ isMinimized }: UserNavProps) {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
+            {/* Opción de configuración */}
             <DropdownMenuItem onSelect={() => setIsSettingsOpen(true)}>
               <Settings className="mr-2 h-4 w-4" />
               Configuración
             </DropdownMenuItem>
+            {/* Opción de cerrar sesión */}
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
               Cerrar sesión
@@ -161,6 +193,8 @@ export function UserNav({ isMinimized }: UserNavProps) {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      {/* Modal de configuración */}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </>
   );

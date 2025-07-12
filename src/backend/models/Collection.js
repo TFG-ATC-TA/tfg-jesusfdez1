@@ -1,7 +1,15 @@
+/**
+ * Modelo de Collection - Gestión de recolección de leche
+ * Maneja los datos de recolección de leche de las granjas
+ */
+
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
-
+/**
+ * Esquema de Collection
+ * Define la estructura de datos para las recolecciones de leche
+ */
 var collectionSchema = new Schema({
     _id: {
         type: Schema.Types.ObjectId,

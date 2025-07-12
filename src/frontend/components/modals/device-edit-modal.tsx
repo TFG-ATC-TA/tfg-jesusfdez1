@@ -1,3 +1,10 @@
+/**
+ * Modal para editar dispositivos IoT existentes en el sistema
+ * Permite modificar datos, sensores, granja y equipo asignado
+ * Incluye validaciones y feedback visual para el usuario
+ * Proporciona una interfaz completa para la edición de dispositivos
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,16 +16,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Farm, Device } from '@/types';
+import { Farm } from '@/types';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 import { Trash, Plus, Icon } from 'lucide-react';
 import { broom } from '@lucide/lab';
 
+/**
+ * Clase CSS para contenedores de botones
+ * Mantiene consistencia en el diseño de botones
+ */
 const buttonContainer = "flex items-center space-x-2";
 
+/**
+ * Componente modal para editar dispositivos IoT
+ * Permite modificar datos, sensores, granja y equipo asignado
+ * Incluye validaciones y feedback visual para el usuario
+ */
 const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId: string; onRefresh: () => void }> = ({ isOpen, onClose, deviceId, onRefresh }) => {
   const { data: session } = useSession();
+  
+  // Estado para la información del dispositivo
+  // Almacena todos los datos del dispositivo incluyendo sensores
   const [deviceInfo, setDeviceInfo] = useState({
     boardId: '',
     type: '',
@@ -27,14 +46,21 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
     sensors: [{ sensorId: '', name: '' }],
     equipment: '',
   });
+  
+  // Estados para gestión de granjas y equipos
+  // Maneja las listas de granjas y equipos disponibles para asignación
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmFilter, setFarmFilter] = useState('');
-  const [equipments, setEquipments] = useState<any[]>([]);
+  const [equipments, setEquipments] = useState<Array<{ _id: string; name: string; type: string }>>([]);
   const [equipmentFilter, setEquipmentFilter] = useState('');
   const [loading, setLoading] = useState(true);
 
   const { toast } = useToast();
 
+  /**
+   * Efecto para cargar los datos del dispositivo al abrir el modal
+   * Obtiene la información actual del dispositivo desde la API
+   */
   useEffect(() => {
     if (isOpen) {
       const fetchDeviceData = async () => {
@@ -86,8 +112,12 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       };
       fetchDeviceData();
     }
-  }, [isOpen, session, deviceId]);
+  }, [isOpen, session, deviceId, onClose, toast]);
 
+  /**
+   * Efecto para cargar granjas cuando se abre el modal
+   * Obtiene la lista de granjas disponibles para asignación
+   */
   useEffect(() => {
     if (isOpen && farms.length === 0) {
       const fetchFarms = async () => {
@@ -126,8 +156,12 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       };
       fetchFarms();
     }
-  }, [isOpen, session, farms.length]);
+  }, [isOpen, session, farms.length, toast]);
 
+  /**
+   * Efecto para cargar equipos cuando se abre el modal
+   * Obtiene la lista de equipos disponibles para asignación
+   */
   useEffect(() => {
     if (isOpen && equipments.length === 0) {
       const fetchEquipments = async () => {
@@ -166,12 +200,23 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
       };
       fetchEquipments();
     }
-  }, [isOpen, session, equipments.length]);
+  }, [isOpen, session, equipments.length, toast]);
 
+  /**
+   * Maneja cambios en los campos del dispositivo
+   * Actualiza el estado local con los nuevos valores del input
+   * @param e - Evento de cambio del input
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setDeviceInfo({ ...deviceInfo, [e.target.id]: e.target.value });
   };
 
+  /**
+   * Maneja cambios en los sensores del dispositivo
+   * Actualiza campos específicos de un sensor en el array
+   * @param index - Índice del sensor a modificar
+   * @param e - Evento de cambio del input
+   */
   const handleSensorChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const newSensors = [...deviceInfo.sensors];
     const { id, value } = e.target;
@@ -181,15 +226,29 @@ const DeviceEditModal: React.FC<{ isOpen: boolean; onClose: () => void; deviceId
     }
   };
 
+  /**
+   * Añade un nuevo sensor al dispositivo
+   * Crea una nueva entrada de sensor con valores por defecto
+   */
   const handleAddSensor = () => {
     setDeviceInfo({ ...deviceInfo, sensors: [...deviceInfo.sensors, { sensorId: '', name: '' }] });
   };
 
+  /**
+   * Elimina un sensor del dispositivo
+   * Remueve el sensor del array de sensores
+   * @param index - Índice del sensor a eliminar
+   */
   const handleRemoveSensor = (index: number) => {
     const newSensors = deviceInfo.sensors.filter((_, i) => i !== index);
     setDeviceInfo({ ...deviceInfo, sensors: newSensors });
   };
 
+  /**
+   * Maneja el envío del formulario
+   * Valida los datos y actualiza el dispositivo en el sistema
+   * @param e - Evento de envío del formulario
+   */
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const updateDevice = async () => {

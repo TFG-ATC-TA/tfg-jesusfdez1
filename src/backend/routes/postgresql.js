@@ -1,14 +1,28 @@
+/**
+ * Rutas para consulta de datos estructurados en PostgreSQL
+ * Proporciona acceso a estadísticas y actividades de las granjas
+ */
+
 var express = require('express');
 var router = express.Router();
 const cors = require('cors');
 const { verifyToken } = require('../middleware/auth');
 const { connectPostgreSQL } = require('../config/connection');
+
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
 require('dotenv').config();
 
 /* Setup CORS */
 router.use(cors());
 
-// Función determinista para cooling rate según fecha
+/**
+ * Función determinista para calcular cooling rate según fecha
+ * Genera un valor consistente entre 12°C/h y 18°C/h basado en la fecha
+ * @param {string} dateStr - Fecha en formato string
+ * @returns {string} - Cooling rate en formato "X°C/h"
+ */
 function getCoolingRateByDate(dateStr) {
     // Convierte la fecha a un número simple y genera un valor entre 12 y 18
     let hash = 0;
@@ -19,7 +33,11 @@ function getCoolingRateByDate(dateStr) {
     return `${rate}°C/h`;
 }
 
-// Nueva ruta para obtener estadísticas de actividades de la granja
+/**
+ * GET /postgres/farm-activities - Obtener estadísticas de actividades de la granja
+ * Consulta datos de estados de tanques y genera estadísticas detalladas
+ * Incluye paginación por días y cálculos de ciclos de ordeño
+ */
 router.get('/farm-activities', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 0;
@@ -144,7 +162,7 @@ router.get('/farm-activities', async (req, res) => {
         };
         res.json(response);
     } catch (error) {
-        console.error('Error al consultar farm-activities:', error);
+        devConsole.error('Error al consultar farm-activities:', error);
         res.status(500).json({
             success: false,
             message: 'Error al obtener las estadísticas de actividades',

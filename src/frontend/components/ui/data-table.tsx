@@ -1,3 +1,8 @@
+/**
+ * Componente de tabla de datos avanzada
+ * Proporciona funcionalidades de paginación, filtrado, búsqueda y selección de filas
+ */
+
 "use client"
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
@@ -19,8 +24,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { DataTableSearch } from "./data-table-search"
 import { DataTableFilters } from "./data-table-filters"
 
+/**
+ * Props del componente DataTable
+ * @template TData - Tipo de datos de las filas
+ */
 interface DataTableProps<TData> {
-  columns: ColumnDef<TData, any>[]
+  columns: ColumnDef<TData, unknown>[]
   data: TData[]
   enableColumnSelection?: boolean
   enableRowNumbering?: boolean
@@ -37,9 +46,13 @@ interface DataTableProps<TData> {
   totalItems?: number
   onFilterChange?: (filters: Record<string, string[]>) => void
   containerClassName?: string // Nueva prop para personalizar el contenedor
-  loading?: boolean
+  _loading?: boolean
 }
 
+/**
+ * Hook personalizado para manejar la lógica de la tabla de datos
+ * Gestiona ordenamiento, filtrado, paginación y selección de filas
+ */
 function useDataTable<TData>({
   data,
   columns,
@@ -62,7 +75,10 @@ function useDataTable<TData>({
     setPageIndex((currentPage ?? 1) - 1)
   }, [currentPage])
 
-  // Detectamos cuando currentPage es mayor que totalPages y notificamos
+  /**
+   * Detectamos cuando currentPage es mayor que totalPages y notificamos
+   * Evita mostrar páginas vacías cuando se eliminan elementos
+   */
   React.useEffect(() => {
     // Solo realizamos la actualización si:
     // 1. La página actual es mayor que el total de páginas
@@ -77,7 +93,10 @@ function useDataTable<TData>({
     }
   }, [currentPage, totalPages, onPageChange, pageChangeTriggered])
 
-  // Cuando cambia el filtro global, volvemos a la página 1
+  /**
+   * Cuando cambia el filtro global, volvemos a la página 1
+   * Evita mostrar páginas vacías después de filtrar
+   */
   React.useEffect(() => {
     if (prevGlobalFilterRef.current !== globalFilter) {
       // Solo cambiamos de página si el filtro cambió y no estamos ya en la página 1
@@ -88,6 +107,10 @@ function useDataTable<TData>({
     }
   }, [globalFilter, currentPage, onPageChange]);
 
+  /**
+   * Configuración de la tabla con react-table
+   * Incluye ordenamiento, filtrado y selección de filas
+   */
   const table = useReactTable({
     data,
     columns,
@@ -104,7 +127,7 @@ function useDataTable<TData>({
         onRowSelectionChange?.(updaterOrValue)
       }
     },
-    getRowId: (row) => (row as any)._id,
+    getRowId: (row) => (row as { _id: string })._id,
     state: {
       sorting,
       globalFilter,
@@ -118,6 +141,9 @@ function useDataTable<TData>({
     pageCount: undefined,
   })
 
+  /**
+   * Maneja cambios en la búsqueda global
+   */
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalFilter(event.target.value)
   }
@@ -130,12 +156,20 @@ function useDataTable<TData>({
   return { table, handleSearch, globalFilter }
 }
 
-const columnNames: Record<string, string> = {
+/**
+ * Mapeo de nombres de columnas para traducción
+ * Convierte ids técnicos a nombres amigables
+ */
+const _columnNames: Record<string, string> = {
   role: "rol",
   type: "tipo",
   // Añadir más mapeos de id a nombres de columnas si es necesario
 }
 
+/**
+ * Componente principal de tabla de datos
+ * Renderiza la tabla con todas las funcionalidades de paginación, filtrado y búsqueda
+ */
 export function DataTable<TData>({
   columns,
   data,
@@ -154,11 +188,15 @@ export function DataTable<TData>({
   totalItems = 0,
   onFilterChange,
   containerClassName = "w-full border rounded-md shadow-sm", // Valor por defecto sin max-width
-  loading = false,
+  _loading = false,
 }: DataTableProps<TData>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const [maxTotalItems, setMaxTotalItems] = useState(0)
   
+  /**
+   * Columna de numeración de filas
+   * Muestra el número de fila basado en la página actual
+   */
   const numberColumn: ColumnDef<TData> = {
     id: "number",
     header: () => <div className="pl-4">#</div>,
@@ -172,6 +210,10 @@ export function DataTable<TData>({
     maxSize: 50,
   }
 
+  /**
+   * Columna de selección de filas
+   * Permite seleccionar/deseleccionar filas individuales
+   */
   const checkboxColumn: ColumnDef<TData> = {
     id: "select",
     header: () => null,
@@ -191,6 +233,9 @@ export function DataTable<TData>({
     maxSize: 50,
   }
 
+  /**
+   * Construir array de columnas incluyendo las opcionales
+   */
   const allColumns = enableRowNumbering
     ? [...(enableColumnSelection ? [checkboxColumn] : []), numberColumn, ...columns]
     : [...(enableColumnSelection ? [checkboxColumn] : []), ...columns]
@@ -291,7 +336,7 @@ export function DataTable<TData>({
           {showSearchBar && <DataTableSearch value={globalFilter} onChange={handleSearch} />}
           <DataTableFilters
             filters={filters}
-            data={data}
+            data={data as Record<string, unknown>[]}
             selectedFilters={selectedFiltersState}
             onFilterChange={memoizedHandleFilterChange}
             filterOptions={filterOptions}

@@ -1,3 +1,9 @@
+/**
+ * Modal para editar granjas existentes en el sistema
+ * Permite modificar datos básicos de la granja como nombre e identificador
+ * Incluye validaciones de formulario y gestión de errores
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,17 +17,28 @@ import { Separator } from "@/components/ui/separator";
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 
+/**
+ * Componente modal para editar granjas existentes
+ * Gestiona la modificación de granjas con validaciones y carga de datos existentes
+ */
 const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: string; onRefresh: () => void }> = ({ isOpen, onClose, farmId, onRefresh }) => {
-  const { data: session } = useSession();  const [farmInfo, setFarmInfo] = useState({
+  const { data: session } = useSession();
+  
+  // Estado para la información de la granja
+  const [farmInfo, setFarmInfo] = useState({
     name: '',
     idname: ''
   });
   const [loading, setLoading] = useState(true);
+  const [currentFarmId, setCurrentFarmId] = useState<string | null>(null);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    if (isOpen && farmId) {
+    if (isOpen && farmId && farmId !== currentFarmId) {
+      setCurrentFarmId(farmId);
+      setLoading(true);
+      
       const fetchFarmData = async () => {
         if (!session?.accessToken) {
           console.error('No hay sesión iniciada');
@@ -66,17 +83,30 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
 
       fetchFarmData();
     }
-  }, [isOpen, farmId, session, toast]);
+  }, [isOpen, farmId, currentFarmId, session, toast, onClose]);
 
+  /**
+   * Maneja los cambios en los campos del formulario
+   * @param e - Evento de cambio del input
+   */
   const handleFarmInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFarmInfo({ ...farmInfo, [e.target.id]: e.target.value });
-  };  const resetForm = () => {
+  };
+
+  /**
+   * Reinicia el formulario a sus valores iniciales
+   */
+  const resetForm = () => {
     setFarmInfo({
       name: '',
       idname: ''
     });
+    setCurrentFarmId(null);
   };
 
+  /**
+   * Maneja el cierre del modal y reinicia el formulario
+   */
   const handleClose = () => {
     resetForm();
     setLoading(true);
@@ -131,7 +161,9 @@ const FarmEditModal: React.FC<{ isOpen: boolean; onClose: () => void; farmId: st
       };
       updateFarm();
     }
-  };  const isFormValid = farmInfo.name && farmInfo.idname;
+  };
+
+  const isFormValid = farmInfo.name && farmInfo.idname;
 
   if (loading) {
     return null; // No renderizar nada mientras se cargan los datos

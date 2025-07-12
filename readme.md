@@ -1,14 +1,66 @@
+<div align="center">
+
+<img src=".github/assets/vacas.png" width="400"/>
+
+Open-source web application for dairy farm management, IoT devices and more.
+
+</div>
+
 # Lactokeeper
 
-Este proyecto tiene como objetivo desarrollar una aplicación web para la gestión de granjas lecheras, equipamiento relacionado, recogidas de leche, muestras para análisis y dispositivos IoT que permiten monitorear distintos aspectos del proceso de producción láctea. La aplicación está diseñada para diferentes roles de usuario, como Administradores, Veterinarios, Industrias y Ganaderos, cada uno con permisos y vistas personalizadas.
+> [!NOTE]
+> Para leer este documento en español, visita [readme_es.md](README_ES.md)
 
-## Estructura del proyecto
+This project aims to develop a web application for managing dairy farms, related equipment, milk collection and IoT devices that allow monitoring different aspects of the dairy production process. The application is designed for different user roles, such as administrators, veterinarians and farmers, each with customized permissions and views.
 
-El repositorio contiene dos carpetas principales:
+## Project structure
 
-- **`src/`**: Esta carpeta contiene el código fuente de la aplicación. Esta a su vez se separa en dos carpetas para el frontend y el backend.
-    - **`frontend/`**: Se incluye el código relacionado con la interfaz de usuario, utilizando tecnologías modernas de desarrollo web.
-    - **`backend/`**: Código encargado de gestionar las funcionalidades del servidor, base de datos y API que conecta con el frontend.
+The repository contains two main folders:
 
-- **`others/`**: Contiene recursos adicionales necesarios para entender el proyecto. Esto incluye bocetos y prototipos de las interfaces y lógica de usuario. Así como documentación, diagramas, y cualquier material relacionado con la estructura del sistema y las tecnologías empleadas.
+- **`src/`**: This folder contains the application source code. It is divided into two folders for frontend and backend.
+    - **`frontend/`**: Includes code related to the user interface, using modern web development technologies.
+    - **`backend/`**: Code responsible for managing server functionalities, database and API that connects with the frontend.
 
+- **`others/`**: Contains additional resources necessary to understand the project. This includes sketches and prototypes of interfaces and user logic. As well as documentation, diagrams, and any material related to the system structure. It also includes a data populator (`populate-mongodb/`) that allows initializing the MongoDB database with test data.
+
+## How to run the program
+
+Lactokeeper is fully dockerized to facilitate its deployment and execution. The only thing you need to have installed on your system is [Docker](https://www.docker.com/get-started), which will handle all the necessary dependencies and services.
+
+### Getting Started
+
+Start by cloning this repository to your local machine and navigating to the project directory:
+```bash
+git clone https://github.com/TFG-ATC-TA/tfg-jesusfdez1.git
+cd tfg-jesusfdez1
+```
+
+If this is your first time running the project or you have made changes to the code, it is recommended to build the Docker images before proceeding:
+```bash
+docker-compose build
+```
+
+With everything ready, you can start all application services with one command. This process will automatically start the database, backend and frontend:
+```bash
+docker-compose up
+```
+
+Once all containers are running correctly, simply open your favorite web browser and visit [http://localhost:3000](http://localhost:3000). There you will find the Lactokeeper interface ready to use.
+
+### Stopping Execution
+
+When you have finished working with the application, you can stop all services easily:
+```bash
+# Press Ctrl+C in the terminal where it is running, or alternatively:
+docker-compose down
+```
+
+## Contributing
+
+Want to be part of Lactokeeper's development? Welcome! Feel free to collaborate even if you are not a developer, there are many other important ways you can contribute.
+
+---
+
+## Security
+
+If you believe you have found a security vulnerability, please report it creating a pull request or an issue in the repository. We will investigate all reports.

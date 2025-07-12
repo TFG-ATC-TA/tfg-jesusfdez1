@@ -1,6 +1,12 @@
+/**
+ * Modal para editar recogidas de leche existentes en el sistema
+ * Permite modificar recogidas con múltiples tanques, cantidades y compartimentos
+ * Incluye validaciones de datos y gestión de tanques asociados
+ */
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,28 +29,30 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { Trash2, Plus, Trash } from 'lucide-react';
+import { Plus, Trash } from 'lucide-react';
 
-// Define un tipo para un tanque en la recogida
+/**
+ * Define un tipo para un tanque en la recogida
+ * Contiene información del tanque, cantidad y compartimento
+ */
 interface TankCollection {
-  tankId: { _id: string };
+  tankId: string;
   liters: number;
   compartment: string;
 }
 
 interface MilkCollectionEditModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
   collectionId: string;
-  onRefresh: () => void;
+  onRefreshAction: () => void;
 }
 
 export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = ({ 
   isOpen, 
-  onClose, 
+  onCloseAction, 
   collectionId, 
-  onRefresh 
+  onRefreshAction 
 }) => {
   const { data: session } = useSession();
   const [collectionInfo, setCollectionInfo] = useState({
@@ -59,10 +67,37 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     litersPerTank: [] as TankCollection[],
     farmId: ''
   });
-  const [tanks, setTanks] = useState<any[]>([]);
+  const [tanks, setTanks] = useState<Array<{ _id: string; name: string; capacity: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { toast } = useToast();
+
+  const fetchTanks = useCallback(async (farmId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?farmId=${farmId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session?.accessToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al obtener los tanques');
+      }
+      
+      const data = await response.json();
+      setTanks(data);
+    } catch (error) {
+      console.error('Error al obtener tanques:', error);
+      toast({
+        title: "Error al cargar tanques",
+        description: error instanceof Error ? error.message : "Error al obtener el listado de tanques",
+        variant: "destructive",
+      });
+    }
+  }, [session?.accessToken, toast]);
 
   useEffect(() => {
     if (isOpen && collectionId) {
@@ -100,10 +135,27 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
           // Formatear la fecha para el input datetime-local
           const collectionDate = format(new Date(data.collectionDate), "yyyy-MM-dd'T'HH:mm");
           
+          // Procesar litersPerTank para convertir tankId de objeto a string
+          const processedLitersPerTank = data.litersPerTank ? data.litersPerTank.map((tank: { tankId: { _id?: string } | string; liters: number; compartment: string }) => {
+            let tankId = '';
+            if (tank.tankId) {
+              if (typeof tank.tankId === 'object' && tank.tankId._id) {
+                tankId = tank.tankId._id;
+              } else if (typeof tank.tankId === 'string') {
+                tankId = tank.tankId;
+              }
+            }
+            return {
+              ...tank,
+              tankId: tankId
+            };
+          }) : [];
+          
           setCollectionInfo({
             ...data,
             collectionDate,
-            farmId
+            farmId,
+            litersPerTank: processedLitersPerTank
           });
           
           // Cargar los tanques de la granja
@@ -117,7 +169,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
             description: error instanceof Error ? error.message : "Error desconocido al cargar los datos",
             variant: "destructive",
           });
-          onClose();
+          onCloseAction();
         } finally {
           setLoading(false);
         }
@@ -125,34 +177,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
       
       fetchCollectionData();
     }
-  }, [isOpen, session, collectionId]);
-
-  const fetchTanks = async (farmId: string) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/listTanks?farmId=${farmId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `${session?.accessToken}`,
-        },
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al obtener los tanques');
-      }
-      
-      const data = await response.json();
-      setTanks(data);
-    } catch (error) {
-      console.error('Error al obtener tanques:', error);
-      toast({
-        title: "Error al cargar tanques",
-        description: error instanceof Error ? error.message : "Error al obtener el listado de tanques",
-        variant: "destructive",
-      });
-    }
-  };
+  }, [isOpen, session, collectionId, fetchTanks, onCloseAction, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value, type } = e.target;
@@ -164,7 +189,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     }
   };
 
-  const handleTankChange = (index: number, field: keyof TankCollection, value: any) => {
+  const handleTankChange = (index: number, field: keyof TankCollection, value: string | number) => {
     const updatedTanks = [...collectionInfo.litersPerTank];
     updatedTanks[index] = { 
       ...updatedTanks[index], 
@@ -179,7 +204,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
         ...collectionInfo,
         litersPerTank: [
           ...collectionInfo.litersPerTank,
-          { tankId: { _id: tanks[0]._id }, liters: 0, compartment: 'Único' }
+          { tankId: tanks[0]._id, liters: 0, compartment: 'Único' }
         ]
       });
     }
@@ -229,8 +254,8 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
           description: "Recogida de leche actualizada con éxito",
           variant: "success",
         });
-        onClose();
-        onRefresh();
+        onCloseAction();
+        onRefreshAction();
       } catch (error) {
         console.error('Error al actualizar la recogida de leche:', error);
         toast({
@@ -274,8 +299,8 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
         variant: "success",
       });
       setShowDeleteAlert(false);
-      onClose();
-      onRefresh();
+      onCloseAction();
+      onRefreshAction();
     } catch (error) {
       console.error('Error al eliminar la recogida de leche:', error);
       toast({
@@ -291,11 +316,11 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
     collectionInfo.sampleLabel && 
     collectionInfo.collectionCompany && 
     collectionInfo.litersPerTank.length > 0 && 
-    collectionInfo.litersPerTank.every(tank => tank.tankId && tank.liters > 0);
+    collectionInfo.litersPerTank.every(tank => tank.tankId && tank.tankId !== '' && tank.liters > 0);
 
   if (loading) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={onCloseAction}>
         <DialogContent className="sm:max-w-[800px] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
           <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
             <DialogTitle className="text-lg font-bold">Editar recogida de leche</DialogTitle>
@@ -310,7 +335,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={onCloseAction}>
         <DialogContent className="sm:max-w-[800px] h-[80vh] sm:h-[80vh] p-0 gap-0 bg-background mx-auto my-auto rounded-lg">
           <div className="flex items-center justify-between p-4 border-b border-border bg-background rounded-lg h-16">
             <DialogTitle className="text-lg font-bold">Editar recogida de leche</DialogTitle>
@@ -429,8 +454,8 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
                               <div className="space-y-2">
                                 <Label>Tanque <span className="text-red-500">*</span></Label>
                                 <Select 
-                                  value={tank.tankId._id} 
-                                  onValueChange={(value) => handleTankChange(index, 'tankId', { _id: value })}
+                                  value={tank.tankId || ''} 
+                                  onValueChange={(value) => handleTankChange(index, 'tankId', value)}
                                 >
                                   <SelectTrigger className="bg-white dark:bg-gray-800 text-black dark:text-white">
                                     <SelectValue placeholder="Seleccionar tanque" />
@@ -516,4 +541,4 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
       </AlertDialog>
     </>
   );
-};
+}; 

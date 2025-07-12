@@ -1,21 +1,41 @@
+/**
+ * Configuración de NextAuth para autenticación
+ * Maneja la autenticación con credenciales y comunicación con el backend
+ */
+
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 
+/**
+ * Configuración principal de NextAuth
+ * Define el proveedor de credenciales y callbacks para manejo de sesiones
+ */
 const handler = NextAuth({
   providers: [
+    /**
+     * Proveedor de credenciales para autenticación con email/password
+     * Se comunica con el backend para validar las credenciales
+     */
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "text"},
         password: { label: "Password", type: "password" }
       },
+      /**
+       * Función de autorización que valida las credenciales con el backend
+       * @param credentials - Credenciales del usuario (email, password)
+       * @returns Usuario autenticado o null si falla
+       */
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+          // Use internal URL for server-side calls in Docker, fallback to public URL
+          const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL
+          const res = await fetch(`${apiUrl}/login`, {
             method: 'POST',
             body: JSON.stringify(credentials),
             headers: { "Content-Type": "application/json" }
@@ -46,10 +66,22 @@ const handler = NextAuth({
       }
     })
   ],
+  
+  // Página personalizada de inicio de sesión
   pages: {
     signIn: '/',
   },
+  
+  /**
+   * Callbacks para manejar tokens y sesiones
+   */
   callbacks: {
+    /**
+     * Callback JWT que se ejecuta cuando se crea o actualiza un token
+     * @param token - Token JWT actual
+     * @param user - Datos del usuario (solo en login)
+     * @returns Token actualizado
+     */
     async jwt({ token, user }) {
       if (user) {
         token.accessToken = user.accessToken
@@ -61,6 +93,13 @@ const handler = NextAuth({
       }
       return token
     },
+    
+    /**
+     * Callback de sesión que se ejecuta en cada petición
+     * @param session - Sesión actual
+     * @param token - Token JWT
+     * @returns Sesión actualizada
+     */
     async session({ session, token }) {
       if (token && session.user) {
         session.accessToken = token.accessToken as string
@@ -73,6 +112,8 @@ const handler = NextAuth({
       return session
     },
   },
+  
+  // Estrategia de sesión basada en JWT
   session: {
     strategy: "jwt",
   },

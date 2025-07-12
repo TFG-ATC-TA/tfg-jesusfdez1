@@ -10,7 +10,7 @@ const columnNames: Record<string, string> = {
 
 interface FilterSelectorProps {
   filter: string;
-  data: any[];
+  data: Record<string, unknown>[];
   selectedFilters: Record<string, string[]>;
   onFilterChange: (filters: Record<string, string[]>) => void;
   options: string[];
@@ -18,7 +18,7 @@ interface FilterSelectorProps {
 }
 
 const FilterSelector = memo(({ filter, data, selectedFilters, onFilterChange, options }: FilterSelectorProps) => {
-  const uniqueValues = options.length > 0 ? options : Array.from(new Set(data.map((item) => (item as Record<string, any>)[filter])));
+  const uniqueValues = options.length > 0 ? options : Array.from(new Set(data.map((item) => String((item as Record<string, unknown>)[filter] || ''))));
   const filterName = columnNames[filter] || filter;
   
   // Local state to track what's currently selected
@@ -79,7 +79,7 @@ const FilterSelector = memo(({ filter, data, selectedFilters, onFilterChange, op
 
 interface DataTableFiltersProps {
   filters: string[];
-  data: any[];
+  data: Record<string, unknown>[];
   selectedFilters: Record<string, string[]>;
   onFilterChange: (filters: Record<string, string[]>) => void;
   filterOptions: Record<string, string[]>;
@@ -92,7 +92,7 @@ export function DataTableFilters({ filters, data, selectedFilters, onFilterChang
   // Update key when selectedFilters changes to force re-render
   useEffect(() => {
     setFilterKey(prev => prev + 1);
-  }, [JSON.stringify(selectedFilters)]);
+  }, [selectedFilters]);
 
   return (
     <div className="flex space-x-2">

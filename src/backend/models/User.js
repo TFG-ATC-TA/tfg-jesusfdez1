@@ -1,3 +1,8 @@
+/**
+ * Modelo de Usuario - Gestión de usuarios del sistema
+ * Incluye autenticación, roles y relaciones con granjas
+ */
+
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
@@ -5,7 +10,10 @@ var bcrypt = require("bcryptjs"); //Para la encriptación del password
 var SALT_WORK_FACTOR = 10;
 const Farm = require('../models/Farm');
 
-
+/**
+ * Esquema de Usuario
+ * Define la estructura de datos para los usuarios del sistema
+ */
 var userSchema = new Schema({
     _id: {
         type: Schema.Types.ObjectId,
@@ -44,6 +52,10 @@ var userSchema = new Schema({
     }],
 });
 
+/**
+ * Hook pre-save para encriptar la contraseña
+ * Se ejecuta automáticamente antes de guardar el usuario
+ */
 userSchema.pre("save", function (next) {
     var user = this;
     // solo aplica una función hash al password si ha sido modificado (o es nuevo)
@@ -54,12 +66,16 @@ userSchema.pre("save", function (next) {
         // aplica una función hash al password usando la nueva salt
         bcrypt.hash(user.passwordHash, salt, function (err, hash) {
             if (err) return next(err);
-            user.passwordHash = hash;  // sobrescribe el password escrito con el “hasheado”
+            user.passwordHash = hash;  // sobrescribe el password escrito con el "hasheado"
             next();
         });
     });
 });
 
+/**
+ * Método para comparar contraseñas
+ * Utilizado durante el proceso de autenticación
+ */
 userSchema.methods.comparePassword = function (candidatePassword, cb) {
     bcrypt.compare(candidatePassword, this.passwordHash, function (err, isMatch) {
         if (err) return cb(err);
@@ -67,18 +83,10 @@ userSchema.methods.comparePassword = function (candidatePassword, cb) {
     });
 };
 
-userSchema.pre('remove', async function(next) {
-    try {
-        await Farm.updateMany(
-            { users: this._id },
-            { $pull: { users: this._id } }
-        );
-        next();
-    } catch (err) {
-        next(err);
-    }
-});
-
+/**
+ * Hook pre-save para sincronizar relaciones con granjas
+ * Mantiene las referencias bidireccionales entre usuarios y granjas
+ */
 userSchema.pre('save', async function(next) {
     try {
         if (this.isModified('farms')) {
@@ -86,14 +94,14 @@ userSchema.pre('save', async function(next) {
             // Eliminar referencias antiguas
             const oldUser = await this.constructor.findById(this._id);
             if (oldUser) {
-                await Farm.updateMany(
+                await mongoose.model('Farm').updateMany(
                     { users: oldUser._id },
                     { $pull: { users: oldUser._id } }
                 );
             }
 
             // Agregar nuevas referencias
-            await Farm.updateMany(
+            await mongoose.model('Farm').updateMany(
                 { _id: { $in: this.farms } },
                 { $addToSet: { users: this._id } }
             );
@@ -104,11 +112,18 @@ userSchema.pre('save', async function(next) {
     }
 });
 
-userSchema.pre('remove', async function(next) {
+/**
+ * Hook pre-remove para limpiar referencias al eliminar usuario
+ * Se ejecuta antes de eliminar un usuario para limpiar referencias en granjas
+ */
+userSchema.pre(['remove', 'deleteOne', 'findOneAndDelete', 'findByIdAndDelete'], async function(next) {
     try {
-        await Farm.updateMany(
-            { users: this._id },
-            { $pull: { users: this._id } }
+        // Para métodos estáticos, necesitamos acceder al _id de manera diferente
+        const userId = this.getQuery ? this.getQuery()._id : this._id;
+        
+        await mongoose.model('Farm').updateMany(
+            { users: userId },
+            { $pull: { users: userId } }
         );
         next();
     } catch (err) {

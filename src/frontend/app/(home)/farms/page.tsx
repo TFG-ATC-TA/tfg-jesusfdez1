@@ -13,7 +13,7 @@ import {CellAction} from '@/components/tables/farm-tables/cell-action';
 import { useRouter } from 'next/navigation';
 
 // Hook para redirección automática de ganaderos
-function useGanaderoRedirect(session: any, router: any) {
+function useGanaderoRedirect(session: { user?: { role?: string }; accessToken?: string } | null, router: { replace: (path: string) => void }) {
   const [noFarmError, setNoFarmError] = useState(false);
   const [checkingFarm, setCheckingFarm] = useState(false);
 
@@ -47,7 +47,8 @@ function useGanaderoRedirect(session: any, router: any) {
           } else {
             setNoFarmError(true);
           }
-        } catch (e) {
+        } catch (error) {
+          console.error('Error checking farm:', error);
           setNoFarmError(true);
         } finally {
           setCheckingFarm(false);
@@ -69,8 +70,6 @@ const UserClient: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [noFarmError, setNoFarmError] = useState(false);
-  const [checkingFarm, setCheckingFarm] = useState(false);
   const isFetchingRef = useRef(false);
   const lastRequestedPageRef = useRef(1);
 

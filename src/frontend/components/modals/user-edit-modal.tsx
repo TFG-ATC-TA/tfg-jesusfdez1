@@ -1,3 +1,9 @@
+/**
+ * Modal para editar usuarios existentes en el sistema
+ * Permite modificar datos personales, contraseñas, roles y asignación de granjas
+ * Incluye validaciones de seguridad y gestión de permisos
+ */
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -16,37 +22,54 @@ import { columnsAlternative } from '@/components/tables/farm-tables/columns';
 import { useToast } from '@/components/ui/use-toast';
 import { Eye, EyeOff, Check, X, AlertTriangle } from 'lucide-react';
 
+/**
+ * Componente modal para editar usuarios existentes
+ * Gestiona la modificación completa de usuarios con validaciones y asignación de recursos
+ */
 const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: string; onRefresh: () => void }> = ({ isOpen, onClose, userId, onRefresh }) => {
   const { data: session } = useSession();
+  
+  // Estados para información personal del usuario
   const [personalInfo, setPersonalInfo] = useState({
     name: '',
     surname: '',
     email: ''
   });
+  
+  // Estados para gestión de contraseñas
   const [passwords, setPasswords] = useState({
     new: '',
     confirm: ''
   });
   const [passwordsMatch, setPasswordsMatch] = useState(true);
-  const [role, setRole] = useState('');
-  const [farms, setFarms] = useState<Farm[]>([]);
-  const [selectedFarms, setSelectedFarms] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState({
     new: false,
     confirm: false
   });
-
-  const { toast } = useToast();
-
+  
+  // Estados para gestión de roles y granjas
+  const [role, setRole] = useState('');
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [selectedFarms, setSelectedFarms] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  
+  // Estados para paginación y búsqueda de granjas
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  
+  // Referencias para evitar actualizaciones conflictivas
   const isFetchingRef = useRef(false);
   const lastRequestedPageRef = useRef(1);
 
-  // Password strength check logic
+  const { toast } = useToast();
+
+  /**
+   * Verifica la fortaleza de la contraseña según criterios de seguridad
+   * @param pass - La contraseña a verificar
+   * @returns Array de requisitos cumplidos
+   */
   const checkStrength = (pass: string) => {
     const requirements = [
       { regex: /.{8,}/, text: "Al menos 8 caracteres" },
@@ -61,11 +84,17 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     }));
   };
 
+  /**
+   * Calcula la fortaleza de la contraseña basada en los requisitos cumplidos
+   */
   const strength = useMemo(() => 
     checkStrength(passwords.new), 
     [passwords.new]
   );
 
+  /**
+   * Calcula el puntaje de fortaleza (número de requisitos cumplidos)
+   */
   const strengthScore = useMemo(() => {
     return strength.filter((req) => req.met).length;
   }, [strength]);
@@ -90,7 +119,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     if (passwords.new === '' && passwords.confirm === '') return true;
     // Otherwise, needs to match and have enough strength
     return passwords.new === passwords.confirm && strengthScore >= 3;
-  }, [passwords, passwordsMatch, strengthScore]);
+  }, [passwords, strengthScore]);
 
   // Controlador de cambio de página separado para evitar actualizaciones conflictivas
   const handlePageChange = useCallback((newPage: number) => {
@@ -105,7 +134,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     setPage(1);
   }, []);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!session?.accessToken) {
       console.error('No hay sesión iniciada');
       toast({
@@ -147,7 +176,7 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
       });
       onClose(); // Close the modal since we can't load the data
     }
-  };
+  }, [session?.accessToken, userId, toast, onClose]);
 
   const fetchFarms = useCallback(async () => {
     if (!session?.accessToken || isFetchingRef.current) {
@@ -193,13 +222,13 @@ const UserEditModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: st
     } finally {
       isFetchingRef.current = false;
     }
-  }, [session, searchTerm]);
+  }, [session, searchTerm, toast]);
 
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserData();
     }
-  }, [isOpen, session, userId]);
+  }, [isOpen, session, userId, fetchUserData]);
 
   useEffect(() => {
     if (isOpen) {

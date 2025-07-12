@@ -19,12 +19,12 @@ interface Props {
   activeIndex?: number;
 }
 
-export function ExpandableTabs({ tabs, className, activeColor = "text-primary", onChange, activeIndex }: Props) {
+export function ExpandableTabs({ tabs, className, activeColor: _activeColor = "text-primary", onChange, activeIndex }: Props) {
   const ref = React.useRef(null);
 
   React.useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !(ref.current as any).contains(e.target)) {
+      if (ref.current && !(ref.current as Element).contains(e.target as Node)) {
         onChange?.(null);
       }
     };

@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import { logger } from '@/lib/logger'
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   getSortedRowModel,
   getFilteredRowModel,
   ColumnFiltersState,
@@ -122,7 +122,7 @@ const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isS
     allOptionValues.every(value => selectedValues.includes(value)) &&
     selectedValues.length === allOptionValues.length;
   
-  const noneSelected = selectedValues.length === 0;
+  const _noneSelected = selectedValues.length === 0;
 
   return (
     <DropdownMenu>
@@ -197,7 +197,7 @@ const FilterSelector = ({ title, options, selectedValues, onSelectionChange, isS
   );
 };
 
-const PageSelector = ({ table }: { table: any }) => {
+const _PageSelector = ({ table }: { table: { getState: () => { pagination: { pageIndex: number } }; getPageCount: () => number; setPageIndex: (index: number) => void } }) => {
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
 
@@ -230,7 +230,7 @@ export default function NotificationsList() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [notificationData, setNotificationData] = useState<Notification[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [_isLoading, setIsLoading] = useState(true)
   const [farms, setFarms] = useState<{ _id: string; name: string }[]>([])
   const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>(['info', 'warning', 'error', 'otros'])
   const [selectedFarmFilters, setSelectedFarmFilters] = useState<string[]>([])
@@ -246,6 +246,15 @@ export default function NotificationsList() {
     hasPrev: false
   })
   
+  // Estado para rastrear las estadísticas actuales
+  const [_currentStats, setCurrentStats] = useState({
+    total: 0,
+    info: 0,
+    warning: 0,
+    error: 0,
+    unread: 0
+  });
+  
   // Variables para el control de paginación y filtros como en DataTable
   const [pageChangeTriggered, setPageChangeTriggered] = useState(false)
   const prevGlobalFilterRef = useRef(globalFilter)
@@ -257,10 +266,10 @@ export default function NotificationsList() {
     prevGlobalFilterRef.current = globalFilter;
     prevSelectedTypeFiltersRef.current = selectedTypeFilters;
     prevSelectedFarmFiltersRef.current = selectedFarmFilters;
-  }, []);
+  }, [globalFilter, selectedTypeFilters, selectedFarmFilters]);
 
   // Función para obtener las granjas disponibles
-  const fetchFarms = async () => {
+  const fetchFarms = useCallback(async () => {
     if (!session?.accessToken) return;
 
     try {
@@ -281,10 +290,10 @@ export default function NotificationsList() {
     } catch (error) {
       console.error('Error al obtener granjas:', error);
     }
-  };
+  }, [session?.accessToken]);
 
   // Función para obtener notificaciones del servidor
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!session?.accessToken) return;
 
     setIsLoading(true);
@@ -337,7 +346,7 @@ export default function NotificationsList() {
       }
 
       const data: NotificationResponse = await response.json();
-      console.log('Datos recibidos del servidor:', data); // Para debugging
+      logger.log('Datos recibidos del servidor:', data); // Para debugging
       
       setNotificationData(data.notifications);
       setServerPagination({
@@ -347,6 +356,9 @@ export default function NotificationsList() {
         hasNext: data.pagination.hasNext,
         hasPrev: data.pagination.hasPrev
       });
+
+      // Actualizar estadísticas locales
+      setCurrentStats(data.stats);
 
       // Disparar evento personalizado para actualizar estadísticas en la página principal
       if (typeof window !== 'undefined') {
@@ -360,10 +372,10 @@ export default function NotificationsList() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.accessToken, pagination.pageIndex, pagination.pageSize, globalFilter, selectedTypeFilters, selectedFarmFilters]);
 
   // Marcar notificación como leída
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = useCallback(async (notificationId: string, skipLocalUpdate = false) => {
     if (!session?.accessToken) return;
 
     try {
@@ -375,20 +387,39 @@ export default function NotificationsList() {
         },
       });
 
-      if (response.ok) {
-        // Actualizar localmente
-        setNotificationData(prev => 
-          prev.map(notification => 
+      if (response.ok && !skipLocalUpdate) {
+        // Actualizar localmente solo si no se debe saltar la actualización local
+        setNotificationData(prev => {
+          const updatedData = prev.map(notification => 
             notification.id === notificationId 
               ? { ...notification, read: true, readDate: new Date().toISOString() }
               : notification
-          )
-        );
+          );
+          
+          return updatedData;
+        });
+        
+        // Actualizar estadísticas locales (solo decrementar unread)
+        setCurrentStats(prev => {
+          const newStats = {
+            ...prev,
+            unread: Math.max(0, prev.unread - 1)
+          };
+          
+          // Disparar evento personalizado para actualizar estadísticas en la página principal
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('notificationReadStatusChanged', { 
+              detail: newStats 
+            }));
+          }
+          
+          return newStats;
+        });
       }
     } catch (error) {
       console.error('Error al marcar notificación como leída:', error);
     }
-  };
+  }, [session?.accessToken]);
 
   // Funciones auxiliares para el manejo de paginación y búsqueda (similar a DataTable)
   const handlePageChange = (newPage: number) => {
@@ -407,7 +438,7 @@ export default function NotificationsList() {
     if (session?.accessToken) {
       fetchFarms();
     }
-  }, [session]);
+  }, [session, fetchFarms]);
 
   // Actualizar pageIndex cuando serverPagination.currentPage cambia
   useEffect(() => {
@@ -482,21 +513,53 @@ export default function NotificationsList() {
   // Efecto para cargar datos cuando cambian los filtros o paginación
   useEffect(() => {
     fetchNotifications();
-  }, [session, pagination.pageIndex, pagination.pageSize, globalFilter, selectedTypeFilters, selectedFarmFilters]);
+  }, [session, pagination.pageIndex, pagination.pageSize, globalFilter, selectedTypeFilters, selectedFarmFilters, fetchNotifications]);
 
   // Auto-marcar como leídas después de 3 segundos
   useEffect(() => {
     if (notificationData.length > 0) {
       const timer = setTimeout(() => {
         const unreadNotifications = notificationData.filter(n => !n.read);
-        unreadNotifications.forEach(notification => {
-          markAsRead(notification.id);
-        });
+        if (unreadNotifications.length > 0) {
+          // Marcar todas las notificaciones no leídas de una vez
+          const unreadIds = unreadNotifications.map(n => n.id);
+          
+          // Actualizar el estado local primero
+          setNotificationData(prev => 
+            prev.map(notification => 
+              unreadIds.includes(notification.id)
+                ? { ...notification, read: true, readDate: new Date().toISOString() }
+                : notification
+            )
+          );
+          
+          // Actualizar estadísticas locales
+          setCurrentStats(prev => {
+            const newStats = {
+              ...prev,
+              unread: Math.max(0, prev.unread - unreadNotifications.length)
+            };
+            
+            // Disparar evento personalizado para actualizar estadísticas en la página principal
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('notificationReadStatusChanged', { 
+                detail: newStats 
+              }));
+            }
+            
+            return newStats;
+          });
+          
+          // Enviar las peticiones al servidor de forma asíncrona (con skipLocalUpdate=true)
+          unreadNotifications.forEach(notification => {
+            markAsRead(notification.id, true);
+          });
+        }
       }, 3000);
 
       return () => clearTimeout(timer);
     }
-  }, [notificationData]);
+  }, [notificationData, markAsRead]);
 
   const columns: ColumnDef<Notification>[] = [
     {

@@ -1,9 +1,19 @@
+/**
+ * Componente de estado de la aplicación PWA
+ * Muestra si la aplicación está instalada como app nativa o ejecutándose en el navegador
+ * Proporciona indicadores visuales del modo de ejecución
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Smartphone, Globe } from 'lucide-react';
 
+/**
+ * Componente que detecta y muestra el estado de instalación de la PWA
+ * Renderiza un badge indicando si es app instalada o web
+ */
 export default function PWAStatus() {
     const [isInstalled, setIsInstalled] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -11,16 +21,20 @@ export default function PWAStatus() {
     useEffect(() => {
         setMounted(true);
 
-        // Verificar si la PWA está instalada
+        /**
+         * Verifica si la PWA está instalada como aplicación nativa
+         * @returns true si está en modo standalone (instalada)
+         */
         const checkInstalled = () => {
             return window.matchMedia('(display-mode: standalone)').matches ||
-                (window.navigator as any).standalone === true ||
+                (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
                 document.referrer.includes('android-app://');
         };
 
         setIsInstalled(checkInstalled());
     }, []);
 
+    // No renderizar hasta que el componente esté montado en el cliente
     if (!mounted) return null;
 
     return (

@@ -1,7 +1,14 @@
+/**
+ * Gráfico de temperatura y giroscopio
+ * Visualiza datos de sensores de temperatura y giroscopio con filtros interactivos
+ * Permite analizar patrones de temperatura y movimiento en tiempo real
+ * Integra múltiples fuentes de datos y proporciona estadísticas en tiempo real
+ */
+
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from "react"
-import { createChart, ColorType, type Time } from "lightweight-charts"
+import { createChart, ColorType, type Time, type IChartApi, type ISeriesApi } from "lightweight-charts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer } from "@/components/ui/chart"
 import { useTheme } from "next-themes"
@@ -12,6 +19,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type React from "react"
 import { useSession } from "next-auth/react"
 
+/**
+ * Tipo para puntos de datos del sensor
+ * Combina lecturas de temperatura y giroscopio con timestamps
+ * Permite el manejo de valores nulos para datos faltantes
+ */
 type DataPoint = {
   timestamp: number
   surfaceTemperature: number | null
@@ -19,25 +31,28 @@ type DataPoint = {
   gyroX: number | null
 }
 
-interface TemperatureProbeChartProps {
-  bucket: string
-  startDate?: Date
-  endDate?: Date
-}
-
+/**
+ * Props del componente de renderizado del gráfico
+ * Define la estructura de datos y configuración para el renderizado
+ */
 interface ChartRendererProps {
   data: {
-    surface: Array<{ time: number; value: number }>
-    overSurface: Array<{ time: number; value: number }>
-    gyro: Array<{ time: number; value: number }>
+    surface: Array<{ time: Time; value: number }>
+    overSurface: Array<{ time: Time; value: number }>
+    gyro: Array<{ time: Time; value: number }>
   }
   showSurfaceTemp: boolean
   showOverSurfaceTemp: boolean
   showGyroX: boolean
-  theme?: string
-  systemTheme?: string
+  theme: string
+  systemTheme: string
 }
 
+/**
+ * Componente interno que renderiza el gráfico de temperatura y giroscopio
+ * Maneja la creación y actualización del gráfico con lightweight-charts
+ * Gestiona la configuración de tema, series y eventos de redimensionamiento
+ */
 const ChartRenderer: React.FC<ChartRendererProps> = ({
   data,
   showSurfaceTemp,
@@ -47,11 +62,17 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   systemTheme,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<any>(null)
-  const seriesRef = useRef<any>({})
+  const chartRef = useRef<IChartApi | null>(null)
+  const seriesRef = useRef<Record<string, ISeriesApi<'Line'>>>({})
+  const isInitializedRef = useRef(false)
 
+  /**
+   * Inicializa el gráfico con configuración de tema y series
+   * Configura colores, escalas y formato de tiempo según el tema activo
+   * Crea las series de datos para temperatura y giroscopio
+   */
   useEffect(() => {
-    if (!chartContainerRef.current) return
+    if (!chartContainerRef.current || isInitializedRef.current) return
 
     const currentTheme = theme === "system" ? systemTheme : theme
     const isDarkMode = currentTheme === "dark"
@@ -96,7 +117,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
 
     chartRef.current = chart
 
-    // Create series
+    // Create series with appropriate colors and configuration
     seriesRef.current.surface = chart.addLineSeries({
       color: isDarkMode ? "rgba(239, 68, 68, 0.8)" : "rgba(185, 28, 28, 0.8)",
       lineWidth: 1,
@@ -118,6 +139,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
       title: "Giroscopio X",
     })
 
+    // Configure price scales for better visualization
     chart.priceScale("left").applyOptions({
       scaleMargins: { top: 0.2, bottom: 0.2 },
     })
@@ -126,6 +148,12 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
       scaleMargins: { top: 0.2, bottom: 0.2 },
     })
 
+    isInitializedRef.current = true
+
+    /**
+     * Manejador de redimensionamiento para mantener el gráfico responsive
+     * Ajusta el tamaño del gráfico cuando cambia el tamaño de la ventana
+     */
     const handleResize = () => {
       if (chartRef.current && chartContainerRef.current) {
         chartRef.current.applyOptions({
@@ -143,12 +171,83 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
         chartRef.current.remove()
         chartRef.current = null
       }
+      isInitializedRef.current = false
+    }
+  }, []) // Solo se ejecuta una vez al montar el componente
+
+  /**
+   * Actualiza el tema del gráfico sin recrear el gráfico completo
+   * Mantiene los datos existentes y solo actualiza colores y configuración visual
+   */
+  useEffect(() => {
+    if (!chartRef.current || !isInitializedRef.current) return
+
+    const currentTheme = theme === "system" ? systemTheme : theme
+    const isDarkMode = currentTheme === "dark"
+
+    const textColor = isDarkMode ? "rgba(255, 255, 255, 0.8)" : "rgba(60, 64, 67, 0.8)"
+    const gridColor = isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(60, 64, 67, 0.1)"
+
+    // Actualizar configuración del gráfico
+    chartRef.current.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: textColor,
+      },
+      grid: {
+        horzLines: { color: gridColor },
+        vertLines: { color: gridColor },
+      },
+      rightPriceScale: {
+        visible: true,
+        borderColor: gridColor,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      leftPriceScale: {
+        visible: true,
+        borderColor: gridColor,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      timeScale: {
+        borderColor: gridColor,
+        timeVisible: true,
+        secondsVisible: true,
+        tickMarkFormatter: (time: Time) => {
+          const date = new Date((time as number) * 1000)
+          const hours = date.toLocaleTimeString()
+          const day = date.toLocaleDateString()
+          return date.getHours() === 0 && date.getMinutes() === 0 ? `${day}` : hours
+        },
+      },
+    })
+
+    // Actualizar colores de las series
+    if (seriesRef.current.surface) {
+      seriesRef.current.surface.applyOptions({
+        color: isDarkMode ? "rgba(239, 68, 68, 0.8)" : "rgba(185, 28, 28, 0.8)",
+      })
+    }
+
+    if (seriesRef.current.overSurface) {
+      seriesRef.current.overSurface.applyOptions({
+        color: isDarkMode ? "rgba(34, 197, 94, 0.8)" : "rgba(21, 128, 61, 0.8)",
+      })
+    }
+
+    if (seriesRef.current.gyro) {
+      seriesRef.current.gyro.applyOptions({
+        color: isDarkMode ? "rgba(59, 130, 246, 0.8)" : "rgba(30, 64, 175, 0.8)",
+      })
     }
   }, [theme, systemTheme])
 
-  // Update data when filters or data change
+  /**
+   * Actualiza los datos del gráfico cuando cambian los filtros o datos
+   * Utiliza setTimeout para asegurar que se ejecute después de la inicialización completa
+   * Maneja la visibilidad de cada serie según los filtros activos
+   */
   useEffect(() => {
-    if (!chartRef.current || !seriesRef.current.surface) return
+    if (!chartRef.current || !seriesRef.current.surface || !isInitializedRef.current) return
 
     // Use setTimeout to ensure this runs after the chart is fully initialized
     setTimeout(() => {
@@ -175,7 +274,22 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   return <div ref={chartContainerRef} className="h-[355px] w-full" />
 }
 
-const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket, startDate, endDate }) => {
+/**
+ * Props del componente principal del gráfico
+ * Define los parámetros necesarios para obtener y visualizar los datos
+ */
+interface TemperatureGyroscopeProps {
+  bucket: string
+  startDate?: Date
+  endDate?: Date
+}
+
+/**
+ * Componente principal del gráfico de temperatura y giroscopio
+ * Maneja la obtención de datos, filtros y renderizado del gráfico
+ * Proporciona estadísticas en tiempo real y manejo de errores
+ */
+const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket, startDate, endDate }) => {
   const [data, setData] = useState<DataPoint[]>([])
   const [showSurfaceTemp, setShowSurfaceTemp] = useState(true)
   const [showOverSurfaceTemp, setShowOverSurfaceTemp] = useState(true)
@@ -191,7 +305,11 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
     setIsClient(true)
   }, [])
 
-  // Memoize expensive data processing
+  /**
+   * Procesa los datos de forma memoizada para optimizar el rendimiento
+   * Calcula estadísticas y formatea datos para el gráfico
+   * Filtra valores nulos y calcula mínimos y máximos para cada serie
+   */
   const { processedData, surfaceStats, overSurfaceStats } = useMemo(() => {
     if (!data.length) {
       return {
@@ -201,6 +319,10 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
       }
     }
 
+    /**
+     * Función auxiliar para formatear datos de una serie específica
+     * Filtra valores nulos y convierte timestamps a formato compatible
+     */
     const formatData = (data: DataPoint[], key: keyof DataPoint) => {
       return data
         .filter((point) => point[key] !== null)
@@ -215,9 +337,9 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
 
     return {
       processedData: {
-        surface: formatData(data, "surfaceTemperature"),
-        overSurface: formatData(data, "overSurfaceTemperature"),
-        gyro: formatData(data, "gyroX"),
+        surface: formatData(data, "surfaceTemperature") as Array<{ time: Time; value: number }>,
+        overSurface: formatData(data, "overSurfaceTemperature") as Array<{ time: Time; value: number }>,
+        gyro: formatData(data, "gyroX") as Array<{ time: Time; value: number }>,
       },
       surfaceStats: {
         min: surfaceValues.length ? Math.min(...surfaceValues) : null,
@@ -230,6 +352,11 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
     }
   }, [data])
 
+  /**
+   * Obtiene datos de temperatura y giroscopio desde la API
+   * Realiza peticiones paralelas para optimizar el rendimiento
+   * Combina y procesa los datos de diferentes fuentes
+   */
   useEffect(() => {
     const fetchData = async () => {
       if (!session?.accessToken) {
@@ -238,15 +365,16 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
       }
 
       try {
-        const start = startDate?.toISOString()
-        const stop = endDate?.toISOString()
+        const start = startDate?.toISOString() || ''
+        const stop = endDate?.toISOString() || ''
 
+        // Realizar peticiones paralelas para optimizar rendimiento
         const [probeResponse, gyroResponse] = await Promise.all([
           fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/history/data?bucket=${bucket}&start=${start}&stop=${stop}&_measurement=temperature_probe&fields=fields_surface_temperature,fields_over_surface_temperature&every=1m0s&fn=last&createEmpty=false&yieldName=last`,
             {
               headers: {
-                Authorization: `${session.accessToken}`,
+                Authorization: `${session.accessToken || ''}`,
               },
             },
           ),
@@ -263,9 +391,15 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
         const probeData = await probeResponse.json()
         const gyroData = await gyroResponse.json()
 
+        // Combinar datos de diferentes fuentes por timestamp
         const combinedData: { [key: string]: DataPoint } = {}
 
-        probeData?.forEach((item: any) => {
+        // Procesar datos de temperatura
+        probeData?.forEach((item: {
+          _time: string;
+          _field: string;
+          _value: number;
+        }) => {
           const timestamp = new Date(item._time).getTime()
           if (!combinedData[timestamp]) {
             combinedData[timestamp] = {
@@ -282,7 +416,12 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
           }
         })
 
-        gyroData?.forEach((item: any) => {
+        // Procesar datos de giroscopio
+        gyroData?.forEach((item: {
+          _time: string;
+          _field: string;
+          _value: number;
+        }) => {
           const timestamp = new Date(item._time).getTime()
           if (!combinedData[timestamp]) {
             combinedData[timestamp] = {
@@ -298,6 +437,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
         setData(Object.values(combinedData).sort((a, b) => a.timestamp - b.timestamp))
         setFetchError(Object.values(combinedData).length === 0)
       } catch (error) {
+        console.error('Error fetching temperature and gyroscope data:', error);
         setFetchError(true)
       } finally {
         setIsLoading(false)
@@ -357,6 +497,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
         )}
       </CardHeader>
 
+      {/* Mensaje de error cuando no hay datos disponibles */}
       {fetchError && (
         <div className="mb-4 mx-4 max-w-[calc(100%-2rem)] px-4 py-3 rounded-md bg-destructive dark:bg-red-900 border border-destructive dark:border-red-800 text-white flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 inline-block flex-shrink-0" aria-hidden="true" />
@@ -366,6 +507,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
         </div>
       )}
 
+      {/* Estado de carga con skeletons */}
       {isLoading ? (
         <CardContent className="px-6 flex flex-col items-center justify-center h-[375px]">
           <Skeleton className="h-[375px] w-full" />
@@ -400,6 +542,7 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
         !fetchError && (
           <>
             <CardContent className="px-6 flex flex-col">
+              {/* Contenedor del gráfico con renderizado condicional */}
               <ChartContainer className="h-[355px] w-full" config={{}}>
                 {isClient ? (
                   <ChartRenderer
@@ -407,13 +550,15 @@ const TemperatureGyrocopeChart: React.FC<TemperatureProbeChartProps> = ({ bucket
                     showSurfaceTemp={showSurfaceTemp}
                     showOverSurfaceTemp={showOverSurfaceTemp}
                     showGyroX={showGyroX}
-                    theme={theme}
-                    systemTheme={systemTheme}
+                    theme={theme || 'light'}
+                    systemTheme={systemTheme || 'light'}
                   />
                 ) : (
                   <div className="h-[355px] w-full bg-gray-100 dark:bg-gray-800 animate-pulse rounded" />
                 )}
               </ChartContainer>
+              
+              {/* Tarjetas de estadísticas con valores mínimos y máximos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <Card className="bg-white/50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow md:my-2 md:mx-2 overflow-hidden">
                   <CardHeader className="flex flex-row items-center justify-between p-3 pb-0">

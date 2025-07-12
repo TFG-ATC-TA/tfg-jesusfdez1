@@ -57,7 +57,7 @@ export default function FarmViewPage() {
     }
 
     checkAccess()
-  }, []) // Eliminar dependencias para que se ejecute solo una vez
+  }, [farmId, session?.accessToken]) // Añadir dependencias necesarias
 
   if (status === 'loading' || loading) {
     return (
@@ -113,11 +113,11 @@ export default function FarmViewPage() {
   
           {session?.user?.role === 'Administrador' ? (
             <div>
-              <AdminView farmData={farmData} />
+              {farmData && <AdminView farmData={farmData} />}
             </div>
           ) : (
             <div>
-            <NonAdminView farmData={farmData} />
+            {farmData && <NonAdminView farmData={farmData} />}
             </div>
           )}
 

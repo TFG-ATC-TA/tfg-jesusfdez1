@@ -20,13 +20,9 @@ import MilkCollectionAddModal from "@/components/modals/milk-collection-add-moda
 import { CellAction } from "@/components/tables/milk-collection-tables/cell-action"
 import Statistics from "./farm-statistics"
 import { getColumns as getEquipmentColumns } from '@/components/tables/equipment-tables/columns';
-import { Equipment } from '@/types';
+import { Equipment, Farm } from '@/types';
 
-interface NonAdminViewProps {
-  farmData: any;
-}
-
-export default function NonAdminView({ farmData }: NonAdminViewProps) {
+export default function NonAdminView({ farmData }: { farmData: Farm }) {
   const { data: session } = useSession()
 
   // Milk collections state
@@ -144,7 +140,7 @@ export default function NonAdminView({ farmData }: NonAdminViewProps) {
         <Tabs defaultValue="overview" className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="overview">Vista general</TabsTrigger>
+              <TabsTrigger value="overview">General</TabsTrigger>
               <TabsTrigger value="analytics">Estadísticas</TabsTrigger>
             </TabsList>
           </div>
@@ -169,7 +165,7 @@ export default function NonAdminView({ farmData }: NonAdminViewProps) {
                     if (column.id === 'actions') {
                       return {
                         ...column,
-                        cell: ({ row }) => <CellAction data={row.original} onRefresh={fetchMilkCollections} />
+                        cell: ({ row }) => <CellAction data={row.original} onRefreshAction={fetchMilkCollections} />
                       };
                     }
                     return column;

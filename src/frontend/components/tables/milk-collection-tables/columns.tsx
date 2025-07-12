@@ -1,3 +1,9 @@
+/**
+ * Configuración de columnas para la tabla de recogidas de leche
+ * Define las columnas visibles, formato de datos y acciones disponibles
+ * Incluye formateo de fechas y configuración de acciones
+ */
+
 'use client';
 import { ColumnDef } from '@tanstack/react-table';
 import { CellAction } from './cell-action';
@@ -5,6 +11,10 @@ import { MilkCollection } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+/**
+ * Columnas principales de la tabla de recogidas de leche
+ * Incluye información de fecha, etiqueta, compañía y acciones
+ */
 export const columns: ColumnDef<MilkCollection>[] = [
   {
     header: 'Fecha/Hora',
@@ -25,6 +35,6 @@ export const columns: ColumnDef<MilkCollection>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => <CellAction data={row.original} onRefresh={() => {}} />
+    cell: ({ row }) => <CellAction data={row.original} onRefreshAction={() => {}} />
   }
 ];

@@ -5,7 +5,7 @@ networks:
 services:
   mongo:
     image: mongo:7
-    container_name: mongo
+    container_name: mongoDB
     restart: unless-stopped
     ports:
       - "27017:27017"
@@ -17,11 +17,12 @@ services:
       - app-network
 
   backend:
+    container_name: backend_lactokeeper
     build:
       context: ./src/backend
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "5001:5001"
     working_dir: /app
     volumes:
       - ./src/backend:/app
@@ -36,9 +37,16 @@ services:
       - app-network
 
   frontend:
+    container_name: frontend_lactokeeper
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
+      args:
+        NEXTAUTH_SECRET: unaclavesecretabuenaParagenerarTokens1234
+        NEXTAUTH_URL: http://localhost:3000
+        NEXT_PUBLIC_API_URL: http://localhost:5001
+        INTERNAL_API_URL: http://backend:5001
+        NEXT_PUBLIC_WSS_URL: ws://localhost:5001
     ports:
       - "3000:3000"
     working_dir: /app
@@ -47,6 +55,12 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:5001
+      - INTERNAL_API_URL=http://backend:5001
+      - NEXTAUTH_SECRET=unaclavesecretabuenaParagenerarTokens1234
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_WSS_URL=ws://localhost:5001
+
     depends_on:
       - backend
     restart: unless-stopped

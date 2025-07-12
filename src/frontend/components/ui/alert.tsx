@@ -1,8 +1,17 @@
+/**
+ * Componente de alerta reutilizable
+ * Permite mostrar mensajes de advertencia, error o información
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Definición de variantes de estilo para la alerta
+ * Permite alerta por defecto o destructiva (error)
+ */
 const alertVariants = cva(
   "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
   {
@@ -19,6 +28,11 @@ const alertVariants = cva(
   }
 )
 
+/**
+ * Componente principal de alerta
+ * @param variant - Variante de alerta (default, destructive)
+ * @param className - Clases adicionales
+ */
 const Alert = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
@@ -32,6 +46,10 @@ const Alert = React.forwardRef<
 ))
 Alert.displayName = "Alert"
 
+/**
+ * Título de la alerta
+ * Se muestra en negrita en la parte superior
+ */
 const AlertTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
@@ -44,6 +62,10 @@ const AlertTitle = React.forwardRef<
 ))
 AlertTitle.displayName = "AlertTitle"
 
+/**
+ * Descripción de la alerta
+ * Texto adicional debajo del título
+ */
 const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>

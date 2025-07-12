@@ -1,6 +1,15 @@
+/**
+ * Modelo de Notification - Gestión de notificaciones del sistema
+ * Maneja notificaciones para usuarios con seguimiento de lectura
+ */
+
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
+/**
+ * Esquema de Notification
+ * Define la estructura de datos para las notificaciones del sistema
+ */
 var notificationSchema = new Schema({
     _id: {
         type: Schema.Types.ObjectId,

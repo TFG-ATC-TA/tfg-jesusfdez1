@@ -1,6 +1,15 @@
+/**
+ * Modelo de Device - Gestión de dispositivos IoT del sistema
+ * Maneja las relaciones con granjas y equipos, así como los sensores asociados
+ */
+
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
+/**
+ * Esquema de Device
+ * Define la estructura de datos para los dispositivos IoT del sistema
+ */
 const deviceSchema = new Schema({
     _id: {
         type: Schema.Types.ObjectId,
@@ -39,6 +48,10 @@ const deviceSchema = new Schema({
     ]
 });
 
+/**
+ * Hook pre-save para sincronizar relaciones con granjas y equipos
+ * Mantiene las referencias bidireccionales entre dispositivos y sus elementos asociados
+ */
 deviceSchema.pre('save', async function(next) {
     try {
      if (this.isModified('farm') || this.isModified('equipment')) {
@@ -54,7 +67,7 @@ deviceSchema.pre('save', async function(next) {
         if (oldDevice.equipment) {
           await mongoose.model('Equipment').updateOne(
             { _id: oldDevice.equipment },
-            { $unset: { device: oldDevice._id } }
+            { $pull: { devices: oldDevice._id } }
           );
         }
       }
@@ -70,7 +83,7 @@ deviceSchema.pre('save', async function(next) {
       if (this.equipment) {
         await mongoose.model('Equipment').updateOne(
           { _id: this.equipment },
-          { $set: { device: this._id } }
+          { $addToSet: { devices: this._id } }
         );
       }
   
@@ -80,16 +93,32 @@ deviceSchema.pre('save', async function(next) {
     }
   });
 
-deviceSchema.pre('remove', async function(next) {
+/**
+ * Hook pre-remove para limpiar referencias al eliminar dispositivo
+ * Se ejecuta antes de eliminar un dispositivo para limpiar referencias en otros modelos
+ */
+deviceSchema.pre(['remove', 'deleteOne', 'findOneAndDelete', 'findByIdAndDelete'], async function(next) {
     try {
-        await mongoose.model('Farm').updateOne(
-            { devices: this._id },
-            { $pull: { devices: this._id } }
-        );
-        await mongoose.model('Equipment').updateOne(
-            { device: this._id },
-            { $unset: { device: "" } }
-        );
+        let deviceId = this._id;
+        
+        // Para operaciones de query, obtener el documento
+        if (!deviceId) {
+            const doc = await this.model.findOne(this.getQuery());
+            if (doc) deviceId = doc._id;
+        }
+        
+        if (deviceId) {
+            // Eliminar referencia del dispositivo en la granja asociada
+            await mongoose.model('Farm').updateOne(
+                { devices: deviceId },
+                { $pull: { devices: deviceId } }
+            );
+            // Eliminar referencia del dispositivo en el equipo asociado
+            await mongoose.model('Equipment').updateOne(
+                { devices: deviceId },
+                { $pull: { devices: deviceId } }
+            );
+        }
         next();
     } catch (err) {
         next(err);

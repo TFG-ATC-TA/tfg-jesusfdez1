@@ -1,3 +1,10 @@
+/**
+ * Página principal del dashboard
+ * Muestra el saludo personalizado y las opciones de navegación disponibles
+ * Gestiona el estado del usuario y filtra las opciones según el rol
+ * Proporciona una interfaz intuitiva para acceder a todas las funcionalidades
+ */
+
 'use client'
 
 import { useSession } from "next-auth/react"
@@ -9,19 +16,34 @@ import { AuroraBackground } from "@/components/layout/aurora-background"
 import { useState, useEffect } from "react";
 import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/user-service';
 
+/**
+ * Componente principal de la página de inicio
+ * Renderiza el dashboard con navegación personalizada según el rol del usuario
+ * Gestiona la persistencia de datos de usuario y actualizaciones en tiempo real
+ * Implementa animaciones fluidas y diseño responsivo
+ */
 export default function Component() {
   const { data: session } = useSession();
+  
+  // Estado local para los datos del usuario con valores por defecto
+  // Mantiene los datos del usuario sincronizados entre componentes
   const [userData, setUserData] = useState({
     name: '',
     surname: '',
     role: ''
   });
   
-  // Solo mostrar nombre si tiene 16 o menos caracteres
+  // Solo mostrar nombre si tiene 16 o menos caracteres para evitar desbordamiento
+  // Garantiza una presentación visual limpia en dispositivos móviles
   const displayName = userData.name && userData.name.length <= 16 ? userData.name : '';
   const userRole = userData.role || 'Usuario';
 
-  // Inicializar datos de usuario desde localStorage o sesión
+  /**
+   * Inicializar datos de usuario desde localStorage o sesión
+   * Prioriza los datos locales sobre los de la sesión para persistencia
+   * Garantiza que los datos del usuario estén disponibles inmediatamente
+   * Evita parpadeos de contenido durante la carga inicial
+   */
   useEffect(() => {
     const localData = getUserLocalData();
     
@@ -43,7 +65,12 @@ export default function Component() {
     }
   }, [session]);
 
-  // Suscribirse a actualizaciones del perfil de usuario
+  /**
+   * Suscribirse a actualizaciones del perfil de usuario
+   * Actualiza los datos cuando se modifica el perfil desde otros componentes
+   * Mantiene la sincronización entre diferentes partes de la aplicación
+   * Permite actualizaciones en tiempo real sin recargar la página
+   */
   useUserProfileUpdates((updatedData: UserProfileUpdate) => {
     setUserData(prev => ({
       ...prev,
@@ -51,7 +78,12 @@ export default function Component() {
     }));
   });
 
-  // También escuchar el evento user-data-changed para actualizaciones directas
+  /**
+   * Escuchar el evento user-data-changed para actualizaciones directas
+   * Maneja cambios de datos desde otros componentes mediante eventos personalizados
+   * Permite comunicación entre componentes sin dependencias directas
+   * Proporciona una capa adicional de sincronización de datos
+   */
   useEffect(() => {
     const handleUserDataChanged = (event: CustomEvent<UserProfileUpdate>) => {
       setUserData(prev => ({
@@ -73,6 +105,12 @@ export default function Component() {
     };
   }, []);
 
+  /**
+   * Filtrar elementos de navegación según el rol del usuario
+   * Solo muestra las opciones a las que tiene acceso según sus permisos
+   * Garantiza que los usuarios solo vean funcionalidades autorizadas
+   * Implementa control de acceso basado en roles (RBAC)
+   */
   const allowedNavItems = navItems.filter(item => 
     item.roles.includes(userRole)
   )
@@ -87,6 +125,7 @@ export default function Component() {
             transition={{ duration: 0.8, ease: "easeInOut" }}
             className="space-y-6 mb-4 sm:space-y-12 mt-10 sm:mt-0 overflow-hidden" // Added overflow-hidden to prevent extra scrollbar
           >
+            {/* Saludo personalizado con animación */}
             <div className="text-center">
               <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white">
                 Hola {displayName} 
@@ -96,6 +135,7 @@ export default function Component() {
               </p>
             </div>
           
+            {/* Contenedor principal con opciones de navegación */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -105,6 +145,8 @@ export default function Component() {
               <p className="text-gray-600 dark:text-neutral-200 mb-4 justify-center text-center text-light">
                 Selecciona una de las <span className="font-bold">opciones</span> para acceder a las distintas secciones de la web
               </p>
+              
+              {/* Grid de opciones de navegación con animaciones escalonadas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {allowedNavItems.map((item, index) => (
                   <motion.div 
@@ -124,6 +166,8 @@ export default function Component() {
                   </motion.div>
                 ))}
               </div>
+              
+              {/* Opción de ajustes de usuario con animación retrasada */}
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

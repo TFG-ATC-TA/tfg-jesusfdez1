@@ -1,11 +1,25 @@
-'use client'
+/**
+ * Componente de fondo de video con reproducción automática y transiciones
+ * Maneja la reproducción continua de videos con transiciones suaves
+ * Optimizado para fondos de pantalla completa con múltiples videos
+ */
 
-import React, { useState, useEffect, useRef } from 'react'
+'use client';
 
+import { useState, useEffect, useRef } from 'react';
+
+/**
+ * Props del componente VideoBackground
+ */
 interface VideoBackgroundProps {
-  videos: string[]
+  videos: string[];
 }
 
+/**
+ * Componente de fondo de video con reproducción automática
+ * Reproduce videos en bucle con transiciones suaves entre ellos
+ * @param videos - Array de URLs de videos a reproducir
+ */
 export default function VideoBackground({ videos }: VideoBackgroundProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState(1)
@@ -15,9 +29,9 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
   const currentVideoRef = useRef<HTMLVideoElement>(null)
   const nextVideoRef = useRef<HTMLVideoElement>(null)
 
-  const bufferTime = 2 // Start transition 2 seconds before video ends
+  const bufferTime = 2 // Iniciar transición 2 segundos antes de que termine el video
 
-  // Handle initial client-side mounting
+  // Manejar el montaje inicial del lado del cliente
   useEffect(() => {
     setIsMounted(true)
   }, [])
@@ -30,7 +44,7 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
 
     if (!currentVideo || !nextVideo) return
 
-    // Auto-play the first video after mounting
+    // Reproducir automáticamente el primer video después del montaje
     const playVideo = async () => {
       try {
         await currentVideo.play();
@@ -41,6 +55,10 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
     
     playVideo();
 
+    /**
+     * Maneja la actualización del tiempo del video
+     * Inicia la transición cuando se acerca al final
+     */
     const handleTimeUpdate = () => {
       if (currentVideo.duration - currentVideo.currentTime <= bufferTime && !isTransitioning) {
         setIsTransitioning(true)
@@ -48,6 +66,10 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
       }
     }
 
+    /**
+     * Maneja el final de la transición
+     * Actualiza los índices y reinicia el estado
+     */
     const handleTransitionEnd = () => {
       setCurrentIndex(nextIndex)
       setNextIndex((nextIndex + 1) % videos.length)
@@ -71,13 +93,14 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
     }
   }, [nextIndex, isMounted])
 
-  // Don't render anything during SSR
+  // No renderizar nada durante SSR
   if (!isMounted) {
     return null;
   }
 
   return (
     <div className="relative w-full h-full overflow-hidden">
+      {/* Video actual */}
       <video
         ref={currentVideoRef}
         key={`video-${currentIndex}`}
@@ -89,6 +112,8 @@ export default function VideoBackground({ videos }: VideoBackgroundProps) {
         <source src={videos[currentIndex]} type="video/mp4" />
         Your browser does not support the video tag.
       </video>
+      
+      {/* Video siguiente (precargado) */}
       <video
         ref={nextVideoRef}
         key={`video-${nextIndex}`}

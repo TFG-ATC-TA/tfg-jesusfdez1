@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { createPortal } from 'react-dom'
@@ -140,7 +140,7 @@ export default function DairyTimeline({ bucket, startDate, endDate }: DairyTimel
   const visibleDates = paginationData.visibleDates;
 
   // Función para cargar datos de una página específica
-  const fetchPageData = async (page: number, isInitialLoad = false) => {
+  const fetchPageData = useCallback(async (page: number, isInitialLoad = false) => {
     let loadingTimer: NodeJS.Timeout | null = null;
     try {
       if (!isInitialLoad) {
@@ -193,12 +193,12 @@ export default function DairyTimeline({ bucket, startDate, endDate }: DairyTimel
         setShowLoadingOverlay(false);
       }
     }
-  };
+  }, [bucket, startDate, endDate]);
 
   // Cargar datos iniciales y cuando cambian las props
   useEffect(() => {
     fetchPageData(0, true);
-  }, [bucket, startDate, endDate]);
+  }, [bucket, startDate, endDate, fetchPageData]);
 
   const PageSelector = () => {
     const currentPageNumber = currentPage + 1
@@ -533,7 +533,7 @@ export default function DairyTimeline({ bucket, startDate, endDate }: DairyTimel
             <div className={`flex h-[321px] transition-opacity duration-300 ${pageLoading ? 'opacity-60' : 'opacity-100'}`}> {/* Ajustado de 400px a 320px (80px * 4 días) */}
               {/* Days column */}
               <div className="w-32 border-r dark:border-gray-700 bg-muted/30 dark:bg-gray-800/30 flex-none"> {/* Añadido flex-none */}
-                {visibleDates.map((date, i) => (
+                {visibleDates.map((date) => (
                   <div
                     key={date}
                   className="h-[80px] flex items-center justify-center border-b last:border-b-0 flex-none"> {/* Cambiado de 100px a 80px */}

@@ -1,3 +1,8 @@
+/**
+ * Sistema de formularios reutilizable basado en react-hook-form
+ * Proporciona componentes y contexto para validación, mensajes y control de campos
+ */
+
 "use client"
 
 import * as React from "react"
@@ -15,8 +20,13 @@ import {
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
+// Alias para el provider de react-hook-form
 const Form = FormProvider
 
+/**
+ * Contexto para el campo de formulario
+ * Permite acceder al nombre del campo en subcomponentes
+ */
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
@@ -28,6 +38,10 @@ const FormFieldContext = React.createContext<FormFieldContextValue>(
   {} as FormFieldContextValue
 )
 
+/**
+ * Componente para envolver un campo de formulario controlado
+ * Proporciona contexto y renderiza el Controller de react-hook-form
+ */
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
@@ -41,6 +55,10 @@ const FormField = <
   )
 }
 
+/**
+ * Hook para acceder al contexto del campo de formulario
+ * Devuelve información de validación, ids y estado del campo
+ */
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
   const itemContext = React.useContext(FormItemContext)
@@ -64,6 +82,10 @@ const useFormField = () => {
   }
 }
 
+/**
+ * Contexto para el item del formulario
+ * Permite generar ids únicos para cada campo
+ */
 type FormItemContextValue = {
   id: string
 }
@@ -72,6 +94,10 @@ const FormItemContext = React.createContext<FormItemContextValue>(
   {} as FormItemContextValue
 )
 
+/**
+ * Componente para agrupar un campo de formulario
+ * Proporciona espaciado y contexto de ids
+ */
 const FormItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -86,6 +112,10 @@ const FormItem = React.forwardRef<
 })
 FormItem.displayName = "FormItem"
 
+/**
+ * Etiqueta del campo de formulario
+ * Muestra el label y aplica estilos según el estado de error
+ */
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
@@ -103,6 +133,10 @@ const FormLabel = React.forwardRef<
 })
 FormLabel.displayName = "FormLabel"
 
+/**
+ * Componente para el control del campo (input, select, etc.)
+ * Gestiona ids, aria y estado de error
+ */
 const FormControl = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
@@ -125,6 +159,10 @@ const FormControl = React.forwardRef<
 })
 FormControl.displayName = "FormControl"
 
+/**
+ * Descripción del campo de formulario
+ * Texto auxiliar debajo del campo
+ */
 const FormDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
@@ -142,6 +180,10 @@ const FormDescription = React.forwardRef<
 })
 FormDescription.displayName = "FormDescription"
 
+/**
+ * Mensaje de error o validación del campo
+ * Muestra el mensaje de error si existe
+ */
 const FormMessage = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>

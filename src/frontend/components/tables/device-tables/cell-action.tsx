@@ -63,7 +63,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data, onRefresh }) => {
         description: "Dispositivo eliminado correctamente",
         variant: "success",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error al eliminar el despositivo",
         variant: "destructive",

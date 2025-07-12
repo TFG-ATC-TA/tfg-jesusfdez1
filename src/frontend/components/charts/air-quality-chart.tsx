@@ -54,7 +54,7 @@ const getIAQStatus = (iaq: number): { text: string; color: string; bgColor: stri
 
 
 const MetricCard = ({ icon: Icon, title, value, unit, status, colorClass }: {
-  icon: any
+  icon: React.ComponentType<{ className?: string }>
   title: string
   value: string | number
   unit: string
@@ -82,7 +82,7 @@ const MetricCard = ({ icon: Icon, title, value, unit, status, colorClass }: {
 export default function AirQualityChart({ bucket }: { bucket: string }){
   const [airData, setAirData] = useState<AirQualityData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
@@ -118,9 +118,13 @@ export default function AirQualityChart({ bucket }: { bucket: string }){
       }
 
       // Procesar cada registro
-      data.forEach((record: any) => {
+      data.forEach((record: {
+        _field: string;
+        _value: string | number;
+        _time: string;
+      }) => {
         const field = record._field
-        const value = parseFloat(record._value)
+        const value = parseFloat(record._value.toString())
         
         // Guardar el tiempo del registro más reciente
         if (!readings.time || new Date(record._time) > new Date(readings.time)) {

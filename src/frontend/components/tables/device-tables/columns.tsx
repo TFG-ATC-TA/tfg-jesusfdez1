@@ -1,3 +1,9 @@
+/**
+ * Configuración de columnas para la tabla de dispositivos
+ * Define las columnas visibles, formato de datos y acciones disponibles
+ * Incluye mapeo de colores para tipos de dispositivos y configuración de acciones
+ */
+
 'use client';
 import { ColumnDef } from '@tanstack/react-table';
 import { CellAction } from './cell-action';
@@ -5,7 +11,10 @@ import { Device } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { devicesColors } from '@/constants/data';
 
-
+/**
+ * Columnas principales de la tabla de dispositivos
+ * Incluye información del dispositivo, granja asociada y acciones
+ */
 export const columns: ColumnDef<Device>[] = [
   {
     header: 'Identificador de placa',

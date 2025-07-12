@@ -1,6 +1,14 @@
+/**
+ * Contenedor de página principal
+ * Proporciona layout consistente con scroll y padding para todas las páginas
+ */
+
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+/**
+ * Props del componente PageContainer
+ */
 export default function PageContainer({
   children,
   scrollable = false

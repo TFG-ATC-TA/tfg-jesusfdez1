@@ -1,55 +1,66 @@
+/**
+ * Componente de registro de Service Worker para PWA
+ * Maneja el registro, actualización y gestión del service worker
+ * Proporciona funcionalidad offline y cache para la aplicación
+ */
+
 'use client';
 
 import { useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
+/**
+ * Componente que registra y gestiona el service worker
+ * No renderiza nada visible, solo maneja la lógica de service worker
+ */
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      // Limpiar registros antiguos primero
+      // Limpiar registros antiguos primero para evitar conflictos
       navigator.serviceWorker.getRegistrations().then(registrations => {
-        console.log('SW: Found', registrations.length, 'existing registrations');
+        logger.log('SW: Found', registrations.length, 'existing registrations');
         registrations.forEach(registration => {
-          console.log('SW: Unregistering:', registration.scope);
+          logger.log('SW: Unregistering:', registration.scope);
           registration.unregister();
         });
 
-        // Esperar un poco y luego registrar el nuevo
+        // Esperar un poco y luego registrar el nuevo service worker
         setTimeout(() => {
           navigator.serviceWorker.register('/custom-sw.js', {
             scope: '/',
-            updateViaCache: 'none'
+            updateViaCache: 'none' // Forzar actualización inmediata
           })
-            .then(registration => {
-              console.log('SW: Service Worker registrado con éxito:', registration);
+            .then((registration) => {
+              logger.log('SW: Service Worker registrado con éxito:', registration);
               
               // Forzar actualización inmediata si hay un worker esperando
               if (registration.waiting) {
-                console.log('SW: Activating waiting worker immediately');
+                logger.log('SW: Activating waiting worker immediately');
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });
               }
               
               // Verificar actualizaciones manualmente
               registration.update().then(() => {
-                console.log('SW: Manual update check completed');
+                logger.log('SW: Manual update check completed');
               });
               
-              // Escuchar nuevas instalaciones
+              // Escuchar nuevas instalaciones de service worker
               registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing;
                 if (newWorker) {
-                  console.log('SW: New worker installing');
+                  logger.log('SW: New worker installing');
                   newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed') {
-                      console.log('SW: New worker installed, activating immediately');
+                      logger.log('SW: New worker installed, activating immediately');
                       newWorker.postMessage({ type: 'SKIP_WAITING' });
                     }
                   });
                 }
               });
 
-              // Verificar si el service worker está activo
+              // Verificar si el service worker está activo y listo
               if (registration.active) {
-                console.log('SW: Service worker is active and ready');
+                logger.log('SW: Service worker is active and ready');
               }
             })
             .catch(error => {
@@ -60,19 +71,19 @@ export default function ServiceWorkerRegistration() {
 
       // Escuchar cambios en el service worker activo
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('SW: Controller changed - nuevo Service Worker activo');
+        logger.log('SW: Controller changed - nuevo Service Worker activo');
         // Recargar la página cuando el nuevo service worker tome control
         window.location.reload();
       });
 
-      // Escuchar mensajes del service worker
+      // Escuchar mensajes del service worker para debugging
       navigator.serviceWorker.addEventListener('message', event => {
-        console.log('SW: Message received from service worker:', event.data);
+        logger.log('SW: Message received from service worker:', event.data);
       });
     } else {
       console.warn('SW: Service Worker no soportado en este navegador');
     }
   }, []);
 
-  return null;
+  return null; // Este componente no renderiza nada visible
 }

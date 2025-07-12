@@ -1,21 +1,16 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { Farm } from '@/types/index';
 import PageContainer from '@/components/layout/page-container';
 import NotificationsList from '@/components/ui/notifications-list';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const UserClient: React.FC = () => {
-  const router = useRouter();
   const { data: session } = useSession();
-  const [data, setData] = useState<Farm[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [notificationsStats, setNotificationsStats] = useState({
     total: 0,
     info: 0,
@@ -23,7 +18,6 @@ const UserClient: React.FC = () => {
     error: 0,
     unread: 0
   });
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
 
   // Información de las tarjetas
@@ -54,7 +48,7 @@ const UserClient: React.FC = () => {
     }
   };
 
-  const fetchNotificationStats = async () => {
+  const fetchNotificationStats = useCallback(async () => {
     if (!session?.accessToken) {
       console.error('No hay sesión iniciada');
       return;
@@ -79,52 +73,65 @@ const UserClient: React.FC = () => {
     } catch (error) {
       console.error('Error al obtener estadísticas de notificaciones:', error);
     }
-  };
+  }, [session?.accessToken]);
 
-    const fetchFarms = async () => {
-      if (!session?.accessToken) {
-        console.error('No hay sesión iniciada');
-        return;
-      }
+  const fetchFarms = useCallback(async () => {
+    if (!session?.accessToken) {
+      console.error('No hay sesión iniciada');
+      return;
+    }
 
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `${session.accessToken}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Error al obtener granjas');
-        }
-        const fetchedData: Farm[] = await response.json();
-        setData(fetchedData);
-      } catch (error) {
-        console.error('Error al obtener granjas:', error);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/farm/listName`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${session.accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Error al obtener granjas');
       }
-    };
+      // Farm data fetched successfully
+    } catch (error) {
+      console.error('Error al obtener granjas:', error);
+    }
+  }, [session?.accessToken]);
     
   useEffect(() => {
     fetchFarms();
     fetchNotificationStats();
 
     // Escuchar actualizaciones de notificaciones desde el componente de lista
-    const handleNotificationsUpdate = (event: any) => {
-      if (event.detail) {
-        setNotificationsStats(event.detail);
+    const handleNotificationsUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        setNotificationsStats(customEvent.detail);
+      }
+    };
+
+    // Escuchar cambios en el estado de lectura de notificaciones
+    const handleReadStatusChange = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        setNotificationsStats(customEvent.detail);
       }
     };
 
     if (typeof window !== 'undefined') {
       window.addEventListener('notificationsUpdated', handleNotificationsUpdate);
-      return () => window.removeEventListener('notificationsUpdated', handleNotificationsUpdate);
+      window.addEventListener('notificationReadStatusChanged', handleReadStatusChange);
+      
+      return () => {
+        window.removeEventListener('notificationsUpdated', handleNotificationsUpdate);
+        window.removeEventListener('notificationReadStatusChanged', handleReadStatusChange);
+      };
     }
-  }, [session]);
+  }, [session, fetchFarms, fetchNotificationStats]);
 
   useEffect(() => {
     if (session?.accessToken) {
-      setIsLoading(false);
+      // Session loaded successfully
     }
   }, [session]);
   

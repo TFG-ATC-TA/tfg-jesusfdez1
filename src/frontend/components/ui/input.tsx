@@ -1,10 +1,26 @@
+/**
+ * Componente de campo de entrada reutilizable
+ * Proporciona estilos consistentes y accesibilidad para inputs
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Props del componente Input
+ * Extiende todas las propiedades nativas de HTMLInputElement
+ */
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
+/**
+ * Componente Input principal
+ * Renderiza un campo de entrada con estilos consistentes y soporte para ref
+ * @param className - Clases CSS adicionales
+ * @param type - Tipo de input (text, email, password, etc.)
+ * @param ref - Referencia al elemento DOM
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
     return (

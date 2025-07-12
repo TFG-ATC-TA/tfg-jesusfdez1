@@ -1,3 +1,7 @@
+/**
+ * Rutas para gestión de notificaciones
+ * Incluye listado, marcado de lectura y estadísticas con control de acceso
+ */
 
 const express = require('express');
 const router = express.Router();
@@ -8,40 +12,59 @@ const { verifyToken } = require('../middleware/auth');
 const cors = require('cors');
 const User = require('../models/User');
 
+// Importar el sistema de console personalizado
+const devConsole = require('../utils/console');
+
+const { 
+  paginatedResponse, 
+  badRequest, 
+  unauthorized, 
+  forbidden,
+  notFound, 
+  conflict, 
+  internalError, 
+  created, 
+  updated, 
+  deleted 
+} = require('../utils/responseHandler');
+const { buildCompleteQuery, handlePaginatedResponse } = require('../utils/pagination');
 
 router.use(cors());
 router.use(express.json());
 
-// GET /notification/list - Obtener notificaciones del usuario con paginación, búsqueda y estadísticas
+/**
+ * GET /notification/list - Obtener notificaciones del usuario con paginación, búsqueda y estadísticas
+ * Control de acceso basado en granjas del usuario
+ * Incluye filtros por tipo, estado de lectura y granja
+ */
 router.get('/list', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 5;
+    const { page, limit } = require('../utils/pagination').getPaginationParams(req);
     const searchTerm = req.query.searchTerm || '';
     const typeFilter = req.query.type || '';
     const readFilter = req.query.read || ''; // 'true', 'false', or ''
     const farmFilter = req.query.farm || '';
 
-    console.log('Solicitud de notificaciones:', { userId, page, limit, searchTerm, typeFilter, farmFilter });
+    devConsole.log('Solicitud de notificaciones:', { userId, page, limit, searchTerm, typeFilter, farmFilter });
 
     // Obtener información del usuario para verificar su rol
     const currentUser = await User.findById(userId).select('role');
     const isAdmin = currentUser && currentUser.role === 'Administrador';
 
-    console.log('Usuario:', { userId, role: currentUser?.role, isAdmin });
+    devConsole.log('Usuario:', { userId, role: currentUser?.role, isAdmin });
 
     let farmIds = [];
     
     if (isAdmin) {
       // Si es administrador, puede acceder a todas las notificaciones
-      console.log('Usuario administrador: acceso a todas las notificaciones');
+      devConsole.log('Usuario administrador: acceso a todas las notificaciones');
     } else {
       // Si no es administrador, solo puede acceder a las notificaciones de sus granjas
       const userFarms = await Farm.find({ users: userId }).select('_id');
       farmIds = userFarms.map(farm => farm._id);
       
-      console.log('Granjas del usuario:', farmIds);
+      devConsole.log('Granjas del usuario:', farmIds);
 
       if (farmIds.length === 0) {
         return res.json({
@@ -66,16 +89,14 @@ router.get('/list', verifyToken, async (req, res) => {
     }
 
     // Construir query base
-    let query = {};
+    let baseQuery = {};
     
     // Solo filtrar por granjas si no es administrador
     if (!isAdmin) {
-      query.farm = { $in: farmIds };
+      baseQuery.farm = { $in: farmIds };
     }
 
-    console.log('Query construida:', JSON.stringify(query, null, 2));
-
-    // Filtros opcionales
+    // Aplicar filtros de tipo
     if (typeFilter) {
       const types = typeFilter.split(',').filter(t => t.trim() !== '');
       if (types.length > 0) {
@@ -85,21 +106,21 @@ router.get('/list', verifyToken, async (req, res) => {
         
         if (specificTypes.length > 0 && hasOtros) {
           // Si incluye tipos específicos Y "otros"
-          query.$or = [
+          baseQuery.$or = [
             { type: { $in: specificTypes } },
             { type: { $nin: ['info', 'warning', 'error'] } }
           ];
         } else if (specificTypes.length > 0) {
           // Solo tipos específicos
-          query.type = { $in: specificTypes };
+          baseQuery.type = { $in: specificTypes };
         } else if (hasOtros) {
           // Solo "otros" - todo lo que no sea info, warning, error
-          query.type = { $nin: ['info', 'warning', 'error'] };
+          baseQuery.type = { $nin: ['info', 'warning', 'error'] };
         }
       }
     }
 
-    // Para el filtro de granja, procesar IDs directamente si se proporciona
+    // Aplicar filtros de granja
     if (farmFilter && farmFilter !== 'all') {
       const requestedFarmIds = farmFilter.split(',').filter(f => f.trim() !== '');
       if (requestedFarmIds.length > 0) {
@@ -113,31 +134,36 @@ router.get('/list', verifyToken, async (req, res) => {
               farmIds.some(userFarmId => userFarmId.toString() === id)
             );
             if (accessibleFarmIds.length > 0) {
-              query.farm = { $in: accessibleFarmIds };
+              baseQuery.farm = { $in: accessibleFarmIds };
             } else {
               // Si no tiene acceso a ninguna de las granjas solicitadas, no devolver resultados
-              query.farm = null;
+              baseQuery.farm = null;
             }
           } else {
-            query.farm = { $in: validFarmIds };
+            baseQuery.farm = { $in: validFarmIds };
           }
         } else {
           // Si no hay IDs válidos, no devolver resultados
-          query.farm = null;
+          baseQuery.farm = null;
         }
+      }
+    } else if (farmFilter === 'all') {
+      // Para 'all', solo mostrar notificaciones que tengan farm asignado
+      if (isAdmin) {
+        baseQuery.farm = { $ne: null };
+      } else {
+        baseQuery.farm = { $in: farmIds };
       }
     } else if (!farmFilter || farmFilter === '') {
       // Si no se proporciona filtro de granja, no devolver notificaciones
-      query.farm = null;
+      baseQuery.farm = null;
     }
 
-    // Búsqueda por texto
-    if (searchTerm) {
-      query.$or = [
-        { message: { $regex: searchTerm, $options: 'i' } },
-        { type: { $regex: searchTerm, $options: 'i' } }
-      ];
-    }
+    // Aplicar búsqueda por texto
+    const searchFields = ['message', 'type'];
+    const query = buildCompleteQuery(req, searchFields, baseQuery);
+
+    devConsole.log('Query construida:', JSON.stringify(query, null, 2));
 
     // Obtener todas las notificaciones para estadísticas
     const allNotifications = await Notification.find(query)
@@ -146,7 +172,7 @@ router.get('/list', verifyToken, async (req, res) => {
       .populate('device', 'boardId')
       .sort({ createdAt: -1 });
 
-    console.log('Notificaciones encontradas:', allNotifications.length);
+    devConsole.log('Notificaciones encontradas:', allNotifications.length);
 
     // Calcular estadísticas
     const stats = {
@@ -179,7 +205,7 @@ router.get('/list', verifyToken, async (req, res) => {
       filteredNotifications = notificationsWithReadStatus.filter(n => n.isRead === isReadFilter);
     }
 
-    // Paginación
+    // Paginación manual para las notificaciones filtradas
     const totalNotifications = filteredNotifications.length;
     const totalPages = Math.ceil(totalNotifications / limit);
     const startIndex = (page - 1) * limit;
@@ -188,7 +214,6 @@ router.get('/list', verifyToken, async (req, res) => {
 
     // Si no hay notificaciones, enviar página 0
     const currentPage = totalNotifications === 0 ? 0 : page;
-
 
     // Formatear respuesta - solo enviar datos necesarios para el frontend
     const formattedNotifications = paginatedNotifications.map(notification => ({
@@ -204,8 +229,7 @@ router.get('/list', verifyToken, async (req, res) => {
       createdAt: notification.createdAt
     }));
 
-
-    res.json({
+    return res.json({
       notifications: formattedNotifications,
       pagination: {
         currentPage,
@@ -219,24 +243,25 @@ router.get('/list', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
-    res.status(500).json({ 
-      message: 'Error interno del servidor',
-      error: error.message 
-    });
+    devConsole.error('Error al obtener notificaciones:', error);
+    return internalError(res, 'Error interno del servidor', error);
   }
 });
 
-
-// PUT /notification/:id/mark-read - Marcar notificación como leída
+/**
+ * PUT /notification/:id/mark-read - Marcar notificación como leída
+ * Actualiza el estado de lectura de una notificación específica
+ */
 router.put('/:id/mark-read', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const notificationId = req.params.id;
+    
     const notification = await Notification.findById(notificationId);
-    if (!notification) return res.status(404).json({ message: 'Notificación no encontrada' });
+    if (!notification) {
+      return notFound(res, 'Notificación no encontrada');
+    }
 
-    const User = require('../models/User');
     const currentUser = await User.findById(userId).select('role');
     const isAdmin = currentUser && currentUser.role === 'Administrador';
 
@@ -244,7 +269,7 @@ router.put('/:id/mark-read', verifyToken, async (req, res) => {
       const userFarms = await Farm.find({ users: userId }).select('_id');
       const farmIds = userFarms.map(farm => farm._id.toString());
       if (!farmIds.includes(notification.farm.toString())) {
-        return res.status(403).json({ message: 'No tienes acceso a esta notificación' });
+        return unauthorized(res, 'No tienes acceso a esta notificación');
       }
     }
 
@@ -256,11 +281,12 @@ router.put('/:id/mark-read', verifyToken, async (req, res) => {
     } else {
       notification.read.push({ userId, read: true, readDate: new Date() });
     }
+    
     await notification.save();
-    res.json({ message: 'Notificación marcada como leída', success: true });
+    return updated(res, null, 'Notificación marcada como leída');
   } catch (error) {
-    console.error('Error al marcar notificación como leída:', error);
-    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+    devConsole.error('Error al marcar notificación como leída:', error);
+    return internalError(res, 'Error interno del servidor', error);
   }
 });
 

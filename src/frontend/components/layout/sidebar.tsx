@@ -1,3 +1,8 @@
+/**
+ * Componente de barra lateral (sidebar)
+ * Maneja la navegación principal y el estado de minimización del menú
+ */
+
 'use client';
 
 import React from 'react';
@@ -12,10 +17,18 @@ import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 
+/**
+ * Props del componente Sidebar
+ */
 type SidebarProps = {
   className?: string;
 };
 
+/**
+ * Componente principal del sidebar
+ * Renderiza la navegación lateral con logo, menú y perfil de usuario
+ * @param className - Clases CSS adicionales
+ */
 export default function Sidebar({ className }: SidebarProps) {
   const { data: session } = useSession();
   const { isMinimized, toggle } = useSidebar();
@@ -24,11 +37,12 @@ export default function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        `relative hidden h-screen flex-none border-r bg-card transition-all duration-300 ease-in-out md:flex md:flex-col`,
+        `relative hidden h-screen flex-none border-r bg-card transition-all duration-300 ease-in-out md:flex md:flex-col z-30`,
         !isMinimized ? 'w-64' : 'w-20',
         className
       )}
     >
+      {/* Header del sidebar con logo y botón de toggle */}
       <div className={cn(
         "flex items-center",
         isMinimized 
@@ -61,6 +75,8 @@ export default function Sidebar({ className }: SidebarProps) {
           </Button>
         )}
       </div>
+      
+      {/* Botón de toggle cuando está minimizado */}
       {isMinimized && (
         <div className="flex justify-center mt-2 mb-8">
           <Button
@@ -73,8 +89,11 @@ export default function Sidebar({ className }: SidebarProps) {
           </Button>
         </div>
       )}
+      
+      {/* Navegación principal */}
       <div className="flex-grow py-6 flex flex-col px-3">
         <nav className="space-y-3">
+          {/* Filtrar elementos de navegación según el rol del usuario */}
           {navItems
             .filter(item => item.roles.includes(session?.user?.role ?? ''))
             .map((item) => (
@@ -92,6 +111,8 @@ export default function Sidebar({ className }: SidebarProps) {
             ))}
         </nav>
       </div>
+      
+      {/* Perfil de usuario en la parte inferior */}
       <div className="px-3 py-2 mb-3">
         <UserNav isMinimized={isMinimized} />
       </div>

@@ -1,3 +1,10 @@
+/**
+ * Modal de visualización de recogida de leche
+ * Permite ver los detalles completos de una recogida de leche específica
+ * Muestra información de tanques, cantidades y estado de la recogida
+ * Proporciona una vista tipo ticket con diseño atractivo y información detallada
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,23 +17,60 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CheckIcon, XIcon, ChevronDown } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
+/**
+ * Props del modal de visualización de recogida de leche
+ * Define la interfaz para controlar el estado del modal y la comunicación
+ */
 interface MilkCollectionViewModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
   collectionId: string;
 }
 
-export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = ({ isOpen, onClose, collectionId }) => {  const { data: session } = useSession();
-  const [collection, setCollection] = useState<any>(null);
+/**
+ * Componente modal para visualizar detalles de recogida de leche
+ * Muestra información completa en formato tipo ticket
+ * Incluye datos de transporte, tanques y métricas de la recogida
+ */
+export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = ({ isOpen, onCloseAction, collectionId }) => {  
+  const { data: session } = useSession();
+  
+  // Estado para los datos de la recogida
+  // Almacena toda la información de la recogida incluyendo tanques y detalles
+  const [collection, setCollection] = useState<{
+    _id: string;
+    date: string;
+    collectionDate: string;
+    sampleLabel: string;
+    milkTemperature: number;
+    inhibitorSampleTaken: boolean;
+    litersPerTank: Array<{ 
+      tankId: string | { _id: string; name: string }; 
+      liters: number; 
+      compartment: string 
+    }>;
+    farmId: string;
+    collectionCompany?: string;
+    driver?: string;
+    cisternLicensePlate?: string;
+  } | null>(null);
+  
+  // Estados para control de carga y métricas
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-  const { theme, resolvedTheme } = useTheme();
   const [totalLiters, setTotalLiters] = useState<number>(0);
-
+  
+  const { toast } = useToast();
+  const { resolvedTheme } = useTheme();
+  
+  // Color del ticket según el tema (claro/oscuro)
   const ticketColor = resolvedTheme === 'dark' ? '#111827' : '#ffffff';
 
+  /**
+   * Efecto para cargar los datos de la recogida cuando se abre el modal
+   * Obtiene la información completa desde la API
+   * Calcula métricas como el total de litros recogidos
+   */
   useEffect(() => {
     if (isOpen && collectionId) {
       const fetchCollectionData = async () => {
@@ -60,7 +104,7 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
           
           // Calculate total liters
           if (data.litersPerTank && data.litersPerTank.length > 0) {
-            const total = data.litersPerTank.reduce((sum: number, tank: any) => sum + parseFloat(tank.liters || 0), 0);
+            const total = data.litersPerTank.reduce((sum: number, tank: { liters: number }) => sum + parseFloat(tank.liters?.toString() || '0'), 0);
             setTotalLiters(total);
           }
         } catch (error) {
@@ -70,7 +114,7 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
             description: error instanceof Error ? error.message : "Error desconocido al cargar los datos",
             variant: "destructive",
           });
-          onClose();
+          onCloseAction();
         } finally {
           setLoading(false);
         }
@@ -78,11 +122,16 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
       
       fetchCollectionData();
     }
-  }, [isOpen, session, collectionId]);
+  }, [isOpen, session, collectionId, onCloseAction, toast]);
 
+  /**
+   * Renderizado del estado de carga
+   * Muestra un spinner mientras se cargan los datos
+   */
   if (loading || !collection) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-transparent border-none shadow-none [&>button]:bg-white dark:[&>button]:bg-gray-900 [&>button]:rounded-lg [&>button]:shadow">
+      <Dialog open={isOpen} onOpenChange={onCloseAction}>       
+       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-transparent border-none shadow-none [&>button]:bg-white dark:[&>button]:bg-gray-900 [&>button]:rounded-lg [&>button]:shadow">
           <div className="bg-transparent max-w-lg mx-auto relative overflow-hidden">
             <div className="sawtooth"></div>
             <div className="bg-white dark:bg-gray-900 px-1 py-3">
@@ -98,7 +147,9 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>      <style jsx global>{`
+    <Dialog open={isOpen} onOpenChange={onCloseAction}>      
+      {/* Estilos CSS para el diseño tipo ticket */}
+      <style jsx global>{`
         .dialog-overlay {
           background-color: rgba(0, 0, 0, 0.5) !important;
         }
@@ -122,12 +173,16 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
           left: 0;
           right: 0;
           height: 2px;
-          background-image: linear-gradient(90deg, transparent, rgba(156, 163, 175, 0.3) 50%, transparent 100%);        }
-      `}</style>      <DialogContent className="sm:max-w-[500px] md:max-w-[550px] p-0 overflow-hidden bg-transparent border-none shadow-none [&>button]:bg-white dark:[&>button]:bg-gray-900 [&>button]:rounded-lg [&>button]:shadow">
+          background-image: linear-gradient(90deg, transparent, rgba(156, 163, 175, 0.3) 50%, transparent 100%);        
+        }
+      `}</style>      
+      <DialogContent className="sm:max-w-[500px] md:max-w-[550px] p-0 overflow-hidden bg-transparent border-none shadow-none [&>button]:bg-white dark:[&>button]:bg-gray-900 [&>button]:rounded-lg [&>button]:shadow">
         <div className="bg-transparent max-w-lg mx-auto relative overflow-hidden">
+          {/* Diseño tipo ticket con bordes dentados */}
           <div className="sawtooth"></div>
           <div className={`bg-white dark:bg-gray-900 px-4 py-5`}>
             <ScrollArea className="h-[calc(75vh-48px)] pl-2 pr-4 scrollbar-thin scrollbar-thumb-gray-600 dark:scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-700 dark:hover:scrollbar-thumb-gray-100">
+              {/* Encabezado del ticket con información básica */}
               <div className="text-center mb-6 ticket-header">
                 <div className="flex items-center justify-center mb-1">
                   <h2 className="text-xl font-bold dark:text-white">
@@ -140,7 +195,9 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
                   </Badge>
                 </div>
               </div>
-                <div className="mb-6">
+              
+              {/* Métricas principales de la recogida */}
+              <div className="mb-6">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 p-3 rounded-lg text-center shadow-sm">
                     <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">Total leche recogida</p>
@@ -151,9 +208,13 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
                     <p className="text-xl font-bold text-gray-800 dark:text-gray-100">{collection.milkTemperature ? `${collection.milkTemperature}°C` : '—'}</p>
                   </div>
                 </div>
-              </div>              <div className="mb-5">
+              </div>
+              
+              {/* Información de transporte */}
+              <div className="mb-5">
                 <h3 className="text-sm font-semibold mb-3 text-gray-600 dark:text-gray-300">Información de transporte</h3>
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 rounded-lg p-4 shadow-sm">                  <div className="space-y-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 rounded-lg p-4 shadow-sm">                  
+                  <div className="space-y-4">
                     <div>
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Empresa</p>
                       <p className="font-medium text-gray-800 dark:text-gray-100 break-words">{collection.collectionCompany || '—'}</p>
@@ -193,15 +254,17 @@ export const MilkCollectionViewModal: React.FC<MilkCollectionViewModalProps> = (
                     <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-1" />
                     <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-300">Detalle por tanques</h3>
                   </div>                  <div className="space-y-2">
-                    {collection.litersPerTank.map((tank: any, index: number) => (
+                    {collection.litersPerTank.map((tank, index: number) => (
                       <div key={index} className="p-3 rounded-lg border shadow-sm bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/50">
                         <div className="flex justify-between items-center">
                           <div>
-                            <p className="font-semibold text-gray-800 dark:text-gray-100">{tank.tankId?.name || '—'}</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">
+                              {typeof tank.tankId === 'string' ? tank.tankId : tank.tankId?.name || '—'}
+                            </p>
                             <p className="text-xs text-gray-600 dark:text-gray-400">{tank.compartment ? `Compartimento: ${tank.compartment}` : 'Compartimento único'}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-lg text-blue-600 dark:text-blue-400">{parseFloat(tank.liters).toLocaleString('es-ES')} L</p>
+                            <p className="font-bold text-lg text-blue-600 dark:text-blue-400">{tank.liters.toLocaleString('es-ES')} L</p>
                           </div>
                         </div>
                       </div>
