@@ -25,7 +25,7 @@ interface AuroraBackgroundProps extends React.HTMLProps<HTMLDivElement> {
  * @param props - Props adicionales de HTML
  */
 export const AuroraBackground = React.forwardRef<HTMLDivElement, AuroraBackgroundProps>(
-  ({ children, showRadialGradient = false, className, ...props }, ref) => {
+  ({ children, showRadialGradient = false, className, ...props }, _ref) => {
     const [mounted, setMounted] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 

@@ -21,6 +21,7 @@ const {
   deleted 
 } = require('../utils/responseHandler');
 const { buildCompleteQuery } = require('../utils/pagination');
+const mongoose = require('mongoose');
 
 // Middleware
 router.use(cors());
@@ -33,6 +34,7 @@ router.use(express.json());
  */
 router.get("/list", verifyToken, async (req, res) => {
   try {
+    
     if (req.user.role !== "Administrador") {
       return unauthorized(res, 'No tienes permisos para esta acción');
     }
@@ -42,19 +44,21 @@ router.get("/list", verifyToken, async (req, res) => {
     
     // Filtrar por granja específica si se proporciona
     if (req.query.farmId) {
-      baseQuery.farm = req.query.farmId;
+      baseQuery.farm = new mongoose.Types.ObjectId(req.query.farmId);
     }
 
-    // Añadir filtros de tipos si se proporcionan
+    // Construir la query base primero
+    const query = buildCompleteQuery(req, searchFields, baseQuery);
+    
+    // Añadir filtros de tipos si se proporcionan en el parámetro types
+    // Esto tiene prioridad sobre los filtros JSON
     if (req.query.types) {
       const types = req.query.types.split(',');
       if (types.length > 0) {
-        baseQuery.type = { $in: types };
+        query.type = { $in: types };
       }
     }
 
-    const query = buildCompleteQuery(req, searchFields, baseQuery);
-    
     // Usar aggregate para incluir información de granjas
     const { page, limit } = require('../utils/pagination').getPaginationParams(req);
     const totalItems = await Device.countDocuments(query);
@@ -70,8 +74,7 @@ router.get("/list", verifyToken, async (req, res) => {
           as: 'farm'
         }
       },
-      { $unwind: { path: '$farm', preserveNullAndEmptyArrays: true } },
-      { $sort: { 'farm.name': 1, 'boardId': 1 } },
+      { $sort: { 'boardId': 1 } },
       { $skip: skip },
       { $limit: limit },
       {
@@ -79,7 +82,13 @@ router.get("/list", verifyToken, async (req, res) => {
           _id: 1,
           boardId: 1,
           type: 1,
-          farm: { name: '$farm.name' }
+          farm: { 
+            $cond: {
+              if: { $gt: [{ $size: '$farm' }, 0] },
+              then: { name: { $arrayElemAt: ['$farm.name', 0] } },
+              else: { name: null }
+            }
+          }
         }
       }
     ]);

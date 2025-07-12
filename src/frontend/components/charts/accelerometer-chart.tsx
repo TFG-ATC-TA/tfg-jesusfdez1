@@ -50,6 +50,7 @@ const AccelChartRenderer: React.FC<AccelChartRendererProps> = ({ data, theme, sy
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<Record<string, ISeriesApi<'Line'>>>({})
+  const isInitializedRef = useRef(false)
 
   /**
    * Inicializa el gráfico con configuración de tema y series
@@ -57,7 +58,7 @@ const AccelChartRenderer: React.FC<AccelChartRendererProps> = ({ data, theme, sy
    * Crea las series de datos para cada eje del acelerómetro
    */
   useEffect(() => {
-    if (!chartContainerRef.current) return
+    if (!chartContainerRef.current || isInitializedRef.current) return
 
     const currentTheme = theme === "system" ? systemTheme : theme
     const isDarkMode = currentTheme === "dark"
@@ -123,6 +124,8 @@ const AccelChartRenderer: React.FC<AccelChartRendererProps> = ({ data, theme, sy
       title: "Eje Z",
     })
 
+    isInitializedRef.current = true
+
     /**
      * Maneja el redimensionamiento del gráfico
      * Ajusta el tamaño cuando cambia el tamaño de la ventana
@@ -144,6 +147,75 @@ const AccelChartRenderer: React.FC<AccelChartRendererProps> = ({ data, theme, sy
         chartRef.current.remove()
         chartRef.current = null
       }
+      isInitializedRef.current = false
+    }
+  }, []) // Solo se ejecuta una vez al montar el componente
+
+  /**
+   * Actualiza el tema del gráfico sin recrear el gráfico completo
+   * Mantiene los datos existentes y solo actualiza colores y configuración visual
+   */
+  useEffect(() => {
+    if (!chartRef.current || !isInitializedRef.current) return
+
+    const currentTheme = theme === "system" ? systemTheme : theme
+    const isDarkMode = currentTheme === "dark"
+
+    const textColor = isDarkMode ? "rgba(255, 255, 255, 0.8)" : "rgba(60, 64, 67, 0.8)"
+    const gridColor = isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(60, 64, 67, 0.1)"
+
+    // Actualizar configuración del gráfico
+    chartRef.current.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: textColor,
+      },
+      grid: {
+        horzLines: { color: gridColor },
+        vertLines: { color: gridColor },
+      },
+      rightPriceScale: {
+        visible: true,
+        borderColor: gridColor,
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      },
+      timeScale: {
+        borderColor: gridColor,
+        timeVisible: true,
+        secondsVisible: true,
+        tickMarkFormatter: (time: Time) => {
+          const date = new Date((time as number) * 1000)
+          return date.toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+            timeZone: "Europe/Madrid",
+          })
+        },
+      },
+    })
+
+    // Actualizar colores de las series
+    if (seriesRef.current.accelX) {
+      seriesRef.current.accelX.applyOptions({
+        color: isDarkMode ? "rgba(239, 68, 68, 0.8)" : "rgba(185, 28, 28, 0.8)",
+      })
+    }
+
+    if (seriesRef.current.accelY) {
+      seriesRef.current.accelY.applyOptions({
+        color: isDarkMode ? "rgba(34, 197, 94, 0.8)" : "rgba(21, 128, 61, 0.8)",
+      })
+    }
+
+    if (seriesRef.current.accelZ) {
+      seriesRef.current.accelZ.applyOptions({
+        color: isDarkMode ? "rgba(59, 130, 246, 0.8)" : "rgba(30, 64, 175, 0.8)",
+      })
     }
   }, [theme, systemTheme])
 
@@ -153,7 +225,7 @@ const AccelChartRenderer: React.FC<AccelChartRendererProps> = ({ data, theme, sy
    * Filtra datos duplicados y mantiene orden cronológico
    */
   useEffect(() => {
-    if (!chartRef.current || !seriesRef.current.accelX) return
+    if (!chartRef.current || !seriesRef.current.accelX || !isInitializedRef.current) return
 
     // Use setTimeout to ensure this runs after the chart is fully initialized
     setTimeout(() => {

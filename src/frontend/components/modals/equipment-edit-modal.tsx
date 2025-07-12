@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,12 +102,14 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     }
   }
 
-  const deviceTypeFilterOptions = {
+  // Mover deviceTypeFilterOptions fuera del render para evitar recálculos
+  // Optimiza el rendimiento evitando recálculos innecesarios
+  const deviceTypeFilterOptions = useMemo(() => ({
     type: getDeviceTypesByEquipmentType(equipmentInfo.type),
-  };
+  }), [equipmentInfo.type]);
   
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
-    type: [...deviceTypeFilterOptions.type],
+    type: getDeviceTypesByEquipmentType(equipmentInfo.type),
   });
 
   // Define fetchDevicesAndMark and fetchTanksAndMark first to avoid circular references  // Optimized fetchDevices para marcar los dispositivos seleccionados
@@ -324,7 +326,12 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
       console.log("- Tanques:", initialTankSelection);
 
       // Cargar datos para la primera página de cada tabla DESPUÉS de establecer la selección
-      await initData(data.farm._id || data.farm);
+      // Esperar un poco para que los filtros se establezcan correctamente
+      setTimeout(() => {
+        if (mountedRef.current) {
+          initData(data.farm._id || data.farm);
+        }
+      }, 100);
       
     } catch (error) {
       if (!mountedRef.current) return;
@@ -342,12 +349,12 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     }
   };
 
-  // Cargar datos cuando se establece el farm (como en user-edit-modal)
-  useEffect(() => {
-    if (isOpen && equipmentInfo.farm) {
-      initData(equipmentInfo.farm);
-    }
-  }, [isOpen, equipmentInfo.farm, initData]);
+  // Comentado para evitar conflictos con la carga inicial de datos
+  // useEffect(() => {
+  //   if (isOpen && equipmentInfo.farm && equipmentInfo.type) {
+  //     initData(equipmentInfo.farm);
+  //   }
+  // }, [isOpen, equipmentInfo.farm, equipmentInfo.type, initData]);
 
   const handleTypeChange = (value: string) => {
     setEquipmentInfo({ ...equipmentInfo, type: value });
@@ -365,13 +372,13 @@ const EquipmentEditModal: React.FC<EquipmentEditModalProps> = ({
     setSelectedDevices({});
   };
 
-  // Asegurar que los filtros se establecen correctamente al cambiar el tipo
+  // Sincronizar selectedFilters cuando cambie equipmentInfo.type
   useEffect(() => {
-    if (isOpen) {
+    if (equipmentInfo.type) {
       const deviceTypes = getDeviceTypesByEquipmentType(equipmentInfo.type);
       setSelectedFilters({ type: deviceTypes });
     }
-  }, [isOpen, equipmentInfo.type]);
+  }, [equipmentInfo.type]);
 
 
 const deviceColumns = [
@@ -411,41 +418,39 @@ const deviceColumns = [
   // Evitar re-renderizados innecesarios al manejar los filtros
   const handleFilterChange = useCallback((filters: Record<string, string[]>) => {
     setSelectedFilters(filters);
-    // Avoid resetting the page when filters are applied
-    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm);
-  }, [equipmentInfo.farm, devicesPage, devicesSearchTerm, fetchDevicesAndMark]);
+    setDevicesPage(1);
+  }, []);
 
   // Asegurar que los datos no se borren al cambiar filtros o paginación
   useEffect(() => {
-    if (isOpen && equipmentInfo.farm) {
+    if (isOpen && equipmentInfo.farm && equipmentInfo.type && selectedFilters.type.length > 0) {
       fetchDevicesAndMark(equipmentInfo.farm, devicesPage, devicesSearchTerm);
     }
-  }, [devicesPage, devicesSearchTerm, isOpen, equipmentInfo.farm, fetchDevicesAndMark]);
+  }, [devicesPage, devicesSearchTerm, isOpen, equipmentInfo.farm, equipmentInfo.type, selectedFilters.type, fetchDevicesAndMark]);
 
 
-  // Manejar cambios de paginación y búsqueda para dispositivos
+  // Manejar cambios de paginación y búsqueda para dispositivos con useCallback para evitar re-renderizados innecesarios
   const handleDevicesPageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= devicesTotalPages) {
       setDevicesPage(newPage);
-      fetchDevicesAndMark(equipmentInfo.farm, newPage, devicesSearchTerm);
     }
-  }, [devicesTotalPages, equipmentInfo.farm, devicesSearchTerm, fetchDevicesAndMark]);
+  }, [devicesTotalPages]);
+
   const handleDevicesSearchChange = useCallback((term: string) => {
     setDevicesSearchTerm(term);
-    fetchDevicesAndMark(equipmentInfo.farm, devicesPage, term);
-  }, [equipmentInfo.farm, devicesPage, fetchDevicesAndMark]);
+    setDevicesPage(1);
+  }, []);
 
   const handleTanksPageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= tanksTotalPages) {
       setTanksPage(newPage);
-      fetchTanksAndMark(equipmentInfo.farm, newPage, tanksSearchTerm);
     }
-  }, [tanksTotalPages, equipmentInfo.farm, tanksSearchTerm, fetchTanksAndMark]);
+  }, [tanksTotalPages]);
 
   const handleTanksSearchChange = useCallback((term: string) => {
     setTanksSearchTerm(term);
-    fetchTanksAndMark(equipmentInfo.farm, tanksPage, term);
-  }, [equipmentInfo.farm, tanksPage, fetchTanksAndMark]);
+    setTanksPage(1);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEquipmentInfo({ ...equipmentInfo, [e.target.id]: e.target.value });

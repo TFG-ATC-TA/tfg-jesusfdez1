@@ -64,6 +64,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<Record<string, ISeriesApi<'Line'>>>({})
+  const isInitializedRef = useRef(false)
 
   /**
    * Inicializa el gráfico con configuración de tema y series
@@ -71,7 +72,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
    * Crea las series de datos para temperatura y giroscopio
    */
   useEffect(() => {
-    if (!chartContainerRef.current) return
+    if (!chartContainerRef.current || isInitializedRef.current) return
 
     const currentTheme = theme === "system" ? systemTheme : theme
     const isDarkMode = currentTheme === "dark"
@@ -147,6 +148,8 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
       scaleMargins: { top: 0.2, bottom: 0.2 },
     })
 
+    isInitializedRef.current = true
+
     /**
      * Manejador de redimensionamiento para mantener el gráfico responsive
      * Ajusta el tamaño del gráfico cuando cambia el tamaño de la ventana
@@ -168,6 +171,73 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
         chartRef.current.remove()
         chartRef.current = null
       }
+      isInitializedRef.current = false
+    }
+  }, []) // Solo se ejecuta una vez al montar el componente
+
+  /**
+   * Actualiza el tema del gráfico sin recrear el gráfico completo
+   * Mantiene los datos existentes y solo actualiza colores y configuración visual
+   */
+  useEffect(() => {
+    if (!chartRef.current || !isInitializedRef.current) return
+
+    const currentTheme = theme === "system" ? systemTheme : theme
+    const isDarkMode = currentTheme === "dark"
+
+    const textColor = isDarkMode ? "rgba(255, 255, 255, 0.8)" : "rgba(60, 64, 67, 0.8)"
+    const gridColor = isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(60, 64, 67, 0.1)"
+
+    // Actualizar configuración del gráfico
+    chartRef.current.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: textColor,
+      },
+      grid: {
+        horzLines: { color: gridColor },
+        vertLines: { color: gridColor },
+      },
+      rightPriceScale: {
+        visible: true,
+        borderColor: gridColor,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      leftPriceScale: {
+        visible: true,
+        borderColor: gridColor,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      timeScale: {
+        borderColor: gridColor,
+        timeVisible: true,
+        secondsVisible: true,
+        tickMarkFormatter: (time: Time) => {
+          const date = new Date((time as number) * 1000)
+          const hours = date.toLocaleTimeString()
+          const day = date.toLocaleDateString()
+          return date.getHours() === 0 && date.getMinutes() === 0 ? `${day}` : hours
+        },
+      },
+    })
+
+    // Actualizar colores de las series
+    if (seriesRef.current.surface) {
+      seriesRef.current.surface.applyOptions({
+        color: isDarkMode ? "rgba(239, 68, 68, 0.8)" : "rgba(185, 28, 28, 0.8)",
+      })
+    }
+
+    if (seriesRef.current.overSurface) {
+      seriesRef.current.overSurface.applyOptions({
+        color: isDarkMode ? "rgba(34, 197, 94, 0.8)" : "rgba(21, 128, 61, 0.8)",
+      })
+    }
+
+    if (seriesRef.current.gyro) {
+      seriesRef.current.gyro.applyOptions({
+        color: isDarkMode ? "rgba(59, 130, 246, 0.8)" : "rgba(30, 64, 175, 0.8)",
+      })
     }
   }, [theme, systemTheme])
 
@@ -177,7 +247,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
    * Maneja la visibilidad de cada serie según los filtros activos
    */
   useEffect(() => {
-    if (!chartRef.current || !seriesRef.current.surface) return
+    if (!chartRef.current || !seriesRef.current.surface || !isInitializedRef.current) return
 
     // Use setTimeout to ensure this runs after the chart is fully initialized
     setTimeout(() => {
@@ -480,8 +550,8 @@ const TemperatureGyrocopeChart: React.FC<TemperatureGyroscopeProps> = ({ bucket,
                     showSurfaceTemp={showSurfaceTemp}
                     showOverSurfaceTemp={showOverSurfaceTemp}
                     showGyroX={showGyroX}
-                    theme={theme}
-                    systemTheme={systemTheme}
+                    theme={theme || 'light'}
+                    systemTheme={systemTheme || 'light'}
                   />
                 ) : (
                   <div className="h-[355px] w-full bg-gray-100 dark:bg-gray-800 animate-pulse rounded" />

@@ -217,8 +217,8 @@ router.get('/:id', verifyToken, async (req, res) => {
     // simplemente enviamos sus IDs para optimizar la carga
     const equipmentData = {
       ...equipment.toObject(),
-      devices: equipment.devices,
-      associatedTanks: equipment.associatedTanks
+      devices: equipment.devices || [],
+      associatedTanks: equipment.associatedTanks || []
     };
     
     return res.json(equipmentData);

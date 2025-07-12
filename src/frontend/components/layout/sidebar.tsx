@@ -37,7 +37,7 @@ export default function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        `relative hidden h-screen flex-none border-r bg-card transition-all duration-300 ease-in-out md:flex md:flex-col`,
+        `relative hidden h-screen flex-none border-r bg-card transition-all duration-300 ease-in-out md:flex md:flex-col z-30`,
         !isMinimized ? 'w-64' : 'w-20',
         className
       )}

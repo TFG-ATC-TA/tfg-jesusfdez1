@@ -136,7 +136,7 @@ export const MilkCollectionEditModal: React.FC<MilkCollectionEditModalProps> = (
           const collectionDate = format(new Date(data.collectionDate), "yyyy-MM-dd'T'HH:mm");
           
           // Procesar litersPerTank para convertir tankId de objeto a string
-          const processedLitersPerTank = data.litersPerTank ? data.litersPerTank.map((tank: any) => {
+          const processedLitersPerTank = data.litersPerTank ? data.litersPerTank.map((tank: { tankId: { _id?: string } | string; liters: number; compartment: string }) => {
             let tankId = '';
             if (tank.tankId) {
               if (typeof tank.tankId === 'object' && tank.tankId._id) {
