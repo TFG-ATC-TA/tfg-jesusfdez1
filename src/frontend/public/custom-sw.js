@@ -158,8 +158,17 @@ function createOfflineResponse() {
 </head>
 <body>
     <div class="container">
-        <div class="icon">⚠️</div>
-        <h1>Aplicación no disponible</h1>
+    <div class="container">
+        <div class="icon-container">
+            <div class="icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="m3 3 18 18"/>
+                </svg>
+            </div>
+        </div>        <h1>Aplicación no disponible</h1>
         <p class="description">
             Lactokeeper requiere conexión a internet para funcionar correctamente. 
             Por favor, verifica tu conexión y vuelve a intentarlo.
