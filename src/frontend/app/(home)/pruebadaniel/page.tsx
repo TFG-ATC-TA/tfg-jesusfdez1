@@ -142,61 +142,159 @@ export default function PruebaDanielPage() {
     // Buscar datos de IMU (6_dof_imu)
     const imuData = realTimeData?.find((data: any) => data.topic?.includes('6_dof_imu'))?.processedData;
     
-    // Buscar otros tipos de datos
-    const encoderData = realTimeData?.find((data: any) => data.topic?.includes('encoder'))?.processedData;
-    const milkData = realTimeData?.find((data: any) => data.topic?.includes('milk'))?.processedData;
-    const switchData = realTimeData?.find((data: any) => data.topic?.includes('switch'))?.processedData;
-    const weightData = realTimeData?.find((data: any) => data.topic?.includes('weight'))?.processedData;
-    const temperatureData = realTimeData?.find((data: any) => data.topic?.includes('temperature'))?.processedData;
-    const airData = realTimeData?.find((data: any) => data.topic?.includes('air'))?.processedData;
+    // Buscar otros tipos de datos con diferentes patrones de topic
+    const encoderData = realTimeData?.find((data: any) => 
+      data.topic?.includes('encoder')
+    )?.processedData;
+    
+    const milkData = realTimeData?.find((data: any) => 
+      data.topic?.includes('milk') || data.topic?.includes('tank_distance')
+    )?.processedData;
+    
+    const switchData = realTimeData?.find((data: any) => 
+      data.topic?.includes('switch') || data.topic?.includes('magnetic_switch')
+    )?.processedData;
+    
+    const weightData = realTimeData?.find((data: any) => 
+      data.topic?.includes('weight')
+    )?.processedData;
+    
+    const temperatureData = realTimeData?.find((data: any) => 
+      data.topic?.includes('temperature') || data.topic?.includes('temperature_probe')
+    )?.processedData;
+    
+    const airData = realTimeData?.find((data: any) => 
+      data.topic?.includes('air') || data.topic?.includes('air_quality')
+    )?.processedData;
 
-    // Procesar datos de IMU para simular encoder
+    // Procesar datos de IMU para simular encoder solo si están disponibles
     const processedEncoderData = imuData ? {
       value: {
         angle: Math.atan2(imuData.value.accel_y, imuData.value.accel_x) * (180 / Math.PI),
         position: Math.abs(imuData.value.accel_z) / 2, // Normalizar a 0-1
         speed: Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10
       }
-    } : {
-      value: { 
-        angle: 45, 
-        position: 0.6,
-        speed: 120 
+    } : undefined;
+
+    // Procesar datos de peso - simular basado en acelerómetro si no hay datos reales
+    const processedWeightData = weightData ? {
+      value: typeof weightData.value === 'object' ? weightData.value : weightData.value
+    } : imuData ? {
+      value: Math.abs(imuData.value.accel_z) * 100 + 500 // Simular peso basado en aceleración Z
+    } : undefined;
+
+    // Procesar datos de calidad del aire - simular basado en IMU si no hay datos reales
+    const processedAirData = airData ? {
+      value: {
+        humidity: airData.value?.humidity || airData.value,
+        temperature: airData.value?.temperature
       }
+    } : imuData ? {
+      value: {
+        humidity: Math.abs(imuData.value.accel_x) * 20 + 50, // Simular humedad
+        temperature: Math.abs(imuData.value.accel_y) * 10 + 20 // Simular temperatura
+      }
+    } : undefined;
+
+    // Procesar datos de temperatura del tanque - simular basado en IMU si no hay datos reales
+    const processedTemperatureData = temperatureData ? {
+      value: {
+        over_surface_temperature: temperatureData.value?.over_surface_temperature || temperatureData.value,
+        surface_temperature: temperatureData.value?.surface_temperature || temperatureData.value,
+        submerged_temperature: temperatureData.value?.submerged_temperature || temperatureData.value
+      },
+      tags: temperatureData.tags,
+      readableDate: temperatureData.readableDate
+    } : imuData ? {
+      value: {
+        over_surface_temperature: Math.abs(imuData.value.accel_x) * 5 + 15,
+        surface_temperature: Math.abs(imuData.value.accel_y) * 5 + 15,
+        submerged_temperature: Math.abs(imuData.value.accel_z) * 5 + 15
+      },
+      tags: imuData.tags,
+      readableDate: imuData.readableDate
+    } : undefined;
+
+    // Procesar datos de leche - simular basado en IMU si no hay datos reales
+    const processedMilkData = milkData ? {
+      value: milkData.value
+    } : imuData ? {
+      value: Math.abs(imuData.value.accel_z) * 50 + 25 // Simular cantidad de leche
+    } : undefined;
+
+    // Procesar datos de switch - simular basado en IMU si no hay datos reales
+    const processedSwitchData = switchData ? {
+      value: switchData.value
+    } : imuData ? {
+      value: Math.abs(imuData.value.accel_x) > 1.5 // Simular switch basado en aceleración
+    } : undefined;
+
+    const result = {
+      encoderData: encoderData || processedEncoderData,
+      milkQuantityData: processedMilkData,
+      switchStatus: processedSwitchData,
+      weightData: processedWeightData,
+      tankTemperaturesData: processedTemperatureData,
+      airQualityData: processedAirData
     };
 
-    return {
-      encoderData: encoderData || processedEncoderData,
-      milkQuantityData: milkData || { value: 75.5 },
-      switchStatus: switchData || { value: true },
-      weightData: weightData || { value: 1250.8 },
-      tankTemperaturesData: temperatureData ? {
-        value: {
-          over_surface_temperature: temperatureData.value?.over_surface_temperature || temperatureData.value,
-          surface_temperature: temperatureData.value?.surface_temperature || temperatureData.value,
-          submerged_temperature: temperatureData.value?.submerged_temperature || temperatureData.value
-        },
-        tags: temperatureData.tags || { board_id: "TEMP_SENSOR_01" },
-        readableDate: temperatureData.readableDate || new Date().toLocaleString()
-      } : {
-        value: {
-          over_surface_temperature: 4.2,
-          surface_temperature: 4.1,
-          submerged_temperature: 4.3
-        },
-        tags: { board_id: "TEMP_SENSOR_01" },
-        readableDate: new Date().toLocaleString()
-      },
-      airQualityData: airData || {
-        value: { 
-          humidity: 65, 
-          temperature: 22.5 
-        }
-      }
-    };
+    return result;
   };
 
   const modelData = processRealTimeDataForModel();
+
+  // Process historical data to ensure correct structure
+  const processHistoricalDataForModel = (historicalData: any) => {
+    if (!historicalData || typeof historicalData !== 'object') {
+      return {};
+    }
+
+    // If it's already in the correct format (from selectedHistoricalData)
+    if (historicalData.encoderData || historicalData.airQualityData) {
+      return historicalData;
+    }
+
+    // If it's raw historical data from backend (with time keys)
+    const timeKeys = Object.keys(historicalData);
+    if (timeKeys.length > 0) {
+      const firstTime = timeKeys[0];
+      const timeData = historicalData[firstTime];
+      
+      // Process historical data to match real-time structure
+      const processedData = {
+        encoderData: timeData.encoderData,
+        milkQuantityData: timeData.milkQuantityData,
+        switchStatus: timeData.switchStatus,
+        weightData: timeData.weightData,
+        tankTemperaturesData: timeData.tankTemperaturesData,
+        airQualityData: timeData.airQualityData,
+      };
+
+      return processedData;
+    }
+
+    return {};
+  };
+
+  // Unified data processing for both modes
+  const getUnifiedData = () => {
+    if (mode === "realtime") {
+      return {
+        encoderData: modelData.encoderData,
+        milkQuantityData: modelData.milkQuantityData,
+        switchStatus: modelData.switchStatus,
+        weightData: modelData.weightData,
+        tankTemperaturesData: modelData.tankTemperaturesData,
+        airQualityData: modelData.airQualityData,
+      };
+    } else {
+      // Historical mode
+      const historicalDataToProcess = selectedHistoricalData || historicalData;
+      return processHistoricalDataForModel(historicalDataToProcess);
+    }
+  };
+
+  const unifiedData = getUnifiedData();
 
   // Sensores disponibles
   const sensors = [
@@ -270,74 +368,76 @@ export default function PruebaDanielPage() {
 
           </div>
 
-          {/* Filtros históricos en franja horizontal */}
-          <div className="w-full">
-            <Card className="border-border bg-card">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-4 flex-wrap">
-                  {/* Rango de fechas */}
-                  <div className="flex items-center gap-2 flex-1">
-                    <Label className="text-xs font-medium text-foreground whitespace-nowrap">Rango:</Label>
-                    <div className="flex-1 max-w-md">
-                      <CalendarDateRangePicker
-                        ref={dateRangePickerRef}
-                        start={dateRange?.from}
-                        end={dateRange?.to}
-                        onDateRangeChange={(newDateRange) => {
-                          if (newDateRange && newDateRange.from && newDateRange.to) {
-                            const updatedDateRange = {
-                              from: newDateRange.from,
-                              to: newDateRange.to
-                            };
-                            setDateRange(updatedDateRange);
-                          } else {
-                            setDateRange(null);
+          {/* Filtros históricos en franja horizontal - solo visible en modo histórico */}
+          {mode === 'historical' && (
+            <div className="w-full">
+              <Card className="border-border bg-card">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {/* Rango de fechas */}
+                    <div className="flex items-center gap-2 flex-1">
+                      <Label className="text-xs font-medium text-foreground whitespace-nowrap">Rango:</Label>
+                      <div className="flex-1 max-w-md">
+                        <CalendarDateRangePicker
+                          ref={dateRangePickerRef}
+                          start={dateRange?.from}
+                          end={dateRange?.to}
+                          onDateRangeChange={(newDateRange) => {
+                            if (newDateRange && newDateRange.from && newDateRange.to) {
+                              const updatedDateRange = {
+                                from: newDateRange.from,
+                                to: newDateRange.to
+                              };
+                              setDateRange(updatedDateRange);
+                            } else {
+                              setDateRange(null);
+                            }
+                          }}
+                          onApply={() => {
+                            // No hacer validación aquí, se hará en el botón Aplicar del componente padre
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Estado del tanque */}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium text-foreground whitespace-nowrap">Estado:</Label>
+                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                        <SelectTrigger className="w-32 text-xs bg-background border-border text-foreground">
+                          <SelectValue placeholder="Estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="MILKING">Ordeño</SelectItem>
+                          <SelectItem value="COOLING">Enfriamiento</SelectItem>
+                          <SelectItem value="CLEANING">Limpieza</SelectItem>
+                          <SelectItem value="EMPTY TANK">Tanque Vacío</SelectItem>
+                          <SelectItem value="MAINTENANCE">Mantenimiento</SelectItem>
+                        </SelectContent>
+                      </Select>
+                </div>
+                
+                    {/* Botón de acción */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          // Obtener el valor actual del DateRangePicker usando el ref
+                          if (dateRangePickerRef.current) {
+                            dateRangePickerRef.current.applyChanges();
                           }
                         }}
-                        onApply={() => {
-                          // No hacer validación aquí, se hará en el botón Aplicar del componente padre
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Estado del tanque */}
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs font-medium text-foreground whitespace-nowrap">Estado:</Label>
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger className="w-32 text-xs bg-background border-border text-foreground">
-                        <SelectValue placeholder="Estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="MILKING">Ordeño</SelectItem>
-                        <SelectItem value="COOLING">Enfriamiento</SelectItem>
-                        <SelectItem value="CLEANING">Limpieza</SelectItem>
-                        <SelectItem value="EMPTY TANK">Tanque Vacío</SelectItem>
-                        <SelectItem value="MAINTENANCE">Mantenimiento</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Botón de acción */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        // Obtener el valor actual del DateRangePicker usando el ref
-                        if (dateRangePickerRef.current) {
-                          dateRangePickerRef.current.applyChanges();
-                        }
-                      }}
-                      className="text-xs"
-                    >
-                      Aplicar
-                    </Button>
-                  </div>
+                        className="text-xs"
+                      >
+                        Aplicar
+                      </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Contenedor principal */}
           <div className="flex-1 flex overflow-hidden gap-4">
@@ -434,12 +534,12 @@ export default function PruebaDanielPage() {
                   handleTimeSelected={handleTimeSelected}
                   fetchHistoricalData={handleLoadHistoricalData}
                   selectedTime={selectedTime}
-                  encoderData={modelData.encoderData}
-                  milkQuantityData={modelData.milkQuantityData}
-                  switchStatus={modelData.switchStatus}
-                  weightData={modelData.weightData}
-                  tankTemperaturesData={modelData.tankTemperaturesData}
-                  airQualityData={modelData.airQualityData}
+                  encoderData={unifiedData?.encoderData}
+                  milkQuantityData={unifiedData?.milkQuantityData}
+                  switchStatus={unifiedData?.switchStatus}
+                  weightData={unifiedData?.weightData}
+                  tankTemperaturesData={unifiedData?.tankTemperaturesData}
+                  airQualityData={unifiedData?.airQualityData}
                   selectedData={selectedData}
                 />
             </div>
@@ -451,27 +551,27 @@ export default function PruebaDanielPage() {
                     <div className="flex items-center justify-center h-[100px]">
                       <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
                       <span className="text-sm text-muted-foreground">
-                        Loading historical data...
+                        Cargando datos históricos...
                       </span>
                     </div>
                   ) : tankStatesLoading ? (
                     <div className="flex items-center justify-center h-[100px]">
                       <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
                       <span className="text-sm text-muted-foreground">
-                        Loading tank states...
+                        Cargando estados del tanque...
                       </span>
                   </div>
                   ) : tankStatesError ? (
                     <div className="flex items-center justify-center h-[100px]">
                       <div className="text-center">
                         <p className="text-sm text-red-500 mb-2">
-                          Error loading tank states. Select other date and try again
+                          Error al cargar estados del tanque. Selecciona otra fecha e intenta de nuevo
                         </p>
                         <button
                           onClick={retryFetchTankStates}
                           className="px-3 py-1 text-sm bg-primary text-white rounded-md hover:bg-primary/90"
                         >
-                          Try Again
+                          Intentar de nuevo
                         </button>
                       </div>
                     </div>

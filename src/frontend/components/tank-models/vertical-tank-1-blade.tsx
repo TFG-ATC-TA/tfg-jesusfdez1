@@ -31,7 +31,7 @@ export function VerticalTank1Blade({
   airQualityData,
   selectedData,
 }: VerticalTank1BladeProps) {
-  const { nodes, materials } = useGLTF("./verticalTankModel/verticalTank1Blade.glb");
+  const { nodes, materials } = useGLTF("/verticalTankModel/verticalTank1Blade.glb");
 
   const rotationBlade = useSpring({
     loop: true,
@@ -50,14 +50,45 @@ export function VerticalTank1Blade({
   const renderMilkQuantity = () => {
     if (milkQuantityData == null) return null;
 
+    const milkNode = nodes.MilkCilinder as any;
+    
+    if (!milkNode) {
+      console.log("❌ MilkCilinder node not found, trying fallback nodes");
+      // Try alternative node names
+      const fallbackNodes = ['MilkCylinder', 'Milk', 'MilkCilinder'];
+      
+      for (const fallbackKey of fallbackNodes) {
+        const fallbackNode = nodes[fallbackKey] as any;
+        if (fallbackNode) {
+          console.log(`✅ Using fallback node: ${fallbackKey}`);
+          const morphInfluence = Math.min(Math.max((milkQuantityData?.value ?? 0) / 100, 0), 1);
+          
+          return (
+            <mesh
+              name={fallbackKey}
+              geometry={fallbackNode.geometry}
+              material={materials.MilkMaterial || materials["MilkMaterial"]}
+              morphTargetDictionary={fallbackNode.morphTargetDictionary}
+              morphTargetInfluences={[morphInfluence]}
+              position={[-0.002, 1.398, 0.012]}
+              scale={[0.782, 1.311, 0.782]}
+            />
+          );
+        }
+      }
+      
+      console.log("❌ No milk nodes found in model");
+      return null;
+    }
+
     const morphInfluence = Math.min(Math.max((milkQuantityData?.value ?? 0) / 100, 0), 1);
   
     return (
       <mesh
         name="MilkCilinder"
-        geometry={(nodes.MilkCilinder as any).geometry}
-        material={materials.MilkMaterial}
-        morphTargetDictionary={(nodes.MilkCilinder as any).morphTargetDictionary}
+        geometry={milkNode.geometry}
+        material={materials.MilkMaterial || materials["MilkMaterial"]}
+        morphTargetDictionary={milkNode.morphTargetDictionary}
         morphTargetInfluences={[morphInfluence]}
         position={[-0.002, 1.398, 0.012]}
         scale={[0.782, 1.311, 0.782]}

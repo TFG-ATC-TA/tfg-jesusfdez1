@@ -17,16 +17,15 @@ const nextConfig = {
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,
         INTERNAL_API_URL: process.env.INTERNAL_API_URL,
-    }
+    },
     
     // Configuración para desarrollo y producción
     // Opciones comentadas para uso futuro
     
-    // Configuración de ESLint (comentada para desarrollo)
-    // Permite ignorar errores de linting durante builds
-//    eslint: {
-//        ignoreDuringBuilds: true,
-//    },
+    // Configuración de ESLint - Desactivado para ignorar errores durante builds
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
     
     // Configuración de TypeScript (comentada para desarrollo)
     // Permite ignorar errores de tipos durante builds

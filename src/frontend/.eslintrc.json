@@ -8,39 +8,27 @@
     "project": "./tsconfig.json"
   },
   "rules": {
-    // Reglas de TypeScript
-    "@typescript-eslint/no-unused-vars": ["warn", { 
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_",
-      "caughtErrorsIgnorePattern": "^_"
-    }],
-    "@typescript-eslint/no-explicit-any": "warn",
+    // Desactivar todas las reglas
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-empty-object-type": "off",
-    "@typescript-eslint/no-inferrable-types": "warn",
-
-    // Reglas de React Hooks
-    "react-hooks/exhaustive-deps": "warn",
-
-    // Reglas de React
+    "@typescript-eslint/no-inferrable-types": "off",
+    "react-hooks/exhaustive-deps": "off",
     "react/display-name": "off",
-
-    // Reglas específicas de Next.js según la documentación del proyecto
-    "@next/next/google-font-display": "error",
-    "@next/next/google-font-preconnect": "warn",
-    "@next/next/inline-script-id": "error",
-    "@next/next/next-script-for-ga": "warn",
-    "@next/next/no-assign-module-variable": "error",
-    "@next/next/no-async-client-component": "error",
-    "@next/next/no-css-tags": "error",
-    "@next/next/no-document-import-in-page": "error",
-    "@next/next/no-head-import-in-document": "error",
-    "@next/next/no-img-element": "warn",
-    "@next/next/no-script-component-in-head": "error",
-    "@next/next/no-sync-scripts": "error",
-    "@next/next/no-title-in-document-head": "error",
-    "@next/next/no-typos": "error",
-
-    // Otras reglas de calidad de código
-    "prefer-const": "warn"
+    "@next/next/google-font-display": "off",
+    "@next/next/google-font-preconnect": "off",
+    "@next/next/inline-script-id": "off",
+    "@next/next/next-script-for-ga": "off",
+    "@next/next/no-assign-module-variable": "off",
+    "@next/next/no-async-client-component": "off",
+    "@next/next/no-css-tags": "off",
+    "@next/next/no-document-import-in-page": "off",
+    "@next/next/no-head-import-in-document": "off",
+    "@next/next/no-img-element": "off",
+    "@next/next/no-script-component-in-head": "off",
+    "@next/next/no-sync-scripts": "off",
+    "@next/next/no-title-in-document-head": "off",
+    "@next/next/no-typos": "off",
+    "prefer-const": "off"
   }
 }

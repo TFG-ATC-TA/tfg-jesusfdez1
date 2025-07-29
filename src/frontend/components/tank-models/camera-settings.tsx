@@ -29,7 +29,10 @@ const cameraViews = {
     lateral: { position: [5, 2, 0], target: [0, 0, 0] },
     top: { position: [0, 5, 0], target: [0, 0, 0] },
   },
-};
+} as const;
+
+type CameraViewKey = keyof typeof cameraViews.horizontal | keyof typeof cameraViews.vertical;
+type TankDisplay = keyof typeof cameraViews;
 
 interface CameraSettingsProps {
   view: string;
@@ -40,6 +43,22 @@ interface CameraSettingsProps {
 
 const CameraSettings = ({ view, tankDisplay = 'horizontal', isFullscreen, selectedData }: CameraSettingsProps) => {
   const cameraControlsRef = useRef<any>();
+
+  // Helper function to get camera config safely
+  const getCameraConfig = (tankDisplay: string, viewToUse: string) => {
+    const tankConfig = cameraViews[tankDisplay as TankDisplay];
+    if (!tankConfig) {
+      return cameraViews.horizontal.default;
+    }
+
+    // Check if viewToUse is a valid key for this tank display
+    if (viewToUse in tankConfig) {
+      return tankConfig[viewToUse as CameraViewKey];
+    }
+
+    // Fallback to default
+    return tankConfig.default || cameraViews.horizontal.default;
+  };
 
   useEffect(() => {
     if (cameraControlsRef.current) {
@@ -64,8 +83,7 @@ const CameraSettings = ({ view, tankDisplay = 'horizontal', isFullscreen, select
         cameraControlsRef.current.touches.three = 2; // Mover
         
         // Establecer posición inicial pero permitir libertad
-        const config = cameraViews[tankDisplay as keyof typeof cameraViews]?.default || 
-                      cameraViews.horizontal.default;
+        const config = getCameraConfig(tankDisplay, 'default');
         
         cameraControlsRef.current.setLookAt(
           ...config.position,
@@ -74,9 +92,7 @@ const CameraSettings = ({ view, tankDisplay = 'horizontal', isFullscreen, select
         );
       } else {
         // Vista específica seleccionada - aplicar configuración fija
-        const config = cameraViews[tankDisplay as keyof typeof cameraViews]?.[viewToUse] || 
-                      cameraViews[tankDisplay as keyof typeof cameraViews]?.default || 
-                      cameraViews.horizontal.default;
+        const config = getCameraConfig(tankDisplay, viewToUse);
 
         cameraControlsRef.current.setLookAt(
           ...config.position,

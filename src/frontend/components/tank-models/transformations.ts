@@ -30,7 +30,7 @@ export const getAlcalineAcidCylinders = ({ quantity, maxValue }: { quantity: num
 
 export const getVisibleMilkCilinder = (quantity: number | null | undefined) => {
   const ranges = [
-    { min: 1, max: 10 },
+    { min: 0, max: 10 },
     { min: 10, max: 20 },
     { min: 20, max: 30 },
     { min: 30, max: 40 },
@@ -42,14 +42,16 @@ export const getVisibleMilkCilinder = (quantity: number | null | undefined) => {
     { min: 90, max: 100},
   ];
 
-  if (quantity == null) return null;
+  if (quantity == null || quantity <= 0) return null;
+  
+  // Handle quantities greater than 100
+  if (quantity > 100) {
+    return ranges[ranges.length - 1]; // Return the last range for quantities > 100
+  }
+  
   const range = ranges.find(
     ({ min, max }) => quantity >= min && quantity < max
   );
 
-  if (range) {
-    return range;
-  }
-
-  return null;
+  return range || null;
 }; 

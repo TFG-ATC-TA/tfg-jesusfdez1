@@ -84,14 +84,40 @@ export function HorizontalTank2Blades({
     const node = nodes[nodeKey] as any;
     
     if (!node) {
-      console.log(`❌ Milk node ${nodeKey} not found`);
+      console.log(`❌ Milk node ${nodeKey} not found, trying fallback nodes`);
+      // Try alternative node names
+      const fallbackNodes = [
+        'MilkCilinder',
+        'MilkCylinder',
+        'Milk',
+        `MilkCilinder${range.min}`,
+        `MilkCylinder${range.max}`,
+        `MilkCylinder${range.min}`
+      ];
+      
+      for (const fallbackKey of fallbackNodes) {
+        const fallbackNode = nodes[fallbackKey] as any;
+        if (fallbackNode) {
+          console.log(`✅ Using fallback node: ${fallbackKey}`);
+          return (
+            <mesh
+              geometry={fallbackNode.geometry}
+              material={materials["MilkMaterial"] || materials.MilkMaterial}
+              position={[-0.026, 1.597, -0.096]}
+              scale={[2.531, 2.531, 2.615]}
+            />
+          );
+        }
+      }
+      
+      console.log(`❌ No milk nodes found in model`);
       return null;
     }
     
     return (
       <mesh
         geometry={node.geometry}
-        material={materials["MilkMaterial"]}
+        material={materials["MilkMaterial"] || materials.MilkMaterial}
         position={[-0.026, 1.597, -0.096]}
         scale={[2.531, 2.531, 2.615]}
       />

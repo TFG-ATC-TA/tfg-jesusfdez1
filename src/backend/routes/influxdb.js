@@ -176,6 +176,9 @@ router.post('/historicalData', verifyToken, async (req, res) => {
         ...tags
       } = row;
 
+      // Debug: Log each row being processed
+      devConsole.log(`Processing row - Measurement: ${measurement}, Field: ${rawField}, Value: ${rawValue}, BoardId: ${boardId}`);
+
       // Redondear el valor a 2 decimales
       const value = parseFloat(rawValue.toFixed(2));
 
@@ -222,6 +225,12 @@ router.post('/historicalData', verifyToken, async (req, res) => {
           formattedResult[time][key].value = {};
         }
         formattedResult[time][key].value[sensorId] = value;
+        
+        // Debug: Log weight processing
+        if (measurement === "weight") {
+          devConsole.log(`Weight processed - Time: ${time}, SensorId: ${sensorId}, Value: ${value}`);
+          devConsole.log(`Current weightData value object:`, formattedResult[time][key].value);
+        }
       } else if (measurement === "tank_distance") {
         // Only include the "range" field for milkQuantityData and apply the calculation
         if (field === "range" && tank?.height) {
@@ -230,6 +239,12 @@ router.post('/historicalData', verifyToken, async (req, res) => {
       } else {
         // For other measurements, store multiple fields in the value object
         formattedResult[time][key].value[field] = value;
+      }
+
+      // Debug: Log the processed data for air quality specifically
+      if (measurement === "air_quality") {
+        devConsole.log(`Air Quality processed - Time: ${time}, Key: ${key}, Field: ${field}, Value: ${value}`);
+        devConsole.log(`Current airQualityData value object:`, formattedResult[time][key].value);
       }
     });
 
@@ -245,6 +260,13 @@ router.post('/historicalData', verifyToken, async (req, res) => {
         }
       });
     });
+
+    // Debug: Log the final formatted result
+    devConsole.log("Final formatted result keys:", Object.keys(formattedResult));
+    if (Object.keys(formattedResult).length > 0) {
+      const firstTime = Object.keys(formattedResult)[0];
+      devConsole.log("Sample data for time", firstTime, ":", formattedResult[firstTime]);
+    }
 
     return res.status(200).json(formattedResult);
   } catch (error) {

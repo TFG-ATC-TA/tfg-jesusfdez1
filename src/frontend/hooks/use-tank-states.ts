@@ -45,28 +45,25 @@ const useTankStates = ({ filters, boardIds, selectedFarm, selectedTank }: TankSt
 
       const response = await DanielService.getTankStatePrediction({
         farm: selectedFarm,
-        tank: selectedTank,
-        date: formattedDate,
         boardIds,
+        date: formattedDate,
+        tank: {
+          height: 1000 // Default height value, you might want to make this configurable
+        }
       });
 
       // Transformar los datos del backend al formato que espera el TimeSeriesSlider
-      if (response && response.states) {
-        console.log('Datos del backend:', response);
-        console.log('Estados del tanque:', response.states);
-        
+      if (response && response.predictions) {
         const tankStatesData: TankStatesData = {
           date: formattedDate,
-          states: response.states.map((state: any) => ({
-            startTime: state.startTime,
-            endTime: state.endTime,
-            state: state.state
+          states: Object.entries(response.predictions).map(([time, prediction]) => ({
+            startTime: time,
+            endTime: time, // Asumiendo que el tiempo de fin es el mismo para simplificar
+            state: prediction.state
           }))
         };
-        console.log('Datos transformados:', tankStatesData);
         setTankStates(tankStatesData);
       } else {
-        console.log('No hay datos del backend o formato incorrecto:', response);
         setTankStates(null);
       }
     } catch (err) {

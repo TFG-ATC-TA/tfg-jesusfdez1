@@ -605,7 +605,7 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
         />
 
         <div className="flex justify-center mt-1">
-          <StateLegend states={tankStateData ? [...new Set(tankStateData?.states.map((item) => item.state))] : []} />
+          <StateLegend states={tankStateData ? Array.from(new Set(tankStateData?.states.map((item) => item.state))) : []} />
         </div>
       </div>
 

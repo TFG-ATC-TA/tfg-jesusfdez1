@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { logger } from '@/lib/logger';
 
 /**
@@ -326,13 +326,39 @@ export function useRealTimeData(farmId: string, boardId: string, token?: string)
   const [data, setData] = useState<RealTimeData[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // Memoizar los parámetros para evitar re-crear conexiones innecesariamente
+  const connectionParams = useMemo(() => ({
+    farmId,
+    boardId,
+    token
+  }), [farmId, boardId, token]);
 
   useEffect(() => {
-    if (!farmId || !boardId || !token) return;
+    const { farmId, boardId, token } = connectionParams;
+    
+    if (!farmId || !boardId || !token) {
+      // Limpiar datos si no hay parámetros válidos
+      setData([]);
+      setIsConnected(false);
+      setError(null);
+      return;
+    }
 
+    // Cerrar conexión anterior si existe
+    if (wsRef.current) {
+      logger.log('Closing previous WebSocket connection');
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    logger.log('Creating new WebSocket connection:', { farmId, boardId });
     const ws = new WebSocket(
       `ws://${process.env.NEXT_PUBLIC_API_URL?.replace('http://', '')}/realtime/data?from=${farmId}&info=${boardId}&token=${token}`
     );
+
+    wsRef.current = ws;
 
     ws.onopen = () => {
       setIsConnected(true);
@@ -361,9 +387,12 @@ export function useRealTimeData(farmId: string, boardId: string, token?: string)
     };
 
     return () => {
-      ws.close();
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
-  }, [farmId, boardId, token]);
+  }, [connectionParams]);
 
   return {
     data,

@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import { TankSelector } from "./tank-selector";
 import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
@@ -80,15 +79,27 @@ const TankModel = ({
   const handleFullscreen = () => setIsFullscreen(true);
   const handleExitFullscreen = () => setIsFullscreen(false);
 
-  // Use the appropriate data source based on mode
-  const data = mode === "realtime" ? {
+  // Use the data directly from props (already processed by parent component)
+  const data = {
     encoderData,
     milkQuantityData,
     switchStatus,
     weightData,
     tankTemperaturesData,
     airQualityData,
-  } : selectedHistoricalData || historicalData;
+  };
+
+  // Debug: Log data processing
+  console.log('=== TankModel Debug ===');
+  console.log('Mode:', mode);
+  console.log('Data from props:', data);
+  console.log('Selected Data:', selectedData);
+  
+  if (mode === 'historical') {
+    console.log('Air Quality Data:', data?.airQualityData);
+    console.log('Weight Data:', data?.weightData);
+    console.log('Tank Temperatures Data:', data?.tankTemperaturesData);
+  }
 
   const renderTankModel = () => {
     // Case 1: Historical mode but no date range selected
@@ -232,9 +243,8 @@ const TankModel = ({
       ref={tankContainerRef}
       className="bg-white relative transition-all duration-300 w-full h-full"
     >
-      {/* Only show sensor data overlay when in realtime mode or when historical data is loaded */}
-      {(mode === "realtime" ||
-        (historicalData && historicalData !== "loading" && !error)) && (
+      {/* Show sensor data overlay in realtime mode or historical mode with data */}
+      {(mode === "realtime" || (mode === "historical" && filters?.dateRange && (filters.dateRange.from || filters.dateRange.to) && historicalData && historicalData !== "loading")) && (
           <div className="absolute top-4 left-4 z-20">
             <SelectedSensorData
               encoderData={data?.encoderData}
@@ -244,13 +254,13 @@ const TankModel = ({
               tankTemperaturesData={data?.tankTemperaturesData}
               airQualityData={data?.airQualityData}
               selectedData={selectedData}
+              mode={mode}
             />
           </div>
       )}
       {renderTankModel()}
       
-      {(mode === "realtime" ||
-        (historicalData && historicalData !== "loading" && !error)) && (
+      {(mode === "realtime" || mode === "historical") && (
           <CameraControlButtons
             handleViewChange={handleViewChange}
             toggleFullscreen={handleFullscreen}
