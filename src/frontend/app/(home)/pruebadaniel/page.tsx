@@ -6,7 +6,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from "next-auth/react";
 import PageContainer from '@/components/layout/page-container';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarDateRangePicker, CalendarDateRangePickerRef } from '@/components/ui/date-range-picker';
 import { CalendarIcon, Activity, Database, Thermometer, Droplets, Gauge, Weight, Zap, Play, Pause, ChevronLeft, ChevronRight, Radio, CircleX, Loader2, Sliders } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -28,6 +29,11 @@ import {
   type HistoricalDataParams
 } from '@/services/daniel-service';
 import TankModel from '@/components/tank-models/tank-model';
+import TimeSeriesSlider from '@/components/timeline/time-series-slider';
+import useAppDataStore from '@/stores/app-store';
+import useTankStore from '@/stores/tank-store';
+import useTankStates from '@/hooks/use-tank-states';
+import { DateRange } from '@/components/ui/date-range-picker';
 
 /**
  * Componente principal de la página de prueba de Daniel
@@ -38,33 +44,56 @@ export default function PruebaDanielPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [boardIds] = useState<string[]>(['01', '02']);
   const [selectedBoard] = useState<string>('6_dof_imu');
-  const [mode, setMode] = useState<'realtime' | 'historical'>('realtime');
   const [selectedData, setSelectedData] = useState<string | null>(null);
   const [isSensorsTabVisible, setIsSensorsTabVisible] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTimeIndex, setCurrentTimeIndex] = useState(0);
-  const [isFiltersVisible, setIsFiltersVisible] = useState(false);
+  
+  // Estado para el rango de fechas
+  const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  
+  // Ref para el DateRangePicker
+  const dateRangePickerRef = useRef<CalendarDateRangePickerRef>(null);
+
+  // Estado para filtros
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedSensor, setSelectedSensor] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined } | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  // Stores
+  const { filters, mode, setMode, setFilters } = useAppDataStore((state) => state);
+  const { selectedTank, setTankState } = useTankStore();
 
   // Hooks del servicio de Daniel
-  const { loading: historicalLoading } = useHistoricalData();
+  const { 
+    historicalData, 
+    selectedHistoricalData, 
+    loading,
+    error, 
+    fetchHistoricalData, 
+    handleTimeSelected 
+  } = useHistoricalData();
   const { data: realTimeData } = useRealTimeData(selectedFarm, selectedBoard, session?.accessToken || '');
   const { loadPrediction, loadRealTimePrediction } = useTankStatePrediction();
   const { loadCachedData } = useCachedData();
 
-  // Datos simulados para estados del tanque
-  const [tankStates] = useState([
-    { start: '08:00', end: '10:30', state: 'MILKING', color: 'bg-green-500' },
-    { start: '10:30', end: '12:00', state: 'COOLING', color: 'bg-blue-500' },
-    { start: '12:00', end: '14:00', state: 'CLEANING', color: 'bg-yellow-500' },
-    { start: '14:00', end: '16:30', state: 'EMPTY TANK', color: 'bg-red-500' },
-    { start: '16:30', end: '18:00', state: 'MAINTENANCE', color: 'bg-purple-500' },
-    { start: '18:00', end: '20:00', state: 'MILKING', color: 'bg-green-500' },
-    { start: '20:00', end: '22:00', state: 'COOLING', color: 'bg-blue-500' },
-    { start: '22:00', end: '00:00', state: 'CLEANING', color: 'bg-yellow-500' }
-  ]);
+  // Hook para estados del tanque
+  const {
+    tankStates,
+    tankStatesLoading,
+    tankStatesError,
+    fetchTankStates,
+    retryFetchTankStates,
+  } = useTankStates({
+    filters: {
+      selectedDate: filters.selectedDate || undefined,
+      dateRange: dateRange && dateRange.from && dateRange.to ? {
+        from: dateRange.from,
+        to: dateRange.to
+      } : null
+    },
+    boardIds,
+    selectedFarm,
+    selectedTank: selectedTank?.name || 'default-tank',
+  });
 
   // Función para obtener el color del estado
   const getStateColor = (state: string) => {
@@ -103,7 +132,7 @@ export default function PruebaDanielPage() {
       tank: { height: 100 } // Altura del tanque en cm
     };
 
-    // await loadHistoricalData(params, session?.accessToken);
+    await fetchHistoricalData(params, session?.accessToken);
   };
 
   /**
@@ -141,7 +170,23 @@ export default function PruebaDanielPage() {
       milkQuantityData: milkData || { value: 75.5 },
       switchStatus: switchData || { value: true },
       weightData: weightData || { value: 1250.8 },
-      tankTemperaturesData: temperatureData || { value: 4.2 },
+      tankTemperaturesData: temperatureData ? {
+        value: {
+          over_surface_temperature: temperatureData.value?.over_surface_temperature || temperatureData.value,
+          surface_temperature: temperatureData.value?.surface_temperature || temperatureData.value,
+          submerged_temperature: temperatureData.value?.submerged_temperature || temperatureData.value
+        },
+        tags: temperatureData.tags || { board_id: "TEMP_SENSOR_01" },
+        readableDate: temperatureData.readableDate || new Date().toLocaleString()
+      } : {
+        value: {
+          over_surface_temperature: 4.2,
+          surface_temperature: 4.1,
+          submerged_temperature: 4.3
+        },
+        tags: { board_id: "TEMP_SENSOR_01" },
+        readableDate: new Date().toLocaleString()
+      },
       airQualityData: airData || {
         value: { 
           humidity: 65, 
@@ -168,34 +213,25 @@ export default function PruebaDanielPage() {
     setSelectedData(cardName === selectedData ? null : cardName);
   };
 
-  // Simular reproducción de datos históricos
-  useEffect(() => {
-    if (isPlaying && mode === 'historical') {
-      const interval = setInterval(() => {
-        setCurrentTimeIndex((prev) => {
-          const next = prev + 1;
-          if (next >= tankStates.length) {
-            setIsPlaying(false);
-            return 0;
-          }
-          return next;
-        });
-      }, 2000);
-
-      return () => clearInterval(interval);
-    }
-  }, [isPlaying, mode, tankStates.length]);
-
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-  };
-
   // Cargar datos históricos cuando cambian los filtros
   useEffect(() => {
     if (selectedDate && session?.accessToken && mode === 'historical') {
       handleLoadHistoricalData();
+      fetchTankStates();
     }
-  }, [selectedDate, boardIds, session?.accessToken, mode, handleLoadHistoricalData]);
+  }, [selectedDate, boardIds, session?.accessToken, mode]);
+
+  // Effect to handle time selection
+  useEffect(() => {
+    if (selectedTime && mode === 'historical') {
+      handleTimeSelected(selectedTime);
+    }
+  }, [selectedTime, handleTimeSelected, mode]);
+
+  // Handler for time selection from the slider
+  const handleTimeSelectionChange = (timeString: string) => {
+    setSelectedTime(timeString);
+  };
 
   return (
     <PageContainer>
@@ -234,88 +270,74 @@ export default function PruebaDanielPage() {
 
           </div>
 
-          {/* Barra horizontal de eventos - Solo visible en modo histórico */}
-          {mode === 'historical' && (
-            <div className="px-4 py-3 bg-card border border-border rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-foreground">Timeline de Eventos</h4>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={togglePlay}
-                    disabled={!isPlaying && currentTimeIndex >= tankStates.length - 1}
-                    className="bg-background border-border text-foreground"
-                  >
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentTimeIndex(Math.max(0, currentTimeIndex - 1))}
-                    disabled={currentTimeIndex === 0}
-                    className="bg-background border-border text-foreground"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentTimeIndex(Math.min(tankStates.length - 1, currentTimeIndex + 1))}
-                    disabled={currentTimeIndex === tankStates.length - 1}
-                    className="bg-background border-border text-foreground"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Timeline horizontal */}
-              <div className="relative">
-                <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-                  {tankStates.map((state, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        "flex-shrink-0 flex flex-col items-center p-2 rounded-lg border min-w-[120px] transition-all cursor-pointer",
-                        currentTimeIndex === index 
-                          ? "bg-primary/10 border-primary shadow-md" 
-                          : "bg-background border-border hover:bg-accent/50"
-                      )}
-                      onClick={() => setCurrentTimeIndex(index)}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className={cn(
-                          "w-3 h-3 rounded-full",
-                          currentTimeIndex === index ? "bg-primary" : state.color
-                        )} />
-                        <span className={cn(
-                          "text-xs font-medium",
-                          currentTimeIndex === index 
-                            ? "text-foreground" 
-                            : getStateTextColor(state.state)
-                        )}>
-                          {state.state}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground text-center">
-                        <div>{state.start}</div>
-                        <div>{state.end}</div>
-                      </div>
+          {/* Filtros históricos en franja horizontal */}
+          <div className="w-full">
+            <Card className="border-border bg-card">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-4 flex-wrap">
+                  {/* Rango de fechas */}
+                  <div className="flex items-center gap-2 flex-1">
+                    <Label className="text-xs font-medium text-foreground whitespace-nowrap">Rango:</Label>
+                    <div className="flex-1 max-w-md">
+                      <CalendarDateRangePicker
+                        ref={dateRangePickerRef}
+                        start={dateRange?.from}
+                        end={dateRange?.to}
+                        onDateRangeChange={(newDateRange) => {
+                          if (newDateRange && newDateRange.from && newDateRange.to) {
+                            const updatedDateRange = {
+                              from: newDateRange.from,
+                              to: newDateRange.to
+                            };
+                            setDateRange(updatedDateRange);
+                          } else {
+                            setDateRange(null);
+                          }
+                        }}
+                        onApply={() => {
+                          // No hacer validación aquí, se hará en el botón Aplicar del componente padre
+                        }}
+                      />
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Estado del tanque */}
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs font-medium text-foreground whitespace-nowrap">Estado:</Label>
+                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                      <SelectTrigger className="w-32 text-xs bg-background border-border text-foreground">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="MILKING">Ordeño</SelectItem>
+                        <SelectItem value="COOLING">Enfriamiento</SelectItem>
+                        <SelectItem value="CLEANING">Limpieza</SelectItem>
+                        <SelectItem value="EMPTY TANK">Tanque Vacío</SelectItem>
+                        <SelectItem value="MAINTENANCE">Mantenimiento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Botón de acción */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        // Obtener el valor actual del DateRangePicker usando el ref
+                        if (dateRangePickerRef.current) {
+                          dateRangePickerRef.current.applyChanges();
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      Aplicar
+                    </Button>
+                  </div>
                 </div>
-                
-                {/* Indicador de progreso */}
-                <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${((currentTimeIndex + 1) / tankStates.length) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Contenedor principal */}
           <div className="flex-1 flex overflow-hidden gap-4">
@@ -342,7 +364,7 @@ export default function PruebaDanielPage() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-3">
-                  {historicalLoading ? (
+                  {loading ? (
                     <div className="flex items-center justify-center h-full">
                       <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
                       <span className="text-xs text-muted-foreground">Cargando...</span>
@@ -406,6 +428,12 @@ export default function PruebaDanielPage() {
                 <TankModel
                   mode={mode}
                   filters={{ dateRange }}
+                  selectedHistoricalData={selectedHistoricalData}
+                  historicalData={historicalData}
+                  error={error}
+                  handleTimeSelected={handleTimeSelected}
+                  fetchHistoricalData={handleLoadHistoricalData}
+                  selectedTime={selectedTime}
                   encoderData={modelData.encoderData}
                   milkQuantityData={modelData.milkQuantityData}
                   switchStatus={modelData.switchStatus}
@@ -414,154 +442,63 @@ export default function PruebaDanielPage() {
                   airQualityData={modelData.airQualityData}
                   selectedData={selectedData}
                 />
-              </div>
             </div>
             
-            {/* Panel de filtros históricos (derecha) - Solo visible en modo histórico */}
-            {mode === 'historical' && isFiltersVisible && (
-              <div className="w-80 h-full flex flex-col bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-                <div className="sticky top-0 z-10 bg-card border-b border-border p-3">
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <Sliders className="h-4 w-4 text-primary" />
-                      <h3 className="text-sm font-semibold truncate text-foreground">Filtros Históricos</h3>
+              {/* Time Series Slider Container - Always visible in historical mode with date range */}
+              {mode === "historical" && dateRange && !error && (
+                <div className="px-4 py-3 border-t bg-gray-50 min-h-[140px]">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-[100px]">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
+                      <span className="text-sm text-muted-foreground">
+                        Loading historical data...
+                      </span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsFiltersVisible(false)}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                      title="Ocultar filtros"
-                    >
-                      <CircleX className="h-3 w-3" />
-                      <span className="sr-only">Ocultar Filtros</span>
-                    </Button>
+                  ) : tankStatesLoading ? (
+                    <div className="flex items-center justify-center h-[100px]">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
+                      <span className="text-sm text-muted-foreground">
+                        Loading tank states...
+                      </span>
                   </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-3">
-                  <div className="space-y-4">
-                    {/* Rango de fechas */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-foreground">Rango de Fechas</Label>
-                      <div className="flex gap-2">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal text-xs bg-background border-border text-foreground",
-                                !dateRange?.from && "text-muted-foreground"
-                              )}
-                            >
-                              {dateRange?.from ? format(dateRange.from, "dd/MM/yyyy") : "Desde"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 bg-background border-border">
-                            <Calendar
-                              mode="single"
-                              selected={dateRange?.from}
-                              onSelect={(date) => setDateRange({ from: date, to: dateRange?.to })}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal text-xs bg-background border-border text-foreground",
-                                !dateRange?.to && "text-muted-foreground"
-                              )}
-                            >
-                              {dateRange?.to ? format(dateRange.to, "dd/MM/yyyy") : "Hasta"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 bg-background border-border">
-                            <Calendar
-                              mode="single"
-                              selected={dateRange?.to}
-                              onSelect={(date) => setDateRange({ from: dateRange?.from, to: date })}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                  ) : tankStatesError ? (
+                    <div className="flex items-center justify-center h-[100px]">
+                      <div className="text-center">
+                        <p className="text-sm text-red-500 mb-2">
+                          Error loading tank states. Select other date and try again
+                        </p>
+                        <button
+                          onClick={retryFetchTankStates}
+                          className="px-3 py-1 text-sm bg-primary text-white rounded-md hover:bg-primary/90"
+                        >
+                          Try Again
+                        </button>
                       </div>
                     </div>
-
-                    {/* Estado del tanque */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-foreground">Estado del Tanque</Label>
-                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                        <SelectTrigger className="w-full text-xs bg-background border-border text-foreground">
-                          <SelectValue placeholder="Seleccionar estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          <SelectItem value="MILKING">Ordeño</SelectItem>
-                          <SelectItem value="COOLING">Enfriamiento</SelectItem>
-                          <SelectItem value="CLEANING">Limpieza</SelectItem>
-                          <SelectItem value="EMPTY TANK">Tanque Vacío</SelectItem>
-                          <SelectItem value="MAINTENANCE">Mantenimiento</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  ) : tankStates && Object.keys(tankStates).length > 0 ? (
+                    <TimeSeriesSlider
+                      startDate={dateRange.from!}
+                      endDate={dateRange.to!}
+                      tankStateData={tankStates}
+                      onTimeSelected={handleTimeSelectionChange}
+                    />
+                  ) : (
+                    <div className="h-[100px]">
+                      <div className="text-center mb-2">
+                        <p className="text-sm text-muted-foreground">
+                          No hay datos de estado del tanque disponibles para la fecha seleccionada
+                        </p>
                     </div>
-
-
-                    {/* Botones de acción */}
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setDateRange(null);
-                          setSelectedStatus('all');
-                          setSelectedSensor('all');
-                        }}
-                        className="flex-1 text-xs bg-background border-border text-foreground"
-                      >
-                        Limpiar
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          // Verificar que hay fechas seleccionadas
-                          if (dateRange?.from && dateRange?.to) {
-                            console.log('Aplicar filtros:', { dateRange, selectedStatus, selectedSensor });
-                            // Aquí se cargarían los datos históricos
-                            // Por ahora solo mostramos un mensaje de confirmación
-                            alert('Filtros aplicados correctamente. Los datos históricos se cargarán automáticamente.');
-                          } else {
-                            alert('Por favor selecciona un rango de fechas completo (desde y hasta)');
-                          }
-                        }}
-                        className="flex-1 text-xs"
-                      >
-                        Aplicar
-                      </Button>
+                      <TimeSeriesSlider
+                        startDate={dateRange.from!}
+                        endDate={dateRange.to!}
+                        onTimeSelected={handleTimeSelectionChange}
+                      />
                     </div>
-                  </div>
-                </div>
+                  )}
               </div>
             )}
-
-            {/* Botón para mostrar filtros cuando están ocultos */}
-            {mode === 'historical' && !isFiltersVisible && (
-              <div className="w-12 h-full flex flex-col bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-                <div className="flex-1 flex items-center justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsFiltersVisible(true)}
-                    className="h-auto py-2 px-1 rounded-none shadow-sm flex flex-col gap-1 hover:bg-accent transition-all" 
-                    title="Mostrar filtros históricos"
-                  >
-                    <Sliders className="h-4 w-4 text-foreground" />
-                  </Button>
-                </div>
               </div>
-            )}
           </div>
         </div>
       </div>

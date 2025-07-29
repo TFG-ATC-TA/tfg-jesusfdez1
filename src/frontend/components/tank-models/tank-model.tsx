@@ -22,7 +22,15 @@ interface TankModelProps {
   milkQuantityData?: { value: number };
   switchStatus?: { value: boolean };
   weightData?: { value: number };
-  tankTemperaturesData?: { value: number };
+  tankTemperaturesData?: { 
+    value: { 
+      over_surface_temperature?: number;
+      surface_temperature?: number;
+      submerged_temperature?: number;
+    };
+    tags?: { board_id?: string };
+    readableDate?: string;
+  };
   airQualityData?: { value: { humidity: number; temperature: number } };
   selectedData?: string | null;
 }
@@ -147,15 +155,9 @@ const TankModel = ({
             <h3 className="text-lg font-medium text-gray-700 mb-2">
               No hay datos disponibles
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-gray-500">
               No hay datos históricos disponibles para el período de tiempo seleccionado.
             </p>
-            <Button
-              onClick={fetchHistoricalData}
-              className="bg-primary hover:bg-primary/90"
-            >
-              Actualizar
-            </Button>
           </div>
         </div>
       );

@@ -8,7 +8,15 @@ interface TankSelectorProps {
   milkQuantityData?: { value: number };
   switchStatus?: { value: boolean };
   weightData?: { value: number };
-  tankTemperaturesData?: { value: number };
+  tankTemperaturesData?: { 
+    value: { 
+      over_surface_temperature?: number;
+      surface_temperature?: number;
+      submerged_temperature?: number;
+    };
+    tags?: { board_id?: string };
+    readableDate?: string;
+  };
   airQualityData?: { value: { humidity: number; temperature: number } };
   selectedData?: string | null;
   selectedTank?: string;
