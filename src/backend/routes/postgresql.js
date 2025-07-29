@@ -171,4 +171,99 @@ router.get('/farm-activities', async (req, res) => {
     }
 });
 
+/**
+ * GET /postgres/tank-activities - Obtener actividades del tanque por día
+ * Devuelve solo las actividades con fecha de comienzo y fin
+ */
+router.get('/tank-activities', async (req, res) => {
+    try {
+        const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+        const bucket = req.query.bucket || 'synthetic-farm-1';
+
+        console.log('=== Tank Activities Request ===');
+        console.log('Start Date:', startDate);
+        console.log('Bucket:', bucket);
+
+        // Primero, verificar qué datos hay en la tabla
+        const countQuery = 'SELECT COUNT(*) as total FROM tank_state_intervals';
+        const countResult = await connectPostgreSQL.query(countQuery);
+        console.log('Total records in tank_state_intervals:', countResult.rows[0].total);
+
+        // Ver algunos registros de ejemplo
+        const sampleQuery = 'SELECT start_time, end_time, state FROM tank_state_intervals ORDER BY start_time LIMIT 10';
+        const sampleResult = await connectPostgreSQL.query(sampleQuery);
+        console.log('Sample records:', sampleResult.rows);
+
+        // Verificar la estructura de la tabla
+        const structureQuery = `
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'tank_state_intervals'
+            ORDER BY ordinal_position
+        `;
+        const structureResult = await connectPostgreSQL.query(structureQuery);
+        console.log('Table structure:', structureResult.rows);
+
+        // Verificar fechas disponibles
+        const dateRangeQuery = `
+            SELECT 
+                MIN(start_time) as earliest_date,
+                MAX(start_time) as latest_date,
+                COUNT(DISTINCT DATE(start_time)) as unique_dates
+            FROM tank_state_intervals
+        `;
+        const dateRangeResult = await connectPostgreSQL.query(dateRangeQuery);
+        console.log('Date range info:', dateRangeResult.rows[0]);
+
+        let query = 'SELECT start_time, end_time, state FROM tank_state_intervals';
+        const queryParams = [];
+        
+        if (startDate) {
+            // Convertir fecha a formato YYYY-MM-DD para obtener todo el día
+            const startDateStr = startDate.toISOString().split('T')[0];
+            
+            query += ' WHERE DATE(start_time) = $1';
+            queryParams.push(startDateStr);
+            
+            console.log('Using specific date query with date:', startDateStr);
+        } else {
+            // Si no hay fecha, traer todos los registros de los últimos 7 días
+            query += ' WHERE start_time >= NOW() - INTERVAL \'7 days\'';
+            console.log('Using default query (last 7 days)');
+        }
+        
+        query += ' ORDER BY start_time';
+        
+        console.log('Final Query:', query);
+        console.log('Query Params:', queryParams);
+
+        const result = await connectPostgreSQL.query(query, queryParams);
+        const activities = result.rows;
+
+        console.log('=== Database Results ===');
+        console.log('Number of activities found:', activities.length);
+        console.log('All activities found:', activities);
+
+        // Transformar los datos al formato requerido
+        const transformedActivities = activities.map(activity => ({
+            startTime: activity.start_time,
+            endTime: activity.end_time,
+            state: activity.state.toUpperCase()
+        }));
+
+        console.log('=== Response ===');
+        console.log('Transformed activities:', transformedActivities);
+        console.log('Total activities:', transformedActivities.length);
+
+        res.json(transformedActivities);
+    } catch (error) {
+        console.error('Error al consultar tank-activities:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener las actividades del tanque',
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;

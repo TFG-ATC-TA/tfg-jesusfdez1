@@ -31,6 +31,7 @@ interface TankModelProps {
     readableDate?: string;
   };
   airQualityData?: { value: { humidity: number; temperature: number } };
+  gyroscopeData?: { value: { gyro_x?: number; gyro_y?: number; gyro_z?: number; accel_x?: number; accel_y?: number; accel_z?: number } };
   selectedData?: string | null;
 }
 
@@ -49,6 +50,7 @@ const TankModel = ({
   weightData,
   tankTemperaturesData,
   airQualityData,
+  gyroscopeData,
   selectedData,
 }: TankModelProps) => {
   const [currentView, setCurrentView] = useState("default");
@@ -87,6 +89,7 @@ const TankModel = ({
     weightData,
     tankTemperaturesData,
     airQualityData,
+    gyroscopeData,
   };
 
   // Debug: Log data processing
@@ -202,6 +205,7 @@ const TankModel = ({
               weightData={data?.weightData}
               tankTemperaturesData={data?.tankTemperaturesData}
               airQualityData={data?.airQualityData}
+              gyroscopeData={data?.gyroscopeData}
               selectedData={selectedData}
               selectedTank={selectedTank}
               onTankChange={setSelectedTank}
@@ -253,6 +257,7 @@ const TankModel = ({
               weightData={data?.weightData}
               tankTemperaturesData={data?.tankTemperaturesData}
               airQualityData={data?.airQualityData}
+              gyroscopeData={data?.gyroscopeData}
               selectedData={selectedData}
               mode={mode}
             />

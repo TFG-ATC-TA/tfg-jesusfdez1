@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import { DanielService } from '@/services/daniel-service';
 
@@ -43,29 +43,42 @@ const useTankStates = ({ filters, boardIds, selectedFarm, selectedTank }: TankSt
       setTankStatesLoading(true);
       setTankStatesError(null);
 
-      const response = await DanielService.getTankStatePrediction({
-        farm: selectedFarm,
-        boardIds,
-        date: formattedDate,
-        tank: {
-          height: 1000 // Default height value, you might want to make this configurable
-        }
-      });
+      console.log('=== Fetching Tank States ===');
+      console.log('Selected Farm:', selectedFarm);
+      console.log('Selected Tank:', selectedTank);
+      console.log('Formatted Date:', formattedDate);
 
-      // Transformar los datos del backend al formato que espera el TimeSeriesSlider
-      if (response && response.predictions) {
+      // Usar el nuevo servicio tank-activities directamente
+      const params = {
+        startDate: formattedDate,
+        bucket: selectedFarm
+      };
+
+      const data = await DanielService.getTankActivities(params);
+
+      console.log('=== Tank Activities Response ===');
+      console.log('Raw response:', data);
+
+      if (data && Array.isArray(data) && data.length > 0) {
+        console.log('=== Processing Tank Activities ===');
+        console.log('Activities:', data);
+
         const tankStatesData: TankStatesData = {
           date: formattedDate,
-          states: Object.entries(response.predictions).map(([time, prediction]) => ({
-            startTime: time,
-            endTime: time, // Asumiendo que el tiempo de fin es el mismo para simplificar
-            state: prediction.state
-          }))
+          states: data
         };
+
+        console.log('=== Processed Tank States ===');
+        console.log('Tank states data:', tankStatesData);
+        console.log('Number of states:', data.length);
+
         setTankStates(tankStatesData);
+        setTankStatesError(null);
       } else {
         setTankStates(null);
+        setTankStatesError("No hay datos de estado del tanque disponibles para la fecha seleccionada");
       }
+
     } catch (err) {
       console.error("Error fetching tank states:", err);
       setTankStates(null);
@@ -73,7 +86,7 @@ const useTankStates = ({ filters, boardIds, selectedFarm, selectedTank }: TankSt
     } finally {
       setTankStatesLoading(false);
     }
-  }, [filters, boardIds, selectedFarm, selectedTank]);
+  }, [selectedFarm, filters.selectedDate, filters.dateRange?.from, filters.dateRange?.to]);
 
   const retryFetchTankStates = () => {
     setTankStatesError(null);

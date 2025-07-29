@@ -322,37 +322,37 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
 
   // Parse intervals from the provided tankStateData
   const intervals = useMemo(() => {
+    console.log('=== TimeSeriesSlider: Processing tankStateData ===');
+    console.log('tankStateData:', tankStateData);
+    
     if (!tankStateData || !tankStateData.states) {
+      console.log('No tankStateData or states available');
       return [];
     }
 
     // Parse the date from tankStateData
     const baseDate = new Date(tankStateData.date);
+    console.log('Base date:', baseDate);
 
     // Convert the states from tankStateData to intervals
-    return tankStateData.states.map((stateItem) => {
-      // Parse the start and end times
-      const [startHour, startMinute] = stateItem.startTime.split(":").map(Number);
-      const [endHour, endMinute] = stateItem.endTime.split(":").map(Number);
+    const processedIntervals = tankStateData.states.map((stateItem) => {
+      // Parse the start and end times from ISO strings
+      const startTime = new Date(stateItem.startTime);
+      const endTime = new Date(stateItem.endTime);
 
-      // Create Date objects for start and end times
-      const start = new Date(baseDate);
-      start.setHours(startHour, startMinute, 0, 0);
-
-      const end = new Date(baseDate);
-      end.setHours(endHour, endMinute, 0, 0);
-
-      // Handle the case where endTime is "00:00" (midnight of the next day)
-      if (endHour === 0 && endMinute === 0) {
-        end.setDate(end.getDate() + 1);
-      }
+      console.log('Processing state:', stateItem.state);
+      console.log('Start time:', startTime);
+      console.log('End time:', endTime);
 
       return {
-        start,
-        end,
+        start: startTime,
+        end: endTime,
         state: stateItem.state,
       };
     });
+
+    console.log('Processed intervals:', processedIntervals);
+    return processedIntervals;
   }, [tankStateData]);
 
   // Modificado: Ahora actualiza selectedDate en el store global cuando se cambia de día
@@ -422,34 +422,47 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
 
   // Generate interval markers for the current day
   const intervalMarkers = useMemo(() => {
+    console.log('=== TimeSeriesSlider: Generating interval markers ===');
+    console.log('Current date:', currentDate);
+    console.log('Available intervals:', intervals);
+    
     // Filter intervals for the current day
-    return intervals
-      .filter((interval) => isSameDay(interval.start, currentDate) || isSameDay(interval.end, currentDate))
-      .map((interval) => {
-        // Adjust start and end times to be within the current day
-        let startTime = interval.start;
-        let endTime = interval.end;
+    const filteredIntervals = intervals
+      .filter((interval) => isSameDay(interval.start, currentDate) || isSameDay(interval.end, currentDate));
+    
+    console.log('Filtered intervals for current day:', filteredIntervals);
+    
+    const markers = filteredIntervals.map((interval) => {
+      // Adjust start and end times to be within the current day
+      let startTime = interval.start;
+      let endTime = interval.end;
 
-        if (!isSameDay(startTime, currentDate)) {
-          // If start is not on current day, set to beginning of current day
-          startTime = setMinutes(setHours(new Date(currentDate), 0), 0);
-        }
+      if (!isSameDay(startTime, currentDate)) {
+        // If start is not on current day, set to beginning of current day
+        startTime = setMinutes(setHours(new Date(currentDate), 0), 0);
+      }
 
-        if (!isSameDay(endTime, currentDate)) {
-          // If end is not on current day, set to end of current day
-          endTime = setMinutes(setHours(new Date(currentDate), 23), 59);
-        }
+      if (!isSameDay(endTime, currentDate)) {
+        // If end is not on current day, set to end of current day
+        endTime = setMinutes(setHours(new Date(currentDate), 23), 59);
+      }
 
-        return {
-          startValue: startTime.getHours() * 60 + startTime.getMinutes(),
-          endValue: endTime.getHours() * 60 + endTime.getMinutes(),
-          state: interval.state,
-          label: `${interval.state} (${formatTime(startTime)} - ${formatTime(endTime)})`,
-          color: STATE_COLORS[interval.state],
-          isActive: interval.state === activeState,
-        };
-      });
-  }, [currentDate, intervals, formatTime, activeState]);
+      const marker = {
+        startValue: startTime.getHours() * 60 + startTime.getMinutes(),
+        endValue: endTime.getHours() * 60 + endTime.getMinutes(),
+        state: interval.state,
+        label: `${interval.state} (${formatTime(startTime)} - ${formatTime(endTime)})`,
+        color: STATE_COLORS[interval.state],
+        isActive: interval.state === activeState,
+      };
+
+      console.log('Generated marker:', marker);
+      return marker;
+    });
+
+    console.log('Final interval markers:', markers);
+    return markers;
+  }, [intervals, currentDate, activeState, formatTime]);
 
   // Keep the original state markers for backward compatibility
   const stateMarkers = useMemo(() => {

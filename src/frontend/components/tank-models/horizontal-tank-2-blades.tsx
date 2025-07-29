@@ -20,6 +20,7 @@ interface HorizontalTank2BladesProps {
     readableDate?: string;
   };
   airQualityData?: { value: { humidity: number; temperature: number } };
+  gyroscopeData?: { value: { gyro_x?: number; gyro_y?: number; gyro_z?: number; accel_x?: number; accel_y?: number; accel_z?: number } };
   selectedData?: string | null;
 }
 
@@ -30,6 +31,7 @@ export function HorizontalTank2Blades({
   weightData,
   tankTemperaturesData,
   airQualityData,
+  gyroscopeData,
   selectedData,
 }: HorizontalTank2BladesProps) {
   const { nodes, materials, scene } = useGLTF(

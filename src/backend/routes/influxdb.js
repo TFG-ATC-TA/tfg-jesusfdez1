@@ -137,11 +137,11 @@ router.post('/historicalData', verifyToken, async (req, res) => {
     const fluxQuery = `
       from(bucket: "${farm}")
         |> range(start: ${start}, stop: ${stop})
-        |> filter(fn: (r) => r["_measurement"] == "6_dof_imu" or r["_measurement"] == "air_quality" or r["_measurement"] == "encoder" or r["_measurement"] == "magnetic_switch" or r["_measurement"] == "tank_distance" or r["_measurement"] == "weight" or r["_measurement"] == "temperature_probe")
+        |> filter(fn: (r) => r["_measurement"] == "6_dof_imu" or r["_measurement"] == "air_quality" or r["_measurement"] == "encoder" or r["_measurement"] == "magnetic_switch" or r["_measurement"] == "tank_distance" or r["_measurement"] == "weight" or r["_measurement"] == "temperature_probe" or r["_measurement"] == "board_temperature" or r["_measurement"] == "board_status")
         |> filter(fn: (r) => ${validBoardIds
           .map((id) => `r["tags_board_id"] == "${id}"`)
           .join(" or ")})
-        |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)
+        |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
         |> yield(name: "mean")
     `;
 
@@ -196,6 +196,8 @@ router.post('/historicalData', verifyToken, async (req, res) => {
         tank_distance: "milkQuantityData",
         weight: "weightData",
         temperature_probe: "tankTemperaturesData",
+        board_temperature: "boardTemperatureData",
+        board_status: "boardStatusData",
       };
 
       const key = measurementMap[measurement] || measurement;
@@ -219,32 +221,92 @@ router.post('/historicalData', verifyToken, async (req, res) => {
         };
       }
 
-      // Handle specific cases for weight and encoder
-      if (measurement === "weight" || measurement === "encoder") {
+      // Handle specific cases for different measurements
+      if (measurement === "weight") {
+        // Corregir el cálculo del peso - convertir de gramos a kilogramos
+        if (typeof formattedResult[time][key].value !== "object") {
+          formattedResult[time][key].value = {};
+        }
+        // Convertir de gramos a kilogramos
+        const weightInKg = value / 1000;
+        formattedResult[time][key].value[sensorId] = parseFloat(weightInKg.toFixed(2));
+        
+        // Debug: Log weight processing
+        devConsole.log(`Weight processed - Time: ${time}, SensorId: ${sensorId}, Value: ${value}g -> ${weightInKg}kg`);
+        devConsole.log(`Current weightData value object:`, formattedResult[time][key].value);
+      } else if (measurement === "encoder") {
+        if (typeof formattedResult[time][key].value !== "object") {
+          formattedResult[time][key].value = {};
+        }
+        formattedResult[time][key].value[sensorId] = value;
+      } else if (measurement === "tank_distance") {
+        // Only include the "range" field for milkQuantityData and apply the calculation
+        if (field === "range" && tank?.height) {
+          formattedResult[time][key].value = (value / tank.height) * 100;
+        } else {
+          // Si no hay cálculo de tanque, usar el valor directo
+          formattedResult[time][key].value = value;
+        }
+      } else if (measurement === "6_dof_imu") {
+        // Procesar datos del giroscopio (IMU)
+        if (typeof formattedResult[time][key].value !== "object") {
+          formattedResult[time][key].value = {};
+        }
+        formattedResult[time][key].value[field] = value;
+        
+        // Debug: Log gyroscope processing
+        devConsole.log(`Gyroscope processed - Time: ${time}, Field: ${field}, Value: ${value}`);
+        devConsole.log(`Current gyroscopeData value object:`, formattedResult[time][key].value);
+      } else if (measurement === "temperature_probe") {
+        // Procesar temperaturas del tanque con nombres específicos
+        if (typeof formattedResult[time][key].value !== "object") {
+          formattedResult[time][key].value = {};
+        }
+        
+        // Mapear campos de temperatura a nombres específicos
+        const temperatureFieldMap = {
+          "surface_temperature": "surface_temperature",
+          "over_surface_temperature": "over_surface_temperature", 
+          "submerged_temperature": "submerged_temperature",
+          "temperature": "surface_temperature" // Fallback para campo genérico
+        };
+        
+        const mappedField = temperatureFieldMap[field] || field;
+        formattedResult[time][key].value[mappedField] = value;
+        
+        // Debug: Log temperature processing
+        devConsole.log(`Temperature processed - Time: ${time}, Field: ${field} -> ${mappedField}, Value: ${value}`);
+        devConsole.log(`Current tankTemperaturesData value object:`, formattedResult[time][key].value);
+      } else if (measurement === "air_quality") {
+        // Procesar datos de calidad del aire
+        if (typeof formattedResult[time][key].value !== "object") {
+          formattedResult[time][key].value = {};
+        }
+        formattedResult[time][key].value[field] = value;
+        
+        // Debug: Log air quality processing
+        devConsole.log(`Air Quality processed - Time: ${time}, Field: ${field}, Value: ${value}`);
+        devConsole.log(`Current airQualityData value object:`, formattedResult[time][key].value);
+      } else if (measurement === "magnetic_switch") {
+        // Procesar datos del switch magnético
         if (typeof formattedResult[time][key].value !== "object") {
           formattedResult[time][key].value = {};
         }
         formattedResult[time][key].value[sensorId] = value;
         
-        // Debug: Log weight processing
-        if (measurement === "weight") {
-          devConsole.log(`Weight processed - Time: ${time}, SensorId: ${sensorId}, Value: ${value}`);
-          devConsole.log(`Current weightData value object:`, formattedResult[time][key].value);
-        }
-      } else if (measurement === "tank_distance") {
-        // Only include the "range" field for milkQuantityData and apply the calculation
-        if (field === "range" && tank?.height) {
-          formattedResult[time][key].value = (value / tank.height) * 100;
-        }
+        // Debug: Log switch processing
+        devConsole.log(`Switch processed - Time: ${time}, SensorId: ${sensorId}, Value: ${value}`);
+        devConsole.log(`Current switchStatus value object:`, formattedResult[time][key].value);
       } else {
         // For other measurements, store multiple fields in the value object
+        if (typeof formattedResult[time][key].value !== "object") {
+          formattedResult[time][key].value = {};
+        }
         formattedResult[time][key].value[field] = value;
-      }
-
-      // Debug: Log the processed data for air quality specifically
-      if (measurement === "air_quality") {
-        devConsole.log(`Air Quality processed - Time: ${time}, Key: ${key}, Field: ${field}, Value: ${value}`);
-        devConsole.log(`Current airQualityData value object:`, formattedResult[time][key].value);
+        
+        // Debug: Log other measurements
+        devConsole.log(`Other measurement processed - Time: ${time}, Measurement: ${measurement}, Field: ${field}, Value: ${value}`);
+        devConsole.log(`Current ${key} value object:`, formattedResult[time][key].value);
       }
     });
 

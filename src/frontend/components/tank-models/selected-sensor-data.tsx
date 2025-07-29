@@ -17,6 +17,7 @@ interface SelectedSensorDataProps {
     readableDate?: string;
   };
   airQualityData?: { value: { humidity: number; temperature: number } };
+  gyroscopeData?: { value: { gyro_x?: number; gyro_y?: number; gyro_z?: number; accel_x?: number; accel_y?: number; accel_z?: number } };
   mode?: 'realtime' | 'historical';
 }
 
@@ -28,10 +29,12 @@ const SelectedSensorData = ({
   weightData,
   tankTemperaturesData,
   airQualityData,
+  gyroscopeData,
   mode = 'realtime',
 }: SelectedSensorDataProps) => {
   // Debug: Log the received props
   console.log('=== SelectedSensorData Debug ===');
+  console.log('Mode:', mode);
   console.log('Selected Data:', selectedData);
   console.log('Air Quality Data:', airQualityData);
   console.log('Weight Data:', weightData);
@@ -39,6 +42,19 @@ const SelectedSensorData = ({
   console.log('Encoder Data:', encoderData);
   console.log('Milk Quantity Data:', milkQuantityData);
   console.log('Switch Status:', switchStatus);
+  
+  // Debug específico para encoder
+  if (selectedData === "Encoder") {
+    console.log('=== Encoder Debug ===');
+    console.log('Encoder Data Structure:', encoderData);
+    console.log('Encoder Value:', encoderData?.value);
+    console.log('Angle:', encoderData?.value?.angle);
+    console.log('Position:', encoderData?.value?.position);
+    console.log('Speed:', encoderData?.value?.speed);
+    console.log('Has Angle:', !!encoderData?.value?.angle);
+    console.log('Has Position:', !!encoderData?.value?.position);
+    console.log('Has Speed:', !!encoderData?.value?.speed);
+  }
 
   const getIcon = () => {
     switch (selectedData) {
@@ -81,7 +97,34 @@ const SelectedSensorData = ({
       case "MagneticSwitch":
         return switchStatus?.value !== undefined ? (switchStatus.value ? "Activo" : "Inactivo") : "N/A";
       case "Encoder":
-        return encoderData?.value?.angle ? `${encoderData.value.angle.toFixed(1)}°` : "N/A";
+        // Manejar tanto datos en tiempo real como históricos
+        if (encoderData?.value) {
+          const { angle, speed, position } = encoderData.value;
+          
+          // Priorizar angle si está disponible
+          if (angle !== undefined) {
+            return `${angle.toFixed(1)}°`;
+          }
+          // Si no hay angle, mostrar speed
+          if (speed !== undefined) {
+            return `${speed.toFixed(1)} rpm`;
+          }
+          // Si no hay speed, mostrar position
+          if (position !== undefined) {
+            return `${(position * 100).toFixed(1)}%`;
+          }
+        }
+        return "N/A";
+      case "Gyroscope":
+        // Manejar datos del giroscopio
+        if (gyroscopeData?.value) {
+          const { gyro_x, gyro_y, gyro_z } = gyroscopeData.value;
+          
+          // Calcular la magnitud total del giroscopio
+          const magnitude = Math.sqrt((gyro_x || 0)**2 + (gyro_y || 0)**2 + (gyro_z || 0)**2);
+          return `${magnitude.toFixed(1)} rad/s`;
+        }
+        return "N/A";
       case "Weight":
         // Handle both historical and real-time weight data
         if (weightData?.value) {
@@ -363,6 +406,19 @@ const SelectedSensorData = ({
     const { value } = encoderData;
     const { angle, position, speed } = value || {};
 
+    // Verificar si hay al menos un valor disponible
+    const hasAnyValue = angle !== undefined || position !== undefined || speed !== undefined;
+
+    if (!hasAnyValue) {
+      return (
+        <div className="space-y-2 mt-2">
+          <div className="text-xs text-muted-foreground text-center py-2">
+            No hay datos de encoder disponibles
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-2 mt-2">
         <div className="space-y-1">
@@ -388,11 +444,6 @@ const SelectedSensorData = ({
               <span className="font-medium text-cyan-600">
                 {speed.toFixed(1)} rpm
               </span>
-            </div>
-          )}
-          {!angle && !position && !speed && (
-            <div className="text-xs text-muted-foreground text-center py-2">
-              No hay datos de encoder disponibles
             </div>
           )}
         </div>
@@ -456,6 +507,82 @@ const SelectedSensorData = ({
     );
   };
 
+  const renderGyroscope = () => {
+    if (selectedData !== "Gyroscope" || !gyroscopeData) return null;
+
+    const { value } = gyroscopeData;
+    const { gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z } = value || {};
+
+    // Verificar si hay al menos un valor disponible
+    const hasAnyValue = gyro_x !== undefined || gyro_y !== undefined || gyro_z !== undefined || 
+                       accel_x !== undefined || accel_y !== undefined || accel_z !== undefined;
+
+    if (!hasAnyValue) {
+      return (
+        <div className="space-y-2 mt-2">
+          <div className="text-xs text-muted-foreground text-center py-2">
+            No hay datos de giroscopio disponibles
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2 mt-2">
+        <div className="space-y-1">
+          {gyro_x !== undefined && (
+            <div className="flex justify-between items-center bg-blue-100/30 p-1.5 rounded text-xs">
+              <span className="text-muted-foreground">Gyro X:</span>
+              <span className="font-medium text-blue-600">
+                {gyro_x.toFixed(2)} rad/s
+              </span>
+            </div>
+          )}
+          {gyro_y !== undefined && (
+            <div className="flex justify-between items-center bg-green-100/30 p-1.5 rounded text-xs">
+              <span className="text-muted-foreground">Gyro Y:</span>
+              <span className="font-medium text-green-600">
+                {gyro_y.toFixed(2)} rad/s
+              </span>
+            </div>
+          )}
+          {gyro_z !== undefined && (
+            <div className="flex justify-between items-center bg-purple-100/30 p-1.5 rounded text-xs">
+              <span className="text-muted-foreground">Gyro Z:</span>
+              <span className="font-medium text-purple-600">
+                {gyro_z.toFixed(2)} rad/s
+              </span>
+            </div>
+          )}
+          {accel_x !== undefined && (
+            <div className="flex justify-between items-center bg-orange-100/30 p-1.5 rounded text-xs">
+              <span className="text-muted-foreground">Acel X:</span>
+              <span className="font-medium text-orange-600">
+                {accel_x.toFixed(2)} m/s²
+              </span>
+            </div>
+          )}
+          {accel_y !== undefined && (
+            <div className="flex justify-between items-center bg-red-100/30 p-1.5 rounded text-xs">
+              <span className="text-muted-foreground">Acel Y:</span>
+              <span className="font-medium text-red-600">
+                {accel_y.toFixed(2)} m/s²
+              </span>
+            </div>
+          )}
+          {accel_z !== undefined && (
+            <div className="flex justify-between items-center bg-indigo-100/30 p-1.5 rounded text-xs">
+              <span className="text-muted-foreground">Acel Z:</span>
+              <span className="font-medium text-indigo-600">
+                {accel_z.toFixed(2)} m/s²
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (!selectedData) return null;
 
   const IconComponent = getIcon();
@@ -510,6 +637,7 @@ const SelectedSensorData = ({
         {renderEncoder()}
         {renderMilkQuantity()}
         {renderMagneticSwitch()}
+        {renderGyroscope()}
       </CardContent>
     </Card>
   );

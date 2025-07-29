@@ -198,7 +198,8 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/realtime/cache/${farmId}/${boardId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cache/${farmId}/${boardId}`, {
+      method: 'GET',
       headers,
     });
 
@@ -208,7 +209,164 @@ export const DanielService = {
 
     return response.json();
   },
+
+  /**
+   * Obtiene los estados del tanque desde el endpoint farm-activities
+   * @param params - Parámetros de consulta
+   * @param token - Token de autenticación
+   * @returns Promise con los estados del tanque
+   */
+  async getFarmActivities(params: FarmActivitiesParams, token?: string): Promise<FarmActivitiesResponse> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/postgres/farm-activities`);
+    
+    // Añadir parámetros de consulta
+    if (params.page !== undefined) url.searchParams.append('page', params.page.toString());
+    if (params.daysPerPage !== undefined) url.searchParams.append('daysPerPage', params.daysPerPage.toString());
+    if (params.bucket) url.searchParams.append('bucket', params.bucket);
+    if (params.startDate) url.searchParams.append('startDate', params.startDate);
+    if (params.endDate) url.searchParams.append('endDate', params.endDate);
+
+    console.log('=== Fetching Farm Activities ===');
+    console.log('URL:', url.toString());
+    console.log('Params:', params);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    console.log('=== Farm Activities Response ===');
+    console.log('Raw response:', result);
+    
+    return result;
+  },
+
+  /**
+   * Obtiene las actividades del tanque de forma simple
+   * @param params - Parámetros de consulta
+   * @param token - Token de autenticación
+   * @returns Promise con las actividades del tanque
+   */
+  async getTankActivities(params: TankActivitiesParams, token?: string): Promise<TankActivitiesResponse> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/postgres/tank-activities`);
+    
+    // Añadir parámetros de consulta
+    if (params.bucket) url.searchParams.append('bucket', params.bucket);
+    if (params.startDate) url.searchParams.append('startDate', params.startDate);
+
+    console.log('=== Fetching Tank Activities ===');
+    console.log('URL:', url.toString());
+    console.log('Params:', params);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    console.log('=== Tank Activities Response ===');
+    console.log('Raw response:', result);
+    
+    return result;
+  },
 };
+
+export interface FarmActivitiesParams {
+  page?: number;
+  daysPerPage?: number;
+  startDate?: string;
+  endDate?: string;
+  bucket?: string;
+}
+
+export interface TankStateInterval {
+  start_time: string;
+  end_time: string;
+  state: string;
+}
+
+export interface FarmActivitiesResponse {
+  success: boolean;
+  summary: {
+    numCycles: number;
+    avgDurationCycles: string;
+    numMilkings: number;
+    avgDurationMilkings: string;
+    numAgitations: number;
+    numEmptyings: number;
+    numWashings: number;
+    coolingRate: string;
+  };
+  timeline: Array<{
+    id: string;
+    schedule: Array<{
+      start: string;
+      end: string;
+      day: number;
+      date?: string;
+    }>;
+  }>;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    daysPerPage: number;
+    totalDays: number;
+    visibleDates: string[];
+  };
+  rawStats: {
+    [state: string]: {
+      count: number;
+      totalDuration: number;
+      intervals: Array<{
+        start: string;
+        end: string;
+        duration: number;
+      }>;
+    };
+  };
+}
+
+export interface TankActivitiesParams {
+  startDate?: string;
+  bucket?: string;
+}
+
+export interface TankActivity {
+  startTime: string;
+  endTime: string;
+  state: string;
+}
+
+export interface TankActivitiesResponse extends Array<TankActivity> {}
 
 /**
  * Hook para gestionar datos históricos
@@ -273,12 +431,36 @@ export function useHistoricalData() {
       setLoading(true);
       setError(null);
 
+      console.log('=== Fetching Historical Data ===');
+      console.log('Params:', params);
+      console.log('Token available:', !!token);
+
       const data = await DanielService.getHistoricalData(params, token);
+
+      console.log('=== Historical Data Response ===');
+      console.log('Raw data received:', data);
+      console.log('Data keys:', Object.keys(data));
+      console.log('Data length:', Object.keys(data).length);
 
       if (!data || Object.keys(data).length === 0) {
         setHistoricalData(null);
         setError("No historical data found for the selected filters.");
         return;
+      }
+
+      // Log sample data for debugging
+      const timeKeys = Object.keys(data);
+      if (timeKeys.length > 0) {
+        const firstTime = timeKeys[0];
+        console.log('Sample data for time', firstTime, ':', data[firstTime]);
+        
+        // Log all available measurements
+        const measurements = Object.keys(data[firstTime]);
+        console.log('Available measurements:', measurements);
+        
+        measurements.forEach(measurement => {
+          console.log(`Measurement ${measurement}:`, data[firstTime][measurement]);
+        });
       }
 
       setHistoricalData(data);
@@ -456,30 +638,99 @@ export function useTankStatePrediction() {
  * Proporciona estado y métodos para cargar datos del caché
  */
 export function useCachedData() {
-  const [data, setData] = useState<any>(null);
+  const [cachedData, setCachedData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadCachedData = async (farmId: string, boardId: string, token?: string) => {
-    setLoading(true);
-    setError(null);
-
     try {
-      const result = await DanielService.getCachedData(farmId, boardId, token);
-      setData(result);
+      setLoading(true);
+      setError(null);
+      const data = await DanielService.getCachedData(farmId, boardId, token);
+      setCachedData(data);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : 'Error desconocido');
       logger.error('Error loading cached data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  return {
-    data,
-    loading,
-    error,
-    loadCachedData,
+  return { cachedData, loading, error, loadCachedData };
+}
+
+/**
+ * Hook para obtener los estados del tanque desde farm-activities
+ */
+export function useFarmActivities() {
+  const [farmActivities, setFarmActivities] = useState<FarmActivitiesResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadFarmActivities = async (params: FarmActivitiesParams, token?: string) => {
+    try {
+    setLoading(true);
+    setError(null);
+
+      console.log('=== Loading Farm Activities ===');
+      console.log('Params:', params);
+      console.log('Token available:', !!token);
+
+      const data = await DanielService.getFarmActivities(params, token);
+      
+      console.log('=== Farm Activities Data ===');
+      console.log('Success:', data.success);
+      console.log('Summary:', data.summary);
+      console.log('Timeline length:', data.timeline?.length);
+      console.log('Raw stats keys:', Object.keys(data.rawStats || {}));
+
+      setFarmActivities(data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      setFarmActivities(null);
+      setError(errorMessage);
+      logger.error('Error loading farm activities:', err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  return { farmActivities, loading, error, loadFarmActivities };
+} 
+
+/**
+ * Hook para obtener las actividades del tanque
+ */
+export function useTankActivities() {
+  const [tankActivities, setTankActivities] = useState<TankActivitiesResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadTankActivities = async (params: TankActivitiesParams, token?: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('=== Loading Tank Activities ===');
+      console.log('Params:', params);
+      console.log('Token available:', !!token);
+
+      const data = await DanielService.getTankActivities(params, token);
+      
+      console.log('=== Tank Activities Data ===');
+      console.log('Activities count:', data?.length);
+      console.log('Activities:', data);
+
+      setTankActivities(data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      setTankActivities(null);
+      setError(errorMessage);
+      logger.error('Error loading tank activities:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { tankActivities, loading, error, loadTankActivities };
 } 

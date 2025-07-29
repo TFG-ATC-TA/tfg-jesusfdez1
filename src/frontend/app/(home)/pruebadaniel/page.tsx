@@ -6,7 +6,7 @@
 
 'use client'
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSession } from "next-auth/react";
 import PageContainer from '@/components/layout/page-container';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,7 +42,7 @@ export default function PruebaDanielPage() {
   const { data: session } = useSession();
   const [selectedFarm] = useState<string>('synthetic-farm-1');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [boardIds] = useState<string[]>(['01', '02']);
+  const [boardIds] = useState<string[]>(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']);
   const [selectedBoard] = useState<string>('6_dof_imu');
   const [selectedData, setSelectedData] = useState<string | null>(null);
   const [isSensorsTabVisible, setIsSensorsTabVisible] = useState(true);
@@ -95,6 +95,21 @@ export default function PruebaDanielPage() {
     selectedTank: selectedTank?.name || 'default-tank',
   });
 
+  // Cargar estados del tanque cuando cambien los filtros
+  useEffect(() => {
+    const shouldFetchTankStates = selectedFarm && (filters.selectedDate || dateRange);
+    
+    if (shouldFetchTankStates) {
+      console.log('=== Auto-loading Tank States ===');
+      console.log('Selected Farm:', selectedFarm);
+      console.log('Selected Date:', filters.selectedDate);
+      console.log('Date Range:', dateRange);
+      
+      // Llamar directamente a fetchTankStates sin incluirlo en las dependencias
+      fetchTankStates();
+    }
+  }, [selectedFarm, filters.selectedDate, dateRange?.from, dateRange?.to]); // Removido fetchTankStates de las dependencias
+
   // Función para obtener el color del estado
   const getStateColor = (state: string) => {
     switch (state) {
@@ -132,6 +147,13 @@ export default function PruebaDanielPage() {
       tank: { height: 100 } // Altura del tanque en cm
     };
 
+    console.log('=== Loading Historical Data ===');
+    console.log('Params sent to backend:', params);
+    console.log('Selected Farm:', selectedFarm);
+    console.log('Selected Date:', selectedDate);
+    console.log('Board IDs:', boardIds);
+    console.log('Tank Height:', 100);
+
     await fetchHistoricalData(params, session?.accessToken);
   };
 
@@ -141,6 +163,11 @@ export default function PruebaDanielPage() {
   const processRealTimeDataForModel = () => {
     // Buscar datos de IMU (6_dof_imu)
     const imuData = realTimeData?.find((data: any) => data.topic?.includes('6_dof_imu'))?.processedData;
+    
+    // Buscar datos del giroscopio en datos históricos
+    const gyroscopeData = realTimeData?.find((data: any) => 
+      data.topic?.includes('gyroscope') || data.topic?.includes('6_dof_imu')
+    )?.processedData;
     
     // Buscar otros tipos de datos con diferentes patrones de topic
     const encoderData = realTimeData?.find((data: any) => 
@@ -170,9 +197,26 @@ export default function PruebaDanielPage() {
     // Procesar datos de IMU para simular encoder solo si están disponibles
     const processedEncoderData = imuData ? {
       value: {
-        angle: Math.atan2(imuData.value.accel_y, imuData.value.accel_x) * (180 / Math.PI),
-        position: Math.abs(imuData.value.accel_z) / 2, // Normalizar a 0-1
-        speed: Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10
+        // Estructura para el visor 3D (claves numéricas) - solo velocidad
+        "00": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
+        "01": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
+        // Estructura para el modal (propiedades nombradas) - con todos los valores
+        angle: parseFloat((Math.atan2(imuData.value.accel_y, imuData.value.accel_x) * (180 / Math.PI)).toFixed(2)),
+        position: parseFloat((Math.abs(imuData.value.accel_z) / 2).toFixed(2)), // Normalizar a 0-1
+        speed: parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2))
+      }
+    } : undefined;
+
+    // Procesar datos reales del encoder para que tengan estructura dual
+    const processedRealEncoderData = encoderData ? {
+      value: {
+        // Estructura para el visor 3D (claves numéricas) - solo velocidad
+        "00": parseFloat((encoderData.value?.speed || encoderData.value?.["00"] || 0).toFixed(2)),
+        "01": parseFloat((encoderData.value?.speed || encoderData.value?.["01"] || 0).toFixed(2)),
+        // Estructura para el modal (propiedades nombradas) - con todos los valores
+        angle: parseFloat((encoderData.value?.angle || encoderData.value?.["00"] || 0).toFixed(2)),
+        position: parseFloat((encoderData.value?.position || 0).toFixed(2)),
+        speed: parseFloat((encoderData.value?.speed || encoderData.value?.["01"] || 0).toFixed(2))
       }
     } : undefined;
 
@@ -229,13 +273,35 @@ export default function PruebaDanielPage() {
       value: Math.abs(imuData.value.accel_x) > 1.5 // Simular switch basado en aceleración
     } : undefined;
 
+    // Procesar datos del giroscopio - usar datos reales o simular basado en IMU
+    const processedGyroscopeData = gyroscopeData ? {
+      value: {
+        gyro_x: gyroscopeData.value?.gyro_x || gyroscopeData.value?.gyro_x_value || 0,
+        gyro_y: gyroscopeData.value?.gyro_y || gyroscopeData.value?.gyro_y_value || 0,
+        gyro_z: gyroscopeData.value?.gyro_z || gyroscopeData.value?.gyro_z_value || 0,
+        accel_x: gyroscopeData.value?.accel_x || gyroscopeData.value?.accel_x_value || 0,
+        accel_y: gyroscopeData.value?.accel_y || gyroscopeData.value?.accel_y_value || 0,
+        accel_z: gyroscopeData.value?.accel_z || gyroscopeData.value?.accel_z_value || 0
+      }
+    } : imuData ? {
+      value: {
+        gyro_x: imuData.value.gyro_x,
+        gyro_y: imuData.value.gyro_y,
+        gyro_z: imuData.value.gyro_z,
+        accel_x: imuData.value.accel_x,
+        accel_y: imuData.value.accel_y,
+        accel_z: imuData.value.accel_z
+      }
+    } : undefined;
+
     const result = {
-      encoderData: encoderData || processedEncoderData,
+      encoderData: processedRealEncoderData || processedEncoderData,
       milkQuantityData: processedMilkData,
       switchStatus: processedSwitchData,
       weightData: processedWeightData,
       tankTemperaturesData: processedTemperatureData,
-      airQualityData: processedAirData
+      airQualityData: processedAirData,
+      gyroscopeData: processedGyroscopeData
     };
 
     return result;
@@ -245,34 +311,187 @@ export default function PruebaDanielPage() {
 
   // Process historical data to ensure correct structure
   const processHistoricalDataForModel = (historicalData: any) => {
+    console.log('=== processHistoricalDataForModel Debug ===');
+    console.log('Input Historical Data:', historicalData);
+    
     if (!historicalData || typeof historicalData !== 'object') {
+      console.log('No historical data or invalid format');
       return {};
     }
 
     // If it's already in the correct format (from selectedHistoricalData)
     if (historicalData.encoderData || historicalData.airQualityData) {
+      console.log('Data already in correct format');
+      // Asegurar que los datos del encoder tengan estructura dual
+      if (historicalData.encoderData) {
+        console.log('Processing encoder data for dual structure');
+        const encoderValue = historicalData.encoderData.value;
+        console.log('Original encoder value:', encoderValue);
+        
+        // Manejar diferentes estructuras de datos del encoder
+        let angle, speed, position;
+        
+        // Si ya tiene estructura con "00" y "01" (datos históricos del backend)
+        if (encoderValue["00"] !== undefined || encoderValue["01"] !== undefined) {
+          // Usar los valores "00" y "01" como velocidad y ángulo
+          speed = encoderValue["00"] || encoderValue["01"];
+          angle = encoderValue["01"] || encoderValue["00"];
+          position = 0; // No hay posición en datos históricos
+        }
+        // Si es un objeto con propiedades nombradas
+        else if (typeof encoderValue === 'object' && encoderValue !== null) {
+          angle = encoderValue.angle || encoderValue.angle_value;
+          speed = encoderValue.speed || encoderValue.speed_value || encoderValue.rpm;
+          position = encoderValue.position || encoderValue.position_value;
+        }
+        // Si es un valor directo (número)
+        else if (typeof encoderValue === 'number') {
+          speed = encoderValue; // Asumir que es velocidad si es un número directo
+        }
+        
+        if (encoderValue && !encoderValue["00"] && !encoderValue["01"]) {
+          // Si no tiene estructura dual, agregarla
+          historicalData.encoderData.value = {
+            // Estructura para el visor 3D (claves numéricas) - solo velocidad
+            "00": parseFloat((speed || angle || 0).toFixed(2)),
+            "01": parseFloat((speed || angle || 0).toFixed(2)),
+            // Estructura para el modal (propiedades nombradas) - con todos los valores
+            angle: parseFloat((angle || speed || 0).toFixed(2)),
+            position: parseFloat((position || 0).toFixed(2)),
+            speed: parseFloat((speed || angle || 0).toFixed(2))
+          };
+          console.log('Updated encoder value:', historicalData.encoderData.value);
+        } else if (encoderValue["00"] !== undefined || encoderValue["01"] !== undefined) {
+          // Si ya tiene estructura "00"/"01", agregar propiedades nombradas para el modal
+          historicalData.encoderData.value = {
+            ...encoderValue, // Mantener estructura original
+            // Agregar propiedades nombradas para el modal
+            angle: parseFloat((encoderValue["01"] || encoderValue["00"] || 0).toFixed(2)),
+            position: 0, // No hay posición en datos históricos
+            speed: parseFloat((encoderValue["00"] || encoderValue["01"] || 0).toFixed(2))
+          };
+          console.log('Enhanced encoder data with named properties:', historicalData.encoderData.value);
+        }
+      }
+      console.log('Returning processed data:', historicalData);
       return historicalData;
     }
 
     // If it's raw historical data from backend (with time keys)
     const timeKeys = Object.keys(historicalData);
+    console.log('Time keys found:', timeKeys);
     if (timeKeys.length > 0) {
       const firstTime = timeKeys[0];
       const timeData = historicalData[firstTime];
+      console.log('First time data:', timeData);
       
       // Process historical data to match real-time structure
+      let processedEncoderData = timeData.encoderData;
+      console.log('Raw encoder data:', processedEncoderData);
+      if (processedEncoderData && processedEncoderData.value) {
+        const encoderValue = processedEncoderData.value;
+        console.log('Encoder value from time data:', encoderValue);
+        
+        // Manejar diferentes estructuras de datos del encoder
+        let angle, speed, position;
+        
+        // Si ya tiene estructura con "00" y "01" (datos históricos del backend)
+        if (encoderValue["00"] !== undefined || encoderValue["01"] !== undefined) {
+          // Usar los valores "00" y "01" como velocidad y ángulo
+          speed = encoderValue["00"] || encoderValue["01"];
+          angle = encoderValue["01"] || encoderValue["00"];
+          position = 0; // No hay posición en datos históricos
+        }
+        // Si es un objeto con propiedades nombradas
+        else if (typeof encoderValue === 'object' && encoderValue !== null) {
+          angle = encoderValue.angle || encoderValue.angle_value;
+          speed = encoderValue.speed || encoderValue.speed_value || encoderValue.rpm;
+          position = encoderValue.position || encoderValue.position_value;
+        }
+        // Si es un valor directo (número)
+        else if (typeof encoderValue === 'number') {
+          speed = encoderValue; // Asumir que es velocidad si es un número directo
+        }
+        
+        // Si no tiene estructura dual, agregarla
+        if (!encoderValue["00"] && !encoderValue["01"]) {
+          processedEncoderData.value = {
+            // Estructura para el visor 3D (claves numéricas) - solo velocidad
+            "00": parseFloat((speed || angle || 0).toFixed(2)),
+            "01": parseFloat((speed || angle || 0).toFixed(2)),
+            // Estructura para el modal (propiedades nombradas) - con todos los valores
+            angle: parseFloat((angle || speed || 0).toFixed(2)),
+            position: parseFloat((position || 0).toFixed(2)),
+            speed: parseFloat((speed || angle || 0).toFixed(2))
+          };
+          console.log('Processed encoder data:', processedEncoderData.value);
+        } else {
+          // Si ya tiene estructura "00"/"01", agregar propiedades nombradas para el modal
+          processedEncoderData.value = {
+            ...encoderValue, // Mantener estructura original
+            // Agregar propiedades nombradas para el modal
+            angle: parseFloat((encoderValue["01"] || encoderValue["00"] || 0).toFixed(2)),
+            position: 0, // No hay posición en datos históricos
+            speed: parseFloat((encoderValue["00"] || encoderValue["01"] || 0).toFixed(2))
+          };
+          console.log('Enhanced encoder data with named properties:', processedEncoderData.value);
+        }
+      }
+      
       const processedData = {
-        encoderData: timeData.encoderData,
-        milkQuantityData: timeData.milkQuantityData,
-        switchStatus: timeData.switchStatus,
-        weightData: timeData.weightData,
-        tankTemperaturesData: timeData.tankTemperaturesData,
-        airQualityData: timeData.airQualityData,
+        encoderData: processedEncoderData,
+        milkQuantityData: timeData.milkQuantityData ? {
+          ...timeData.milkQuantityData,
+          value: timeData.milkQuantityData.value // El valor viene directamente en datos históricos
+        } : undefined,
+        switchStatus: timeData.switchStatus ? {
+          ...timeData.switchStatus,
+          value: timeData.switchStatus.value // El valor viene directamente en datos históricos
+        } : undefined,
+        weightData: timeData.weightData ? {
+          ...timeData.weightData,
+          value: timeData.weightData.value // El valor viene directamente en datos históricos
+        } : undefined,
+        tankTemperaturesData: timeData.tankTemperaturesData ? {
+          ...timeData.tankTemperaturesData,
+          value: {
+            // Mapear campos de temperatura específicos
+            surface_temperature: timeData.tankTemperaturesData.value?.surface_temperature,
+            over_surface_temperature: timeData.tankTemperaturesData.value?.over_surface_temperature,
+            submerged_temperature: timeData.tankTemperaturesData.value?.submerged_temperature
+          }
+        } : undefined,
+        airQualityData: timeData.airQualityData ? {
+          ...timeData.airQualityData,
+          value: {
+            // Extraer humidity y temperature de los datos históricos
+            humidity: timeData.airQualityData.value?.heat_compensated_humidity || 
+                     timeData.airQualityData.value?.raw_humidity ||
+                     timeData.airQualityData.value?.humidity,
+            temperature: timeData.airQualityData.value?.heat_compensated_temperature || 
+                        timeData.airQualityData.value?.raw_temperature ||
+                        timeData.airQualityData.value?.temperature
+          }
+        } : undefined,
+        gyroscopeData: timeData.gyroscopeData ? {
+          ...timeData.gyroscopeData,
+          value: {
+            // Extraer datos del giroscopio de los datos históricos
+            gyro_x: timeData.gyroscopeData.value?.gyro_x,
+            gyro_y: timeData.gyroscopeData.value?.gyro_y,
+            gyro_z: timeData.gyroscopeData.value?.gyro_z,
+            accel_x: timeData.gyroscopeData.value?.accel_x,
+            accel_y: timeData.gyroscopeData.value?.accel_y,
+            accel_z: timeData.gyroscopeData.value?.accel_z
+          }
+        } : undefined,
       };
 
+      console.log('Final processed data:', processedData);
       return processedData;
     }
 
+    console.log('No valid data structure found');
     return {};
   };
 
@@ -286,11 +505,21 @@ export default function PruebaDanielPage() {
         weightData: modelData.weightData,
         tankTemperaturesData: modelData.tankTemperaturesData,
         airQualityData: modelData.airQualityData,
+        gyroscopeData: modelData.gyroscopeData,
       };
     } else {
       // Historical mode
       const historicalDataToProcess = selectedHistoricalData || historicalData;
-      return processHistoricalDataForModel(historicalDataToProcess);
+      console.log('=== Historical Data Debug ===');
+      console.log('Mode:', mode);
+      console.log('Selected Historical Data:', selectedHistoricalData);
+      console.log('Historical Data:', historicalData);
+      console.log('Data to Process:', historicalDataToProcess);
+      
+      const processedData = processHistoricalDataForModel(historicalDataToProcess);
+      console.log('Processed Historical Data:', processedData);
+      
+      return processedData;
     }
   };
 
@@ -540,6 +769,7 @@ export default function PruebaDanielPage() {
                   weightData={unifiedData?.weightData}
                   tankTemperaturesData={unifiedData?.tankTemperaturesData}
                   airQualityData={unifiedData?.airQualityData}
+                  gyroscopeData={unifiedData?.gyroscopeData}
                   selectedData={selectedData}
                 />
             </div>

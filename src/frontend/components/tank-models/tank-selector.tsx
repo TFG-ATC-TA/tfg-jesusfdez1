@@ -18,6 +18,7 @@ interface TankSelectorProps {
     readableDate?: string;
   };
   airQualityData?: { value: { humidity: number; temperature: number } };
+  gyroscopeData?: { value: { gyro_x?: number; gyro_y?: number; gyro_z?: number; accel_x?: number; accel_y?: number; accel_z?: number } };
   selectedData?: string | null;
   selectedTank?: string;
   onTankChange?: (tank: string) => void;
@@ -32,6 +33,7 @@ export function TankSelector({
   weightData,
   tankTemperaturesData,
   airQualityData,
+  gyroscopeData,
   selectedData,
   selectedTank = 'horizontal-2-blades',
   onTankChange,
@@ -55,6 +57,7 @@ export function TankSelector({
       weightData={weightData}
       tankTemperaturesData={tankTemperaturesData}
       airQualityData={airQualityData}
+      gyroscopeData={gyroscopeData}
       selectedData={selectedData}
     />
   );
