@@ -5,7 +5,7 @@
  */
 
 import { NavItem } from '@/types';
-import { Tractor, Users, TabletSmartphone, Bell } from 'lucide-react';
+import { Tractor, Users, TabletSmartphone, Bell, TestTube } from 'lucide-react';
 
 /**
  * Elementos de navegación para el menú lateral
@@ -17,6 +17,7 @@ export const navItems: NavItem[] = [
     { name: 'Usuarios', icon: Users, href: '/users', roles: ['Administrador'], description: 'Administra los usuarios del sistema' },
     { name: 'Dispositivos', icon: TabletSmartphone, href: '/devices', roles: ['Administrador'], description: 'Administra los dispositivos del sistema' },
     { name: 'Notificaciones', icon: Bell, href: '/notifications', roles: ['Administrador', 'Ganadero', 'Veterinario', 'Industria'], description: 'Accede a las notificaciones del sistema' },
+    { name: 'Prueba Daniel', icon: TestTube, href: '/pruebadaniel', roles: ['Administrador', 'Ganadero', 'Veterinario', 'Industria'], description: 'Funcionalidades básicas del frontend de Daniel López' },
   ];
 
 /**

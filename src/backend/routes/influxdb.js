@@ -8,12 +8,17 @@ var router = express.Router();
 const { connectInfluxDB } = require('../config/connection');
 const cors = require('cors');
 const { verifyToken } = require('../middleware/auth');
+const { 
+  badRequest, 
+  internalError 
+} = require('../utils/responseHandler');
 
 // Importar el sistema de console personalizado
 const devConsole = require('../utils/console');
 
 /* GET home page. */
 router.use(cors());
+router.use(express.json());
   
 /**
  * Construye la consulta de InfluxDB basada en los parámetros de la petición
@@ -89,6 +94,163 @@ router.get('/data', verifyToken, async function(req, res, next) {
         devConsole.error('Error constructing query:', error);
         res.send(JSON.stringify([])); // Send empty JSON array in case of error
     }
+});
+
+/**
+ * POST /history/historicalData - Obtener datos históricos de InfluxDB
+ * Filtra por granja, fecha, boardIds y tanque
+ * Adaptado del proyecto tfg-DaniLopez23
+ */
+router.post('/historicalData', verifyToken, async (req, res) => {
+  const { farm, date, boardIds, tank } = req.body;
+  devConsole.log("Received filters:", { farm, date, boardIds, tank });
+
+  try {
+    if (!date) {
+      return badRequest(res, 'No date selected.');
+    }
+
+    if (!Array.isArray(boardIds) || boardIds.length === 0) {
+      return badRequest(res, 'Must provide a valid array of board IDs.');
+    }
+
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const stopDate = new Date(date);
+    stopDate.setHours(23, 59, 59, 999);
+
+    if (isNaN(startDate.getTime()) || isNaN(stopDate.getTime())) {
+      return badRequest(res, 'Fechas inválidas');
+    }
+
+    const start = startDate.toISOString();
+    const stop = stopDate.toISOString();
+
+    const validBoardIds = boardIds.filter(
+      (id) => typeof id === "string" && id.trim() !== ""
+    );
+
+    if (validBoardIds.length === 0) {
+      return badRequest(res, 'All provided board IDs are invalid.');
+    }
+
+    const fluxQuery = `
+      from(bucket: "${farm}")
+        |> range(start: ${start}, stop: ${stop})
+        |> filter(fn: (r) => r["_measurement"] == "6_dof_imu" or r["_measurement"] == "air_quality" or r["_measurement"] == "encoder" or r["_measurement"] == "magnetic_switch" or r["_measurement"] == "tank_distance" or r["_measurement"] == "weight" or r["_measurement"] == "temperature_probe")
+        |> filter(fn: (r) => ${validBoardIds
+          .map((id) => `r["tags_board_id"] == "${id}"`)
+          .join(" or ")})
+        |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)
+        |> yield(name: "mean")
+    `;
+
+    devConsole.log("Executing query:", fluxQuery);
+
+    const result = await connectInfluxDB.getQueryApi(process.env.INFLUXDB_ORG).collectRows(fluxQuery);
+
+    if (!result || result.length === 0) {
+      devConsole.log("No historical data found for the given filters.");
+      return res.status(200).json({
+        message: "No historical data found for the selected filters.",
+        data: null,
+      });
+    }
+    
+    const formattedResult = {};
+
+    result.forEach((row) => {
+      const time = new Date(row._time).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: "UTC",
+      });
+
+      const {
+        _measurement: measurement,
+        _field: rawField,
+        _value: rawValue,
+        tags_board_id: boardId,
+        tags_sensor_id: sensorId,
+        ...tags
+      } = row;
+
+      // Redondear el valor a 2 decimales
+      const value = parseFloat(rawValue.toFixed(2));
+
+      // Limpiar el nombre del campo eliminando el prefijo "fields_"
+      const field = rawField.startsWith("fields_")
+        ? rawField.replace("fields_", "")
+        : rawField;
+
+      // Determine the key for the formatted result based on the measurement
+      const measurementMap = {
+        "6_dof_imu": "gyroscopeData",
+        air_quality: "airQualityData",
+        encoder: "encoderData",
+        magnetic_switch: "switchStatus",
+        tank_distance: "milkQuantityData",
+        weight: "weightData",
+        temperature_probe: "tankTemperaturesData",
+      };
+
+      const key = measurementMap[measurement] || measurement;
+
+      if (!formattedResult[time]) {
+        formattedResult[time] = {};
+      }
+
+      if (!formattedResult[time][key]) {
+        formattedResult[time][key] = {
+          measurement,
+          tags: {
+            board_id: boardId,
+            sensor_id: sensorId,
+            ...tags,
+          },
+          readableDate: new Date(row._time).toLocaleString("en-US", {
+            timeZone: "UTC",
+          }),
+          value: {}, // Initialize as an object to handle multiple fields
+        };
+      }
+
+      // Handle specific cases for weight and encoder
+      if (measurement === "weight" || measurement === "encoder") {
+        if (typeof formattedResult[time][key].value !== "object") {
+          formattedResult[time][key].value = {};
+        }
+        formattedResult[time][key].value[sensorId] = value;
+      } else if (measurement === "tank_distance") {
+        // Only include the "range" field for milkQuantityData and apply the calculation
+        if (field === "range" && tank?.height) {
+          formattedResult[time][key].value = (value / tank.height) * 100;
+        }
+      } else {
+        // For other measurements, store multiple fields in the value object
+        formattedResult[time][key].value[field] = value;
+      }
+    });
+
+    // Post-process to handle cases where only one field exists
+    Object.keys(formattedResult).forEach((time) => {
+      Object.keys(formattedResult[time]).forEach((key) => {
+        const valueObj = formattedResult[time][key].value;
+
+        // If there's only one field, convert the value object to a single value
+        const fields = Object.keys(valueObj);
+        if (fields.length === 1) {
+          formattedResult[time][key].value = valueObj[fields[0]];
+        }
+      });
+    });
+
+    return res.status(200).json(formattedResult);
+  } catch (error) {
+    devConsole.error("Error executing query:", error);
+    return internalError(res, 'Error executing query', error);
+  }
 });
 
 module.exports = router;

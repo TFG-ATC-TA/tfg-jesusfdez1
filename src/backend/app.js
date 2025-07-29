@@ -18,6 +18,7 @@ var influxdbRouter = require('./routes/influxdb');
 var postgresRouter = require('./routes/postgresql');
 var collectionRouter = require('./routes/collection');
 var notificationRouter = require('./routes/notification');
+var predictTankStateRouter = require('./routes/predictTankState');
 
 // Importar el sistema de console personalizado para logging
 const devConsole = require('./utils/console');
@@ -47,6 +48,7 @@ app.use('/history', influxdbRouter); // Historial de datos (InfluxDB)
 app.use('/postgres', postgresRouter); // Datos de PostgreSQL
 app.use('/collection', collectionRouter); // Gestión de recolección de leche
 app.use('/notification', notificationRouter); // Gestión de notificaciones
+app.use('/predictTankState', predictTankStateRouter); // Predicción de estados del tanque
 
 // Conectar a la base de datos MongoDB al iniciar la aplicación
 connectDB.connectMongoDB();

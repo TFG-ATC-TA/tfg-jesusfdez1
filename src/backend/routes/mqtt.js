@@ -9,6 +9,8 @@ const express = require('express');
 const { verifyToken } = require('../middleware/auth');
 const Farm = require('../models/Farm');
 const { connectMQTT } = require('../config/connection');
+const dataHandling = require('../utils/dataHandling');
+const cacheService = require('../services/cache');
 
 // Importar el sistema de console personalizado
 const devConsole = require('../utils/console');
@@ -29,15 +31,36 @@ module.exports = function(wss) {
    * Parsea los mensajes MQTT y los reenvía a los clientes WebSocket suscritos
    */
   client.on('message', function (topic, message) {
-    const payload = JSON.parse(message.toString().replace(/\\\\/g, '\\'));
-    const [from, info] = topic.split('/');
-
-    // Transmitir mensaje a clientes WebSocket relevantes
-    wss.clients.forEach(function (ws) {
-      if (ws.readyState === WebSocket.OPEN && ws.from === from && ws.info === info) {
-        ws.send(JSON.stringify({ topic, payload }));
+    try {
+      const rawData = message.toString();
+      const [from, info] = topic.split('/');
+      
+      // Procesar datos usando la utilidad de Daniel
+      const processedData = dataHandling.processData(topic, rawData);
+      
+      // Actualizar caché con los datos procesados
+      if (processedData) {
+        cacheService.updateSensorData(from, info, processedData);
       }
-    });
+      
+      // Preparar payload para WebSocket (mantener compatibilidad)
+      const payload = JSON.parse(rawData.replace(/\\\\/g, '\\'));
+      
+      // Transmitir mensaje a clientes WebSocket relevantes
+      wss.clients.forEach(function (ws) {
+        if (ws.readyState === WebSocket.OPEN && ws.from === from && ws.info === info) {
+          ws.send(JSON.stringify({ 
+            topic, 
+            payload,
+            processedData: processedData // Incluir datos procesados
+          }));
+        }
+      });
+      
+      devConsole.log(`MQTT message processed for topic: ${topic}`);
+    } catch (error) {
+      devConsole.error('Error processing MQTT message:', error);
+    }
   });  
   
   /**
@@ -109,6 +132,45 @@ module.exports = function(wss) {
       client.subscribe(`${from}/${info}`);
     }    ws.from = from;
     ws.info = info;
+  });
+
+  /**
+   * Obtener datos del caché para un board específico
+   * GET /realtime/cache/:farmId/:boardId
+   */
+  router.get('/cache/:farmId/:boardId', verifyToken, async (req, res) => {
+    try {
+      const { farmId, boardId } = req.params;
+      
+      // Verificar acceso a la granja
+      const hasAccess = await checkFarmAccess(req.user, farmId);
+      if (!hasAccess) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Acceso denegado a la granja' 
+        });
+      }
+      
+      const cachedData = cacheService.getBoardData(farmId, boardId);
+      
+      if (!cachedData) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'No hay datos en caché para este board' 
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: cachedData
+      });
+    } catch (error) {
+      devConsole.error('Error getting cached data:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
   });
 
   return router;
