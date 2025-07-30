@@ -105,25 +105,85 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/historicalData`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(params),
-    });
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const url = `${baseUrl}/history/historicalData`;
+    console.log('=== API Call Details ===');
+    console.log('Base URL:', baseUrl);
+    console.log('Full URL:', url);
+    console.log('Params:', params);
+    console.log('Headers:', headers);
+    console.log('Token available:', !!token);
+    console.log('Token length:', token ? token.length : 0);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(params),
+      });
 
-    const result = await response.json();
-    
-    // Si el resultado tiene un campo data null, significa que no hay datos
-    if (result.data === null) {
-      return {};
+      console.log('=== Response Details ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        let errorData = null;
+        
+        try {
+          errorData = await response.json();
+          console.log('Error response data:', errorData);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (parseError) {
+          console.log('Could not parse error response as JSON, using status text');
+          errorMessage = response.statusText || errorMessage;
+        }
+        
+        // Log specific error details
+        console.error('=== HTTP Error Details ===');
+        console.error('Status:', response.status);
+        console.error('Status Text:', response.statusText);
+        console.error('Error Data:', errorData);
+        console.error('Final Error Message:', errorMessage);
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('=== Success Response ===');
+      console.log('Result type:', typeof result);
+      console.log('Result keys:', Object.keys(result));
+      console.log('Result data:', result);
+      
+      // Si el resultado tiene un campo data null, significa que no hay datos
+      if (result.data === null) {
+        console.log('Data field is null, returning empty object');
+        return {};
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('=== API Call Error ===');
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+      
+      // Provide more specific error messages
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose.');
+      } else if (error instanceof Error) {
+        // Ensure the error message is not undefined
+        const message = error.message || 'Error desconocido al cargar datos históricos';
+        throw new Error(message);
+      } else if (typeof error === 'string') {
+        throw new Error(error);
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        throw new Error(String((error as any).message));
+      } else {
+        throw new Error('Error desconocido al cargar datos históricos');
+      }
     }
-    
-    return result;
   },
 
   /**
@@ -465,7 +525,26 @@ export function useHistoricalData() {
 
       setHistoricalData(data);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      console.error('=== Hook Error Details ===');
+      console.error('Error type:', typeof err);
+      console.error('Error message:', err instanceof Error ? err.message : err);
+      console.error('Error stack:', err instanceof Error ? err.stack : 'No stack');
+      
+      // Ensure we always have a clear error message
+      let errorMessage = 'Error desconocido al cargar datos históricos';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message || errorMessage;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = String((err as any).message);
+      } else if (err && typeof err === 'object' && 'error' in err) {
+        errorMessage = String((err as any).error);
+      }
+      
+      console.error('Final error message to display:', errorMessage);
+      
       setHistoricalData(null);
       setError(errorMessage);
       logger.error('Error loading historical data:', err);

@@ -333,7 +333,15 @@ router.post('/historicalData', verifyToken, async (req, res) => {
     return res.status(200).json(formattedResult);
   } catch (error) {
     devConsole.error("Error executing query:", error);
-    return internalError(res, 'Error executing query', error);
+    devConsole.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      type: typeof error
+    });
+    
+    // Ensure we always return a proper error message
+    const errorMessage = error.message || 'Error executing query';
+    return internalError(res, errorMessage, error);
   }
 });
 

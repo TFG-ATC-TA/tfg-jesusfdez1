@@ -116,9 +116,9 @@ const StateSummaryModal = ({ isOpen, onClose, intervals, currentDate }: {
                   <div className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: STATE_COLORS[state] }} />
                   <span className="font-medium">{state}</span>
                 </div>
-                <div className="text-sm text-gray-600 flex flex-col items-end">
+                <div className="text-sm text-muted-foreground flex flex-col items-end">
                   <span>{formatDuration(stats.totalDuration)}</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground/70">
                     {stats.count} {stats.count === 1 ? "intervalo" : "intervalos"}
                   </span>
                 </div>
@@ -222,7 +222,7 @@ const TimeSlider = ({
     <div className={cn("relative pt-6 pb-6 h-[40px]", className)} {...props}>
       {/* Current time display - positioned above the slider */}
       <div
-        className="absolute font-medium bg-white px-1.5 py-0.5 rounded-md shadow-sm border text-xs"
+        className="absolute font-medium bg-background border border-border px-1.5 py-0.5 rounded-md shadow-sm text-xs text-foreground"
         style={{
           left: `${((value - min) / (max - min)) * 100}%`,
           transform: "translateX(-50%)",
@@ -236,7 +236,7 @@ const TimeSlider = ({
       {/* Render interval segments */}
       <div
         ref={sliderRef}
-        className="absolute h-3 top-6 left-0 right-0 bg-gray-100 rounded-full overflow-hidden shadow-inner"
+        className="absolute h-3 top-6 left-0 right-0 bg-muted rounded-full overflow-hidden shadow-inner"
       >
         {intervals.map((interval, index) => {
           // Calculate position and width as percentages
@@ -289,7 +289,7 @@ const TimeSlider = ({
       </SliderPrimitive.Root>
 
       {/* Time labels */}
-      <div className="absolute left-0 right-0 mt-1 flex justify-between text-xs text-gray-500">
+      <div className="absolute left-0 right-0 mt-1 flex justify-between text-xs text-muted-foreground">
         <span>{formatMinutesToTime(min)}</span>
         <span>{formatMinutesToTime(max)}</span>
       </div>
@@ -304,7 +304,7 @@ const StateLegend = ({ states }: { states: string[] }) => {
       {states.map((state) => (
         <div key={state} className="flex items-center">
           <div className="w-3 h-3 rounded-full mr-1" style={{ backgroundColor: STATE_COLORS[state] }} />
-          <span className="text-xs text-gray-600">{state}</span>
+          <span className="text-xs text-muted-foreground">{state}</span>
         </div>
       ))}
     </div>

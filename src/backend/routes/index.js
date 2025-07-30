@@ -22,6 +22,18 @@ router.use(cors());
 router.use(express.json());
 
 /**
+ * GET /health - Health check endpoint
+ * Verifica que el servidor esté funcionando correctamente
+ */
+router.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'Healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+/**
  * Configuración de rate limiting para intentos de login
  * Limita a 5 intentos por IP en 30 minutos
  * Penalización de 24 horas tras exceder el límite

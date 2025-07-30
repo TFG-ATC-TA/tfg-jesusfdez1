@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronLeft } from 'lucide-react';
 import { useSidebar } from '@/hooks/useSidebar';
@@ -16,50 +16,12 @@ import { UserNav } from '@/components/layout/user-nav';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { DanielService } from '@/services/daniel-service';
 
 /**
  * Props del componente Sidebar
  */
 type SidebarProps = {
   className?: string;
-};
-
-/**
- * Función para obtener el color del estado del tanque
- */
-const getTankStateColor = (state: string) => {
-  switch (state.toUpperCase()) {
-    case 'MILKING':
-      return 'border-green-500 bg-green-50 dark:bg-green-900/20';
-    case 'COOLING':
-      return 'border-blue-500 bg-blue-50 dark:bg-blue-900/20';
-    case 'CLEANING':
-      return 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20';
-    case 'MAINTENANCE':
-      return 'border-purple-500 bg-purple-50 dark:bg-purple-900/20';
-    case 'EMPTY TANK':
-      return 'border-red-500 bg-red-50 dark:bg-red-900/20';
-    default:
-      return 'border-gray-300 bg-card';
-  }
-};
-
-/**
- * Función para obtener el estado actual del tanque basado en la hora
- */
-const getCurrentTankState = (activities: any[], currentTime: Date) => {
-  if (!activities || activities.length === 0) return null;
-
-  const currentTimeStr = currentTime.toISOString();
-  
-  for (const activity of activities) {
-    if (currentTimeStr >= activity.startTime && currentTimeStr <= activity.endTime) {
-      return activity.state;
-    }
-  }
-  
-  return null;
 };
 
 /**
@@ -71,60 +33,11 @@ export default function Sidebar({ className }: SidebarProps) {
   const { data: session } = useSession();
   const { isMinimized, toggle } = useSidebar();
   const pathname = usePathname();
-  const [currentTankState, setCurrentTankState] = useState<string | null>(null);
-  const [tankActivities, setTankActivities] = useState<any[]>([]);
-
-  // Obtener las actividades del tanque para la fecha actual
-  useEffect(() => {
-    const fetchTankActivities = async () => {
-      try {
-        console.log('=== Sidebar: Fetching Tank Activities ===');
-        const today = new Date().toISOString().split('T')[0];
-        const activities = await DanielService.getTankActivities({
-          startDate: today,
-          bucket: 'synthetic-farm-1'
-        });
-        
-        console.log('=== Sidebar: Activities Received ===');
-        console.log('Activities count:', activities?.length);
-        console.log('Activities:', activities);
-        
-        setTankActivities(activities || []);
-      } catch (error) {
-        console.error('Error fetching tank activities:', error);
-      }
-    };
-
-    fetchTankActivities();
-  }, []); // Solo se ejecuta una vez al montar el componente
-
-  // Actualizar el estado actual cada minuto
-  useEffect(() => {
-    const updateCurrentState = () => {
-      const currentState = getCurrentTankState(tankActivities, new Date());
-      console.log('=== Sidebar: Current Tank State ===');
-      console.log('Current state:', currentState);
-      console.log('Activities available:', tankActivities.length);
-      setCurrentTankState(currentState);
-    };
-
-    // Actualizar inmediatamente
-    updateCurrentState();
-    
-    // Actualizar cada minuto
-    const interval = setInterval(updateCurrentState, 60000);
-
-    return () => clearInterval(interval);
-  }, [tankActivities]); // Se ejecuta cuando cambian las actividades
-
-  // Obtener el color del estado actual
-  const sidebarColorClass = currentTankState ? getTankStateColor(currentTankState) : 'border-gray-300 bg-card';
 
   return (
     <aside
       className={cn(
-        `relative hidden h-screen flex-none border-r transition-all duration-300 ease-in-out md:flex md:flex-col z-30`,
-        `border-l-4 ${sidebarColorClass}`,
+        `relative hidden h-screen flex-none border-r bg-card transition-all duration-300 ease-in-out md:flex md:flex-col z-30`,
         !isMinimized ? 'w-64' : 'w-20',
         className
       )}

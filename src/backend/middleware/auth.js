@@ -13,17 +13,35 @@ const User = require('../models/User');
  */
 module.exports.verifyToken = async function (req, res, next) {
   const authHeader = req.headers['authorization'];
-  if (!authHeader) return res.status(401).json({ message: 'Acceso denegado. No hay token proporcionado.' });
+  if (!authHeader) {
+    console.error('No authorization header provided');
+    return res.status(401).json({ 
+      success: false,
+      message: 'Acceso denegado. No hay token proporcionado.' 
+    });
+  }
 
   // Extraer el token del header "Bearer <token>"
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+
+  if (!token) {
+    console.error('No token found in authorization header');
+    return res.status(401).json({ 
+      success: false,
+      message: 'Token no encontrado en el header de autorización.' 
+    });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded.user;
     next();
   } catch (err) {
-    res.status(401).json({ message: 'Token inválido.' });
+    console.error('Token verification failed:', err.message);
+    res.status(401).json({ 
+      success: false,
+      message: 'Token inválido o expirado.' 
+    });
   }
 };
 
