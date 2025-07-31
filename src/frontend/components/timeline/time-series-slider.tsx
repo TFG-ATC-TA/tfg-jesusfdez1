@@ -143,12 +143,20 @@ const CompactDateSelector = ({ startDate, endDate, currentDay, onChange }: {
   const handlePrevDay = () => {
     if (currentDay > 0) {
       onChange(currentDay - 1);
+      // FORZAR actualización inmediata
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('forceModelUpdate'));
+      }, 100);
     }
   };
 
   const handleNextDay = () => {
     if (currentDay < totalDays - 1) {
       onChange(currentDay + 1);
+      // FORZAR actualización inmediata
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('forceModelUpdate'));
+      }, 100);
     }
   };
 
@@ -322,27 +330,14 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
 
   // Parse intervals from the provided tankStateData
   const intervals = useMemo(() => {
-    console.log('=== TimeSeriesSlider: Processing tankStateData ===');
-    console.log('tankStateData:', tankStateData);
-    
     if (!tankStateData || !tankStateData.states) {
-      console.log('No tankStateData or states available');
       return [];
     }
 
-    // Parse the date from tankStateData
-    const baseDate = new Date(tankStateData.date);
-    console.log('Base date:', baseDate);
-
     // Convert the states from tankStateData to intervals
     const processedIntervals = tankStateData.states.map((stateItem) => {
-      // Parse the start and end times from ISO strings
       const startTime = new Date(stateItem.startTime);
       const endTime = new Date(stateItem.endTime);
-
-      console.log('Processing state:', stateItem.state);
-      console.log('Start time:', startTime);
-      console.log('End time:', endTime);
 
       return {
         start: startTime,
@@ -351,7 +346,6 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
       };
     });
 
-    console.log('Processed intervals:', processedIntervals);
     return processedIntervals;
   }, [tankStateData]);
 
@@ -422,15 +416,9 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
 
   // Generate interval markers for the current day
   const intervalMarkers = useMemo(() => {
-    console.log('=== TimeSeriesSlider: Generating interval markers ===');
-    console.log('Current date:', currentDate);
-    console.log('Available intervals:', intervals);
-    
     // Filter intervals for the current day
     const filteredIntervals = intervals
       .filter((interval) => isSameDay(interval.start, currentDate) || isSameDay(interval.end, currentDate));
-    
-    console.log('Filtered intervals for current day:', filteredIntervals);
     
     const markers = filteredIntervals.map((interval) => {
       // Adjust start and end times to be within the current day
@@ -447,7 +435,7 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
         endTime = setMinutes(setHours(new Date(currentDate), 23), 59);
       }
 
-      const marker = {
+      return {
         startValue: startTime.getHours() * 60 + startTime.getMinutes(),
         endValue: endTime.getHours() * 60 + endTime.getMinutes(),
         state: interval.state,
@@ -455,12 +443,8 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
         color: STATE_COLORS[interval.state],
         isActive: interval.state === activeState,
       };
-
-      console.log('Generated marker:', marker);
-      return marker;
     });
 
-    console.log('Final interval markers:', markers);
     return markers;
   }, [intervals, currentDate, activeState, formatTime]);
 
@@ -568,7 +552,6 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
     const timeString = `${hours}:${minutes}`;
 
     // Call the onTimeSelected callback with the formatted time string
-    console.log(`TimeSeriesSlider: Initial time selection ${timeString}`);
     onTimeSelected(timeString);
   }, []);
 

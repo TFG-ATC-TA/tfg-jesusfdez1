@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { createPortal } from 'react-dom'
@@ -102,6 +103,9 @@ interface DairyTimelineProps {
 }
 
 export default function DairyTimeline({ bucket, startDate, endDate }: DairyTimelineProps) {
+  // Hook de sesión para obtener el token
+  const { data: session } = useSession();
+  
   const [currentPage, setCurrentPage] = useState(0)
   const [pendingPage, setPendingPage] = useState<number | null>(null) // Para manejar transiciones suaves
   const [tooltip, setTooltip] = useState({ show: false, text: '', x: 0, y: 0 });
@@ -153,13 +157,26 @@ export default function DairyTimeline({ bucket, startDate, endDate }: DairyTimel
       } else {
         setLoading(true);
       }
-      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/postgres/farm-activities`);
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/postgres/farm-activities`);
       url.searchParams.append('page', page.toString());
       url.searchParams.append('daysPerPage', DAYS_PER_PAGE.toString());
       url.searchParams.append('bucket', bucket);
       if (startDate) url.searchParams.append('startDate', startDate.toISOString());
       if (endDate) url.searchParams.append('endDate', endDate.toISOString());
-      const response = await fetch(url.toString());
+      
+      // Configurar headers con token de autorización
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (session?.accessToken) {
+        headers['Authorization'] = `Bearer ${session.accessToken}`;
+      }
+      
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers,
+      });
       
       if (!response.ok) {
         throw new Error(`Error HTTP: ${response.status}`);
@@ -193,12 +210,14 @@ export default function DairyTimeline({ bucket, startDate, endDate }: DairyTimel
         setShowLoadingOverlay(false);
       }
     }
-  }, [bucket, startDate, endDate]);
+  }, [bucket, startDate, endDate, session?.accessToken]);
 
   // Cargar datos iniciales y cuando cambian las props
   useEffect(() => {
-    fetchPageData(0, true);
-  }, [bucket, startDate, endDate, fetchPageData]);
+    if (session?.accessToken) {
+      fetchPageData(0, true);
+    }
+  }, [bucket, startDate, endDate, fetchPageData, session?.accessToken]);
 
   const PageSelector = () => {
     const currentPageNumber = currentPage + 1

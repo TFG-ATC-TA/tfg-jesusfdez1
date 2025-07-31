@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import { logger } from '@/lib/logger';
 
 /**
@@ -105,7 +106,7 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
     const url = `${baseUrl}/history/historicalData`;
     console.log('=== API Call Details ===');
     console.log('Base URL:', baseUrl);
@@ -201,7 +202,7 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predictTankState`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/predictTankState`, {
       method: 'POST',
       headers,
       body: JSON.stringify(params),
@@ -229,7 +230,7 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predictTankState/real-time`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/predictTankState/real-time`, {
       method: 'POST',
       headers,
       body: JSON.stringify(params),
@@ -258,7 +259,7 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cache/${farmId}/${boardId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/cache/${farmId}/${boardId}`, {
       method: 'GET',
       headers,
     });
@@ -285,7 +286,7 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/postgres/farm-activities`);
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/postgres/farm-activities`);
     
     // Añadir parámetros de consulta
     if (params.page !== undefined) url.searchParams.append('page', params.page.toString());
@@ -331,7 +332,7 @@ export const DanielService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/postgres/tank-activities`);
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/postgres/tank-activities`);
     
     // Añadir parámetros de consulta
     if (params.bucket) url.searchParams.append('bucket', params.bucket);
@@ -616,7 +617,7 @@ export function useRealTimeData(farmId: string, boardId: string, token?: string)
 
     logger.log('Creating new WebSocket connection:', { farmId, boardId });
     const ws = new WebSocket(
-      `ws://${process.env.NEXT_PUBLIC_API_URL?.replace('http://', '')}/realtime/data?from=${farmId}&info=${boardId}&token=${token}`
+      `ws://${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001').replace('http://', '')}/realtime/data?from=${farmId}&info=${boardId}&token=${token}`
     );
 
     wsRef.current = ws;
@@ -742,27 +743,19 @@ export function useCachedData() {
  * Hook para obtener los estados del tanque desde farm-activities
  */
 export function useFarmActivities() {
+  const { data: session } = useSession();
   const [farmActivities, setFarmActivities] = useState<FarmActivitiesResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadFarmActivities = async (params: FarmActivitiesParams, token?: string) => {
+    const authToken = token || session?.accessToken;
     try {
     setLoading(true);
     setError(null);
 
-      console.log('=== Loading Farm Activities ===');
-      console.log('Params:', params);
-      console.log('Token available:', !!token);
-
-      const data = await DanielService.getFarmActivities(params, token);
+      const data = await DanielService.getFarmActivities(params, authToken);
       
-      console.log('=== Farm Activities Data ===');
-      console.log('Success:', data.success);
-      console.log('Summary:', data.summary);
-      console.log('Timeline length:', data.timeline?.length);
-      console.log('Raw stats keys:', Object.keys(data.rawStats || {}));
-
       setFarmActivities(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
@@ -790,16 +783,8 @@ export function useTankActivities() {
       setLoading(true);
       setError(null);
       
-      console.log('=== Loading Tank Activities ===');
-      console.log('Params:', params);
-      console.log('Token available:', !!token);
-
       const data = await DanielService.getTankActivities(params, token);
       
-      console.log('=== Tank Activities Data ===');
-      console.log('Activities count:', data?.length);
-      console.log('Activities:', data);
-
       setTankActivities(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';

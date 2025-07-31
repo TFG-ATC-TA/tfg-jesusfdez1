@@ -6,7 +6,7 @@
 
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from "next-auth/react";
 import PageContainer from '@/components/layout/page-container';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,6 +57,7 @@ export default function PruebaDanielPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedSensor, setSelectedSensor] = useState<string>('all');
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  // Variables de estado simples
 
   // Stores
   const { filters, mode, setMode, setFilters } = useAppDataStore((state) => state);
@@ -93,22 +94,8 @@ export default function PruebaDanielPage() {
     boardIds,
     selectedFarm,
     selectedTank: selectedTank?.name || 'default-tank',
+    mode, // Pasar el modo al hook
   });
-
-  // Cargar estados del tanque cuando cambien los filtros
-  useEffect(() => {
-    const shouldFetchTankStates = selectedFarm && (filters.selectedDate || dateRange);
-    
-    if (shouldFetchTankStates) {
-      console.log('=== Auto-loading Tank States ===');
-      console.log('Selected Farm:', selectedFarm);
-      console.log('Selected Date:', filters.selectedDate);
-      console.log('Date Range:', dateRange);
-      
-      // Llamar directamente a fetchTankStates sin incluirlo en las dependencias
-      fetchTankStates();
-    }
-  }, [selectedFarm, filters.selectedDate, dateRange?.from, dateRange?.to]); // Removido fetchTankStates de las dependencias
 
   // Función para obtener el color del estado
   const getStateColor = (state: string) => {
@@ -147,12 +134,7 @@ export default function PruebaDanielPage() {
       tank: { height: 100 } // Altura del tanque en cm
     };
 
-    console.log('=== Loading Historical Data ===');
-    console.log('Params sent to backend:', params);
-    console.log('Selected Farm:', selectedFarm);
-    console.log('Selected Date:', selectedDate);
-    console.log('Board IDs:', boardIds);
-    console.log('Tank Height:', 100);
+    // Loading historical data
 
     await fetchHistoricalData(params, session?.accessToken);
   };
@@ -360,7 +342,7 @@ export default function PruebaDanielPage() {
             position: parseFloat((position || 0).toFixed(2)),
             speed: parseFloat((speed || angle || 0).toFixed(2))
           };
-          console.log('Updated encoder value:', historicalData.encoderData.value);
+  
         } else if (encoderValue["00"] !== undefined || encoderValue["01"] !== undefined) {
           // Si ya tiene estructura "00"/"01", agregar propiedades nombradas para el modal
           historicalData.encoderData.value = {
@@ -424,7 +406,7 @@ export default function PruebaDanielPage() {
             position: parseFloat((position || 0).toFixed(2)),
             speed: parseFloat((speed || angle || 0).toFixed(2))
           };
-          console.log('Processed encoder data:', processedEncoderData.value);
+    
         } else {
           // Si ya tiene estructura "00"/"01", agregar propiedades nombradas para el modal
           processedEncoderData.value = {
@@ -434,7 +416,7 @@ export default function PruebaDanielPage() {
             position: 0, // No hay posición en datos históricos
             speed: parseFloat((encoderValue["00"] || encoderValue["01"] || 0).toFixed(2))
           };
-          console.log('Enhanced encoder data with named properties:', processedEncoderData.value);
+    
         }
       }
       
@@ -487,11 +469,9 @@ export default function PruebaDanielPage() {
         } : undefined,
       };
 
-      console.log('Final processed data:', processedData);
       return processedData;
     }
 
-    console.log('No valid data structure found');
     return {};
   };
 
@@ -508,22 +488,121 @@ export default function PruebaDanielPage() {
         gyroscopeData: modelData.gyroscopeData,
       };
     } else {
-      // Historical mode
-      const historicalDataToProcess = selectedHistoricalData || historicalData;
-      console.log('=== Historical Data Debug ===');
-      console.log('Mode:', mode);
-      console.log('Selected Historical Data:', selectedHistoricalData);
-      console.log('Historical Data:', historicalData);
-      console.log('Data to Process:', historicalDataToProcess);
+      // Historical mode - SIMPLIFICADO
       
-      const processedData = processHistoricalDataForModel(historicalDataToProcess);
-      console.log('Processed Historical Data:', processedData);
+      // FORZAR extracción de datos históricos
+      if (historicalData && typeof historicalData === 'object') {
+        // Obtener todas las claves de tiempo disponibles (formato "HH:MM")
+        const timeKeys = Object.keys(historicalData).filter(key => 
+          key.includes(':') && historicalData[key]
+        );
+        
+        if (timeKeys.length > 0) {
+          // Si hay selectedTime específico, usarlo; sino usar la primera clave disponible
+          let targetTime = selectedTime;
+          
+          if (!targetTime && selectedDate) {
+            targetTime = selectedDate.toLocaleTimeString('en-US', {
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+          
+          // Buscar la clave más cercana o usar la primera disponible
+          let selectedTimeKey = timeKeys[0]; // Default: primera disponible
+          
+          if (targetTime) {
+            const foundKey = timeKeys.find(key => key === targetTime);
+            if (foundKey) {
+              selectedTimeKey = foundKey;
+            } else {
+              // Buscar el más cercano
+              const [targetHours, targetMinutes] = targetTime.split(':').map(Number);
+              const targetTotalMinutes = targetHours * 60 + targetMinutes;
+              
+              selectedTimeKey = timeKeys.reduce((closest, current) => {
+                const [currentHours, currentMinutes] = current.split(':').map(Number);
+                const currentTotalMinutes = currentHours * 60 + currentMinutes;
+                
+                const [closestHours, closestMinutes] = closest.split(':').map(Number);
+                const closestTotalMinutes = closestHours * 60 + closestMinutes;
+                
+                const currentDiff = Math.abs(currentTotalMinutes - targetTotalMinutes);
+                const closestDiff = Math.abs(closestTotalMinutes - targetTotalMinutes);
+                
+                return currentDiff < closestDiff ? current : closest;
+              });
+            }
+          }
+          
+          // Extraer y procesar datos del tiempo seleccionado
+          const specificTimeData = historicalData[selectedTimeKey];
+          if (specificTimeData) {
+            return processHistoricalDataForModel({ [selectedTimeKey]: specificTimeData });
+          }
+        }
+      }
       
-      return processedData;
+      // Fallback final
+      return processHistoricalDataForModel(selectedHistoricalData || historicalData);
     }
   };
 
-  const unifiedData = getUnifiedData();
+  // FORZAR recálculo SIEMPRE que cambie cualquier dependencia
+  const unifiedData = useMemo(() => {
+    if (mode === "realtime") {
+      return {
+        encoderData: modelData.encoderData,
+        milkQuantityData: modelData.milkQuantityData,
+        switchStatus: modelData.switchStatus,
+        weightData: modelData.weightData,
+        tankTemperaturesData: modelData.tankTemperaturesData,
+        airQualityData: modelData.airQualityData,
+        gyroscopeData: modelData.gyroscopeData,
+      };
+    }
+    
+    // Historical mode - FORZAR extracción de datos
+    if (historicalData && typeof historicalData === 'object') {
+      const timeKeys = Object.keys(historicalData).filter(key => 
+        key.includes(':') && historicalData[key]
+      );
+      
+      if (timeKeys.length > 0) {
+        // Usar el primer tiempo disponible por defecto
+        let selectedTimeKey = timeKeys[0];
+        
+        // Si hay selectedTime, buscar el más cercano
+        if (selectedTime) {
+          const foundKey = timeKeys.find(key => key === selectedTime);
+          if (foundKey) {
+            selectedTimeKey = foundKey;
+          }
+        } else if (selectedDate) {
+          // Si no hay selectedTime pero sí selectedDate, usar hora de selectedDate
+          const targetTime = selectedDate.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          const foundKey = timeKeys.find(key => key === targetTime);
+          if (foundKey) {
+            selectedTimeKey = foundKey;
+          }
+        }
+        
+        // Extraer datos del tiempo seleccionado
+        const specificTimeData = historicalData[selectedTimeKey];
+        if (specificTimeData) {
+          return processHistoricalDataForModel({ [selectedTimeKey]: specificTimeData });
+        }
+      }
+    }
+    
+    // Fallback
+    return processHistoricalDataForModel(selectedHistoricalData || historicalData);
+  }, [mode, selectedTime, selectedDate, historicalData, selectedHistoricalData, modelData, filters.selectedDate, tankStates]);
 
   // Sensores disponibles
   const sensors = [
@@ -540,13 +619,29 @@ export default function PruebaDanielPage() {
     setSelectedData(cardName === selectedData ? null : cardName);
   };
 
-  // Cargar datos históricos cuando cambian los filtros
+  // Ya no necesario - se maneja en el efecto anterior
+
+  // FORZAR recarga de datos históricos cuando cambie la fecha
   useEffect(() => {
-    if (selectedDate && session?.accessToken && mode === 'historical') {
-      handleLoadHistoricalData();
+    if (filters.selectedDate && mode === 'historical' && selectedFarm && session?.accessToken) {
+      setSelectedDate(filters.selectedDate);
+      
+      // FORZAR carga de datos históricos del nuevo día
+      const newDate = filters.selectedDate.toISOString().split('T')[0];
+      
+
+      const params: HistoricalDataParams = {
+        farm: selectedFarm,
+        date: newDate,
+        boardIds: boardIds,
+        tank: { height: 100 }
+      };
+      
+      // RECARGAR datos del backend para el nuevo día
+      fetchHistoricalData(params, session?.accessToken);
       fetchTankStates();
     }
-  }, [selectedDate, boardIds, session?.accessToken, mode]);
+  }, [filters.selectedDate, mode, selectedFarm, session?.accessToken]);
 
   // Effect to handle time selection
   useEffect(() => {
@@ -554,6 +649,8 @@ export default function PruebaDanielPage() {
       handleTimeSelected(selectedTime);
     }
   }, [selectedTime, handleTimeSelected, mode]);
+
+  // Ya no necesario - se maneja en el useEffect anterior
 
   // Handler for time selection from the slider
   const handleTimeSelectionChange = (timeString: string) => {
@@ -568,7 +665,7 @@ export default function PruebaDanielPage() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 z-10">
     
             {/* Toggle de modo */}
-            <div className="md:col-span-4">
+            <div className="md:col-span-3">
               <Card className="h-full bg-card border-border">
                 <CardContent className="p-3 h-full flex items-center">
                   <div className="flex items-center gap-2 w-full">
@@ -591,6 +688,23 @@ export default function PruebaDanielPage() {
                       Histórico
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Botón de emergencia para tank activities */}
+            <div className="md:col-span-1">
+              <Card className="h-full bg-card border-border">
+                <CardContent className="p-3 h-full flex items-center">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={fetchTankStates}
+                    className="w-full"
+                    disabled={tankStatesLoading}
+                  >
+                    {tankStatesLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'TEST'}
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -759,6 +873,8 @@ export default function PruebaDanielPage() {
                   filters={{ dateRange }}
                   selectedHistoricalData={selectedHistoricalData}
                   historicalData={historicalData}
+                  tankStates={tankStates}
+                  tankStatesLoading={tankStatesLoading}
                   error={error}
                   handleTimeSelected={handleTimeSelected}
                   fetchHistoricalData={handleLoadHistoricalData}

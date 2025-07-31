@@ -3,6 +3,9 @@ import { HorizontalTank1Blade } from './horizontal-tank-1-blade';
 import { VerticalTank1Blade } from './vertical-tank-1-blade';
 import { SimpleTank } from './simple-tank';
 
+// Import the correct type from the hook
+import { TankStatesData } from '@/hooks/use-tank-states';
+
 interface TankSelectorProps {
   encoderData?: { value: { [key: string]: number } };
   milkQuantityData?: { value: number };
@@ -22,6 +25,8 @@ interface TankSelectorProps {
   selectedData?: string | null;
   selectedTank?: string;
   onTankChange?: (tank: string) => void;
+  currentTankState?: string;
+  tankStates?: TankStatesData | null;
 }
 
 type TankType = 'horizontal-2-blades' | 'horizontal-1-blade' | 'vertical-1-blade';
@@ -37,6 +42,8 @@ export function TankSelector({
   selectedData,
   selectedTank = 'horizontal-2-blades',
   onTankChange,
+  currentTankState,
+  tankStates,
 }: TankSelectorProps) {
   const tankComponents = {
     'horizontal-2-blades': HorizontalTank2Blades,
@@ -59,6 +66,8 @@ export function TankSelector({
       airQualityData={airQualityData}
       gyroscopeData={gyroscopeData}
       selectedData={selectedData}
+      currentTankState={currentTankState}
+      tankStates={tankStates}
     />
   );
 } 

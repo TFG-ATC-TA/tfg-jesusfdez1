@@ -8,6 +8,9 @@ import CameraSettings from "./camera-settings";
 import CameraControlButtons from "./camera-controls";
 import SelectedSensorData from "./selected-sensor-data";
 
+// Import the correct type from the hook
+import { TankStatesData, TankState } from '@/hooks/use-tank-states';
+
 interface TankModelProps {
   mode?: "realtime" | "historical";
   filters?: { dateRange?: any };
@@ -15,6 +18,8 @@ interface TankModelProps {
   handleTimeSelected?: (time: any) => void;
   selectedHistoricalData?: any;
   historicalData?: any;
+  tankStates?: TankStatesData | null;
+  tankStatesLoading?: boolean;
   error?: any;
   fetchHistoricalData?: () => void;
   encoderData?: { value: { [key: string]: number } };
@@ -42,6 +47,8 @@ const TankModel = ({
   handleTimeSelected,
   selectedHistoricalData,
   historicalData,
+  tankStates,
+  tankStatesLoading,
   error,
   fetchHistoricalData,
   encoderData,
@@ -92,17 +99,22 @@ const TankModel = ({
     gyroscopeData,
   };
 
-  // Debug: Log data processing
-  console.log('=== TankModel Debug ===');
-  console.log('Mode:', mode);
-  console.log('Data from props:', data);
-  console.log('Selected Data:', selectedData);
-  
-  if (mode === 'historical') {
-    console.log('Air Quality Data:', data?.airQualityData);
-    console.log('Weight Data:', data?.weightData);
-    console.log('Tank Temperatures Data:', data?.tankTemperaturesData);
-  }
+  // Calculate current tank state from tankStates
+  const getCurrentTankState = () => {
+    if (mode === 'historical' && tankStates && tankStates.states.length > 0) {
+      // Find current state based on selectedTime or latest state
+      const currentTime = selectedTime ? new Date(selectedTime) : new Date();
+      const currentState = tankStates.states.find((state: TankState) => {
+        const startTime = new Date(state.startTime);
+        const endTime = new Date(state.endTime);
+        return currentTime >= startTime && currentTime <= endTime;
+      });
+      return currentState?.state || 'EMPTY TANK';
+    }
+    return 'EMPTY TANK'; // Default state
+  };
+
+  const currentTankState = getCurrentTankState();
 
   const renderTankModel = () => {
     // Case 1: Historical mode but no date range selected
@@ -209,6 +221,8 @@ const TankModel = ({
               selectedData={selectedData}
               selectedTank={selectedTank}
               onTankChange={setSelectedTank}
+              currentTankState={currentTankState}
+              tankStates={tankStates}
             />
             <CameraSettings
               view={currentView}

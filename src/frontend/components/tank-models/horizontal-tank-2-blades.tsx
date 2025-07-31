@@ -5,6 +5,9 @@ import ParticleField from "./particle-field";
 import { getRotationDuration, getAlcalineAcidCylinders, getVisibleMilkCilinder } from "./transformations";
 import { useEffect } from "react";
 
+// Import the correct type from the hook
+import { TankStatesData } from '@/hooks/use-tank-states';
+
 interface HorizontalTank2BladesProps {
   encoderData?: { value: { [key: string]: number } };
   milkQuantityData?: { value: number };
@@ -22,6 +25,8 @@ interface HorizontalTank2BladesProps {
   airQualityData?: { value: { humidity: number; temperature: number } };
   gyroscopeData?: { value: { gyro_x?: number; gyro_y?: number; gyro_z?: number; accel_x?: number; accel_y?: number; accel_z?: number } };
   selectedData?: string | null;
+  currentTankState?: string;
+  tankStates?: TankStatesData | null;
 }
 
 export function HorizontalTank2Blades({
@@ -33,41 +38,41 @@ export function HorizontalTank2Blades({
   airQualityData,
   gyroscopeData,
   selectedData,
+  currentTankState = 'EMPTY TANK',
+  tankStates,
 }: HorizontalTank2BladesProps) {
   const { nodes, materials, scene } = useGLTF(
     "/horizontalTankModel/horizontalTank2Blades.glb"
   );
 
-  // Debug logging
+  // Use currentTankState to determine tank appearance and behavior
+  const tankStateConfig = {
+    'MILKING': { color: '#10B981', speed: 2.0 },      // Verde
+    'COOLING': { color: '#3B82F6', speed: 0.5 },      // Azul
+    'CLEANING': { color: '#F59E0B', speed: 1.5 },     // Amarillo
+    'EMPTY TANK': { color: '#6B7280', speed: 0 },     // Gris
+    'MAINTENANCE': { color: '#8B5CF6', speed: 0 },    // Púrpura
+  };
+
+  const currentConfig = tankStateConfig[currentTankState as keyof typeof tankStateConfig] || tankStateConfig['EMPTY TANK'];
+
   useEffect(() => {
-    console.log("🔍 GLB Debug Info:");
-    console.log("Nodes:", Object.keys(nodes));
-    console.log("Materials:", Object.keys(materials));
-    console.log("Scene:", scene);
-    
-    // Verificar si los nodos principales existen
-    const requiredNodes = ['TankCilinder', 'Blade1', 'Blade2', 'Hatch'];
-    requiredNodes.forEach(nodeName => {
-      if (nodes[nodeName]) {
-        console.log(`✅ ${nodeName} found`);
-      } else {
-        console.log(`❌ ${nodeName} NOT found`);
-      }
-    });
+    // Tank state configuration is now handled by currentTankState prop
   }, [nodes, materials, scene]);
 
+  // Use currentConfig.speed to modify blade rotation based on tank state
   const rotationBlade1 = useSpring({
-    loop: true,
+    loop: currentConfig.speed > 0,
     to: { rotation: [0, Math.PI * 2, 0] },
     from: { rotation: [0, 0, 0] },
-    config: { duration: getRotationDuration(encoderData?.value["00"] ?? 0) },
+    config: { duration: currentConfig.speed > 0 ? getRotationDuration(encoderData?.value["00"] ?? 0) / currentConfig.speed : 10000 },
   });
 
   const rotationBlade2 = useSpring({
-    loop: true,
+    loop: currentConfig.speed > 0,
     to: { rotation: [0, -Math.PI * 2, 0] },
     from: { rotation: [0, 0, 0] },
-    config: { duration: getRotationDuration(encoderData?.value["01"] ?? 0) },
+    config: { duration: currentConfig.speed > 0 ? getRotationDuration(encoderData?.value["01"] ?? 0) / currentConfig.speed : 10000 },
   });
 
   const { rotation: rotationHatch } = useSpring({
