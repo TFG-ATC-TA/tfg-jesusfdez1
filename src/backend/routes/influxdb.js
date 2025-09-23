@@ -77,6 +77,7 @@ function constructQuery(req) {
     if (yieldName) {
         query += `\n    |> yield(name: "${yieldName}")`;
     }
+    console.log("Constructed Query:", query); // Debug: Log the constructed query
     return query;
 }
 

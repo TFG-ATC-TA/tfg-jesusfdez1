@@ -3,12 +3,17 @@ FROM node:24-alpine
 
 WORKDIR /app
 
+# Copiar package.json y package-lock.json
 COPY package*.json ./
 
+# Instalar dependencias de producción
 RUN npm ci --omit=dev
 
+# Copiar todo el código fuente
 COPY . .
 
+# Exponer puerto
 EXPOSE 5001
 
-CMD ["sh", "-c", "NODE_ENV=production npm run start:docker"]
+# Iniciar la aplicación
+CMD ["npm", "run", "start:docker"]
