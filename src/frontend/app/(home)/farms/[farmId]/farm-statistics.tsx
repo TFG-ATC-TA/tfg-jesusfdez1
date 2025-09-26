@@ -27,7 +27,7 @@ import {
   useTankStatePrediction,
   useCachedData,
   type HistoricalDataParams
-} from '@/services/daniel-service';
+} from '@/services/data-service';
 import TankModel from '@/components/tank-models/tank-model';
 import TimeSeriesSlider from '@/components/timeline/time-series-slider';
 import useAppDataStore from '@/stores/app-store';

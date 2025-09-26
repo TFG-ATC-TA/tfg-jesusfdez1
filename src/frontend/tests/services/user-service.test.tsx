@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { UserService } from '@/services/user-service'
+import { DataService } from '@/services/data-service'
 
 // Mock the fetch function
 global.fetch = jest.fn()
@@ -22,7 +22,7 @@ jest.mock('next-auth/react', () => ({
   })
 }))
 
-// Test component that uses the UserService
+// Test component that uses the DataService
 const TestUserComponent: React.FC = () => {
   const [users, setUsers] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(false)
@@ -32,7 +32,7 @@ const TestUserComponent: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await UserService.getUsers()
+      const response = await DataService.getUsers()
       setUsers(response.data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error loading users')
@@ -45,7 +45,7 @@ const TestUserComponent: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const newUser = await UserService.createUser(userData)
+      const newUser = await DataService.createUser(userData)
       setUsers(prev => [...prev, newUser])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error creating user')
@@ -58,7 +58,7 @@ const TestUserComponent: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const updatedUser = await UserService.updateUser(id, userData)
+      const updatedUser = await DataService.updateUser(id, userData)
       setUsers(prev => prev.map(u => u.id === id ? updatedUser : u))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error updating user')
@@ -71,7 +71,7 @@ const TestUserComponent: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      await UserService.deleteUser(id)
+      await DataService.deleteUser(id)
       setUsers(prev => prev.filter(u => u.id !== id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error deleting user')
@@ -107,7 +107,7 @@ const TestUserComponent: React.FC = () => {
   )
 }
 
-describe('UserService', () => {
+describe('DataService', () => {
   const mockFetch = fetch as jest.MockedFunction<typeof fetch>
 
   beforeEach(() => {
@@ -127,7 +127,7 @@ describe('UserService', () => {
           json: async () => ({ data: mockUsers, total: 2 })
         } as Response)
 
-        const result = await UserService.getUsers()
+        const result = await DataService.getUsers()
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/user/list')
@@ -141,7 +141,7 @@ describe('UserService', () => {
           json: async () => ({ data: [], total: 0 })
         } as Response)
 
-        await UserService.getUsers({ page: 2, limit: 10 })
+        await DataService.getUsers({ page: 2, limit: 10 })
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('page=2&limit=10')
@@ -154,7 +154,7 @@ describe('UserService', () => {
           json: async () => ({ data: [], total: 0 })
         } as Response)
 
-        await UserService.getUsers({ searchTerm: 'john', role: 'Ganadero' })
+        await DataService.getUsers({ searchTerm: 'john', role: 'Ganadero' })
 
         const call = mockFetch.mock.calls[0]
         const url = call[0] as string
@@ -169,13 +169,13 @@ describe('UserService', () => {
           statusText: 'Internal Server Error'
         } as Response)
 
-        await expect(UserService.getUsers()).rejects.toThrow('HTTP error! status: 500')
+        await expect(DataService.getUsers()).rejects.toThrow('HTTP error! status: 500')
       })
 
       it('should throw error when network fails', async () => {
         mockFetch.mockRejectedValueOnce(new Error('Network error'))
 
-        await expect(UserService.getUsers()).rejects.toThrow('Network error')
+        await expect(DataService.getUsers()).rejects.toThrow('Network error')
       })
     })
 
@@ -188,7 +188,7 @@ describe('UserService', () => {
           json: async () => mockUser
         } as Response)
 
-        const result = await UserService.getUserById('1')
+        const result = await DataService.getUserById('1')
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/user/1')
@@ -203,7 +203,7 @@ describe('UserService', () => {
           statusText: 'Not Found'
         } as Response)
 
-        await expect(UserService.getUserById('999')).rejects.toThrow('HTTP error! status: 404')
+        await expect(DataService.getUserById('999')).rejects.toThrow('HTTP error! status: 404')
       })
     })
 
@@ -217,7 +217,7 @@ describe('UserService', () => {
           json: async () => createdUser
         } as Response)
 
-        const result = await UserService.createUser(newUser)
+        const result = await DataService.createUser(newUser)
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/user'),
@@ -239,7 +239,7 @@ describe('UserService', () => {
           statusText: 'Bad Request'
         } as Response)
 
-        await expect(UserService.createUser({})).rejects.toThrow('HTTP error! status: 400')
+        await expect(DataService.createUser({})).rejects.toThrow('HTTP error! status: 400')
       })
     })
 
@@ -253,7 +253,7 @@ describe('UserService', () => {
           json: async () => updatedUser
         } as Response)
 
-        const result = await UserService.updateUser('1', updateData)
+        const result = await DataService.updateUser('1', updateData)
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/user/1'),
@@ -275,7 +275,7 @@ describe('UserService', () => {
           statusText: 'Forbidden'
         } as Response)
 
-        await expect(UserService.updateUser('1', {})).rejects.toThrow('HTTP error! status: 403')
+        await expect(DataService.updateUser('1', {})).rejects.toThrow('HTTP error! status: 403')
       })
     })
 
@@ -286,7 +286,7 @@ describe('UserService', () => {
           json: async () => ({ message: 'User deleted successfully' })
         } as Response)
 
-        await UserService.deleteUser('1')
+        await DataService.deleteUser('1')
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/user/1'),
@@ -303,7 +303,7 @@ describe('UserService', () => {
           statusText: 'Not Found'
         } as Response)
 
-        await expect(UserService.deleteUser('999')).rejects.toThrow('HTTP error! status: 404')
+        await expect(DataService.deleteUser('999')).rejects.toThrow('HTTP error! status: 404')
       })
     })
   })
@@ -456,7 +456,7 @@ describe('UserService', () => {
           json: async () => ({ data: [ganadeloUser, adminUser, vetUser], total: 3 })
         } as Response)
 
-      const result = await UserService.getUsers({ role: 'all' })
+      const result = await DataService.getUsers({ role: 'all' })
 
       expect(result.data).toHaveLength(3)
       expect(result.data.some(u => u.role === 'Ganadero')).toBeTruthy()
@@ -475,7 +475,7 @@ describe('UserService', () => {
         json: async () => ({ data: ganadeloUsers, total: 2 })
       } as Response)
 
-      const result = await UserService.getUsers({ role: 'Ganadero' })
+      const result = await DataService.getUsers({ role: 'Ganadero' })
 
       expect(result.data).toHaveLength(2)
       expect(result.data.every(u => u.role === 'Ganadero')).toBeTruthy()
@@ -490,7 +490,7 @@ describe('UserService', () => {
         )
       )
 
-      await expect(UserService.getUsers()).rejects.toThrow('Network timeout')
+      await expect(DataService.getUsers()).rejects.toThrow('Network timeout')
     })
 
     it('should handle malformed JSON response', async () => {
@@ -499,7 +499,7 @@ describe('UserService', () => {
         json: async () => { throw new Error('Invalid JSON') }
       } as unknown as Response)
 
-      await expect(UserService.getUsers()).rejects.toThrow('Invalid JSON')
+      await expect(DataService.getUsers()).rejects.toThrow('Invalid JSON')
     })
 
     it('should handle missing session token', async () => {
@@ -514,7 +514,7 @@ describe('UserService', () => {
         statusText: 'Unauthorized'
       } as Response)
 
-      await expect(UserService.getUsers()).rejects.toThrow('HTTP error! status: 401')
+      await expect(DataService.getUsers()).rejects.toThrow('HTTP error! status: 401')
 
       console.error = originalConsoleError
     })

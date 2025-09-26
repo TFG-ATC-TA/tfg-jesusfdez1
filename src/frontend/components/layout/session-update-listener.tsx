@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useAutoSessionUpdate } from '@/services/user-service';
+import { useAutoSessionUpdate } from '@/services/data-service';
 
 /**
  * Componente que escucha actualizaciones de perfil de usuario

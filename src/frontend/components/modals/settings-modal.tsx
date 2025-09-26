@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUserContext';
-import { notifyProfileUpdate, getUserLocalData } from '@/services/user-service';
+import { notifyProfileUpdate, getUserLocalData } from '@/services/data-service';
 import { useTheme } from 'next-themes';
 
 /**

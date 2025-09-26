@@ -16,7 +16,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Ejecutar el build de la aplicación
+# Verificar y generar iconos PWA si es necesario, luego ejecutar el build
 RUN npm run build
 
 # Imagen final de producción

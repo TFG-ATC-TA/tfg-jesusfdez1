@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { roleColors } from '@/constants/data';
-import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/user-service';
+import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/data-service';
 
 /**
  * Props del componente MobileSidebar

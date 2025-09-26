@@ -1,6 +1,6 @@
 /**
- * Servicio para funcionalidades de Daniel López
- * Maneja operaciones de datos históricos, tiempo real y predicciones
+ * Servicio principal para gestión de datos y usuarios
+ * Maneja operaciones de datos históricos, tiempo real, predicciones y usuarios
  * Proporciona hooks personalizados para gestión de estado
  */
 
@@ -86,11 +86,123 @@ export interface PredictionParams {
 }
 
 /**
- * Servicio principal para operaciones de Daniel
- * Proporciona métodos para datos históricos, tiempo real y predicciones
+ * Interfaz principal para usuarios del sistema
+ */
+export interface User {
+  id: string;
+  name: string;
+  surname?: string;
+  email: string;
+  role: 'Ganadero' | 'Administrador' | 'Veterinario';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Tipo para datos de usuario actualizados
+ */
+export type UserProfileUpdate = {
+  name?: string;
+  surname?: string;
+  email?: string;
+  token?: string;
+  role?: string;
+};
+
+/**
+ * Respuesta paginada de la lista de usuarios
+ */
+export interface UserListResponse {
+  data: User[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/**
+ * Parámetros de consulta para filtrar usuarios
+ */
+export interface UserQueryParams {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+  role?: string;
+}
+
+export interface FarmActivitiesParams {
+  page?: number;
+  daysPerPage?: number;
+  startDate?: string;
+  endDate?: string;
+  bucket?: string;
+}
+
+export interface TankStateInterval {
+  start_time: string;
+  end_time: string;
+  state: string;
+}
+
+export interface FarmActivitiesResponse {
+  success: boolean;
+  summary: {
+    numCycles: number;
+    avgDurationCycles: string;
+    numMilkings: number;
+    avgDurationMilkings: string;
+    numAgitations: number;
+    numEmptyings: number;
+    numWashings: number;
+    coolingRate: string;
+  };
+  timeline: Array<{
+    id: string;
+    schedule: Array<{
+      start: string;
+      end: string;
+      day: number;
+      date?: string;
+    }>;
+  }>;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    daysPerPage: number;
+    totalDays: number;
+    visibleDates: string[];
+  };
+  rawStats: {
+    [state: string]: {
+      count: number;
+      totalDuration: number;
+      intervals: Array<{
+        start: string;
+        end: string;
+        duration: number;
+      }>;
+    };
+  };
+}
+
+export interface TankActivitiesParams {
+  startDate?: string;
+  bucket?: string;
+}
+
+export interface TankActivity {
+  startTime: string;
+  endTime: string;
+  state: string;
+}
+
+export interface TankActivitiesResponse extends Array<TankActivity> {}
+
+/**
+ * Servicio principal para operaciones de datos
+ * Proporciona métodos para datos históricos, tiempo real, predicciones, usuarios y más
  * Utiliza fetch API para comunicación con el backend
  */
-export const DanielService = {
+export const DataService = {
   /**
    * Obtiene datos históricos de InfluxDB
    * @param params - Parámetros de consulta
@@ -108,13 +220,6 @@ export const DanielService = {
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
     const url = `${baseUrl}/history/historicalData`;
-    console.log('=== API Call Details ===');
-    console.log('Base URL:', baseUrl);
-    console.log('Full URL:', url);
-    console.log('Params:', params);
-    console.log('Headers:', headers);
-    console.log('Token available:', !!token);
-    console.log('Token length:', token ? token.length : 0);
 
     try {
       const response = await fetch(url, {
@@ -123,58 +228,33 @@ export const DanielService = {
         body: JSON.stringify(params),
       });
 
-      console.log('=== Response Details ===');
-      console.log('Status:', response.status);
-      console.log('Status Text:', response.statusText);
-      console.log('Headers:', Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         let errorMessage = `HTTP error! status: ${response.status}`;
         let errorData = null;
         
         try {
           errorData = await response.json();
-          console.log('Error response data:', errorData);
           errorMessage = errorData.message || errorData.error || errorMessage;
         } catch (parseError) {
-          console.log('Could not parse error response as JSON, using status text');
           errorMessage = response.statusText || errorMessage;
         }
-        
-        // Log specific error details
-        console.error('=== HTTP Error Details ===');
-        console.error('Status:', response.status);
-        console.error('Status Text:', response.statusText);
-        console.error('Error Data:', errorData);
-        console.error('Final Error Message:', errorMessage);
         
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      console.log('=== Success Response ===');
-      console.log('Result type:', typeof result);
-      console.log('Result keys:', Object.keys(result));
-      console.log('Result data:', result);
       
       // Si el resultado tiene un campo data null, significa que no hay datos
       if (result.data === null) {
-        console.log('Data field is null, returning empty object');
         return {};
       }
       
       return result;
     } catch (error) {
-      console.error('=== API Call Error ===');
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error instanceof Error ? error.message : error);
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
-      
       // Provide more specific error messages
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose.');
       } else if (error instanceof Error) {
-        // Ensure the error message is not undefined
         const message = error.message || 'Error desconocido al cargar datos históricos';
         throw new Error(message);
       } else if (typeof error === 'string') {
@@ -295,10 +375,6 @@ export const DanielService = {
     if (params.startDate) url.searchParams.append('startDate', params.startDate);
     if (params.endDate) url.searchParams.append('endDate', params.endDate);
 
-    console.log('=== Fetching Farm Activities ===');
-    console.log('URL:', url.toString());
-    console.log('Params:', params);
-
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers,
@@ -310,10 +386,6 @@ export const DanielService = {
     }
 
     const result = await response.json();
-    
-    console.log('=== Farm Activities Response ===');
-    console.log('Raw response:', result);
-    
     return result;
   },
 
@@ -338,10 +410,6 @@ export const DanielService = {
     if (params.bucket) url.searchParams.append('bucket', params.bucket);
     if (params.startDate) url.searchParams.append('startDate', params.startDate);
 
-    console.log('=== Fetching Tank Activities ===');
-    console.log('URL:', url.toString());
-    console.log('Params:', params);
-
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers,
@@ -353,86 +421,108 @@ export const DanielService = {
     }
 
     const result = await response.json();
-    
-    console.log('=== Tank Activities Response ===');
-    console.log('Raw response:', result);
-    
     return result;
   },
+
+  /**
+   * Obtiene lista paginada de usuarios
+   * @param params - Parámetros de consulta (paginación, búsqueda, filtros)
+   * @returns Promise con respuesta paginada
+   */
+  async getUsers(params: UserQueryParams = {}): Promise<UserListResponse> {
+    const searchParams = new URLSearchParams();
+    
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.searchTerm) searchParams.append('searchTerm', params.searchTerm);
+    if (params.role) searchParams.append('role', params.role);
+
+    const response = await fetch(`/api/user/list?${searchParams.toString()}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  /**
+   * Obtiene un usuario específico por ID
+   * @param id - ID del usuario a obtener
+   * @returns Promise con datos del usuario
+   */
+  async getUserById(id: string): Promise<User> {
+    const response = await fetch(`/api/user/${id}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  /**
+   * Crea un nuevo usuario
+   * @param userData - Datos del usuario a crear
+   * @returns Promise con el usuario creado
+   */
+  async createUser(userData: Partial<User>): Promise<User> {
+    const response = await fetch('/api/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  /**
+   * Actualiza un usuario existente
+   * @param id - ID del usuario a actualizar
+   * @param userData - Datos actualizados del usuario
+   * @returns Promise con el usuario actualizado
+   */
+  async updateUser(id: string, userData: Partial<User>): Promise<User> {
+    const response = await fetch(`/api/user/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+
+  /**
+   * Elimina un usuario
+   * @param id - ID del usuario a eliminar
+   * @returns Promise que se resuelve cuando se completa la eliminación
+   */
+  async deleteUser(id: string): Promise<void> {
+    const response = await fetch(`/api/user/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+  },
 };
-
-export interface FarmActivitiesParams {
-  page?: number;
-  daysPerPage?: number;
-  startDate?: string;
-  endDate?: string;
-  bucket?: string;
-}
-
-export interface TankStateInterval {
-  start_time: string;
-  end_time: string;
-  state: string;
-}
-
-export interface FarmActivitiesResponse {
-  success: boolean;
-  summary: {
-    numCycles: number;
-    avgDurationCycles: string;
-    numMilkings: number;
-    avgDurationMilkings: string;
-    numAgitations: number;
-    numEmptyings: number;
-    numWashings: number;
-    coolingRate: string;
-  };
-  timeline: Array<{
-    id: string;
-    schedule: Array<{
-      start: string;
-      end: string;
-      day: number;
-      date?: string;
-    }>;
-  }>;
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    daysPerPage: number;
-    totalDays: number;
-    visibleDates: string[];
-  };
-  rawStats: {
-    [state: string]: {
-      count: number;
-      totalDuration: number;
-      intervals: Array<{
-        start: string;
-        end: string;
-        duration: number;
-      }>;
-    };
-  };
-}
-
-export interface TankActivitiesParams {
-  startDate?: string;
-  bucket?: string;
-}
-
-export interface TankActivity {
-  startTime: string;
-  endTime: string;
-  state: string;
-}
-
-export interface TankActivitiesResponse extends Array<TankActivity> {}
 
 /**
  * Hook para gestionar datos históricos
  * Proporciona estado y métodos para cargar datos históricos
- * Adaptado del proyecto tfg-DaniLopez23
  */
 export function useHistoricalData() {
   const [historicalData, setHistoricalData] = useState<HistoricalData | null>(null);
@@ -492,16 +582,7 @@ export function useHistoricalData() {
       setLoading(true);
       setError(null);
 
-      console.log('=== Fetching Historical Data ===');
-      console.log('Params:', params);
-      console.log('Token available:', !!token);
-
-      const data = await DanielService.getHistoricalData(params, token);
-
-      console.log('=== Historical Data Response ===');
-      console.log('Raw data received:', data);
-      console.log('Data keys:', Object.keys(data));
-      console.log('Data length:', Object.keys(data).length);
+      const data = await DataService.getHistoricalData(params, token);
 
       if (!data || Object.keys(data).length === 0) {
         setHistoricalData(null);
@@ -509,28 +590,8 @@ export function useHistoricalData() {
         return;
       }
 
-      // Log sample data for debugging
-      const timeKeys = Object.keys(data);
-      if (timeKeys.length > 0) {
-        const firstTime = timeKeys[0];
-        console.log('Sample data for time', firstTime, ':', data[firstTime]);
-        
-        // Log all available measurements
-        const measurements = Object.keys(data[firstTime]);
-        console.log('Available measurements:', measurements);
-        
-        measurements.forEach(measurement => {
-          console.log(`Measurement ${measurement}:`, data[firstTime][measurement]);
-        });
-      }
-
       setHistoricalData(data);
     } catch (err) {
-      console.error('=== Hook Error Details ===');
-      console.error('Error type:', typeof err);
-      console.error('Error message:', err instanceof Error ? err.message : err);
-      console.error('Error stack:', err instanceof Error ? err.stack : 'No stack');
-      
       // Ensure we always have a clear error message
       let errorMessage = 'Error desconocido al cargar datos históricos';
       
@@ -543,8 +604,6 @@ export function useHistoricalData() {
       } else if (err && typeof err === 'object' && 'error' in err) {
         errorMessage = String((err as any).error);
       }
-      
-      console.error('Final error message to display:', errorMessage);
       
       setHistoricalData(null);
       setError(errorMessage);
@@ -677,7 +736,7 @@ export function useTankStatePrediction() {
     setError(null);
 
     try {
-      const result = await DanielService.getTankStatePrediction(params, token);
+      const result = await DataService.getTankStatePrediction(params, token);
       setPrediction(result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
@@ -693,7 +752,7 @@ export function useTankStatePrediction() {
     setError(null);
 
     try {
-      const result = await DanielService.getRealTimePrediction(params, token);
+      const result = await DataService.getRealTimePrediction(params, token);
       setPrediction(result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
@@ -726,7 +785,7 @@ export function useCachedData() {
     try {
       setLoading(true);
       setError(null);
-      const data = await DanielService.getCachedData(farmId, boardId, token);
+      const data = await DataService.getCachedData(farmId, boardId, token);
       setCachedData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -754,7 +813,7 @@ export function useFarmActivities() {
     setLoading(true);
     setError(null);
 
-      const data = await DanielService.getFarmActivities(params, authToken);
+      const data = await DataService.getFarmActivities(params, authToken);
       
       setFarmActivities(data);
     } catch (err) {
@@ -783,7 +842,7 @@ export function useTankActivities() {
       setLoading(true);
       setError(null);
       
-      const data = await DanielService.getTankActivities(params, token);
+      const data = await DataService.getTankActivities(params, token);
       
       setTankActivities(data);
     } catch (err) {
@@ -798,3 +857,157 @@ export function useTankActivities() {
 
   return { tankActivities, loading, error, loadTankActivities };
 } 
+
+// Clave para almacenar los datos de usuario en localStorage
+const USER_DATA_KEY = 'lactokeeper-user-data';
+
+/**
+ * Obtiene datos de usuario almacenados en localStorage
+ * @returns Datos del usuario o null si no existen
+ */
+export const getUserLocalData = (): UserProfileUpdate | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const data = localStorage.getItem(USER_DATA_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    logger.error('Error al leer datos de usuario del localStorage:', error);
+    return null;
+  }
+};
+
+/**
+ * Guarda datos de usuario en localStorage
+ * @param data - Datos del usuario a guardar
+ */
+export const saveUserLocalData = (data: UserProfileUpdate): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    // Si solo hay campos parciales, combinamos con los datos existentes
+    const existingData = getUserLocalData();
+    const updatedData = existingData ? { ...existingData, ...data } : data;
+    localStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedData));
+  } catch (error) {
+    logger.error('Error al guardar datos de usuario en localStorage:', error);
+  }
+};
+
+/**
+ * Hook personalizado para suscribirse a actualizaciones del perfil de usuario
+ * @param callback - Función que se ejecuta cuando se actualiza el perfil
+ */
+export function useUserProfileUpdates(callback: (data: UserProfileUpdate) => void) {
+  useEffect(() => {
+    // Función que maneja el evento de actualización del perfil
+    const handleProfileUpdate = (event: CustomEvent<UserProfileUpdate>) => {
+      callback(event.detail);
+      // También guardar en localStorage para persistencia
+      saveUserLocalData(event.detail);
+    };
+
+    // Suscribirse al evento personalizado
+    window.addEventListener(
+      'user-profile-updated',
+      handleProfileUpdate as EventListener
+    );
+
+    // Limpiar el listener cuando el componente se desmonta
+    return () => {
+      window.removeEventListener(
+        'user-profile-updated',
+        handleProfileUpdate as EventListener
+      );
+    };
+  }, [callback]);
+}
+
+/**
+ * Hook para actualizar automáticamente la sesión cuando cambia el perfil
+ */
+export function useAutoSessionUpdate() {
+  const { data: session, update } = useSession();
+
+  // Guardar los datos de la sesión en localStorage cuando se inicia sesión
+  useEffect(() => {
+    if (session?.user && typeof window !== 'undefined') {
+      // Verificar si ya existe información en localStorage
+      const existingData = getUserLocalData();
+      
+      // Si no hay datos en localStorage o son diferentes, actualizar
+      if (!existingData || existingData.role !== session.user.role) {
+        saveUserLocalData({
+          name: session.user.name,
+          surname: session.user.surname,
+          email: session.user.email,
+          role: session.user.role,
+        });
+        
+        // Disparar evento para actualizar UI
+        const userUpdateEvent = new CustomEvent('user-data-changed', {
+          detail: {
+            name: session.user.name,
+            surname: session.user.surname,
+            email: session.user.email,
+            role: session.user.role,
+          }
+        });
+        window.dispatchEvent(userUpdateEvent);
+      }
+    }
+  }, [session]);
+
+  /**
+   * Suscribirse a actualizaciones del perfil y sincronizar con la sesión
+   */
+  useUserProfileUpdates(async (userData) => {
+    if (session) {
+      try {
+        // Actualizar la sesión de NextAuth con los nuevos datos
+        await update({
+          ...session,
+          user: {
+            ...session.user,
+            ...userData
+          },
+          ...(userData.token ? { accessToken: userData.token } : {})
+        });
+        
+        // También forzamos actualización del localStorage/DOM para los componentes que usan datos de usuario directo
+        const userUpdateEvent = new CustomEvent('user-data-changed', {
+          detail: userData
+        });
+        window.dispatchEvent(userUpdateEvent);
+        
+        logger.log('Sesión actualizada con éxito', userData);
+      } catch (error) {
+        logger.error('Error al actualizar la sesión:', error);
+      }
+    }
+  });
+
+  // Restaurar datos del usuario desde localStorage al iniciar (si existen)
+  useEffect(() => {
+    const localUserData = getUserLocalData();
+    if (localUserData && session) {
+      const event = new CustomEvent('user-data-changed', {
+        detail: localUserData
+      });
+      window.dispatchEvent(event);
+    }
+  }, [session]);
+}
+
+/**
+ * Helper para notificar cambios en el perfil de usuario
+ * @param data - Datos del usuario actualizados
+ */
+export function notifyProfileUpdate(data: UserProfileUpdate) {
+  // Guardar inmediatamente en localStorage
+  saveUserLocalData(data);
+  
+  // Disparar evento para componentes que están escuchando
+  const event = new CustomEvent('user-profile-updated', {
+    detail: data
+  });
+  window.dispatchEvent(event);
+}

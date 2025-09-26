@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
-import { DanielService } from '@/services/daniel-service';
+import { DataService } from '@/services/data-service';
 import { useSession } from 'next-auth/react';
 
 interface TankStatesParams {
@@ -54,7 +54,7 @@ const useTankStates = ({ filters, boardIds, selectedFarm, selectedTank, mode }: 
         bucket: selectedFarm
       };
 
-      const data = await DanielService.getTankActivities(params, session?.accessToken);
+      const data = await DataService.getTankActivities(params, session?.accessToken);
 
       if (data && Array.isArray(data) && data.length > 0) {
         const tankStatesData: TankStatesData = {

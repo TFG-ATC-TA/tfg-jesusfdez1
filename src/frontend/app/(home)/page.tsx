@@ -14,7 +14,7 @@ import { Settings } from 'lucide-react'
 import { motion } from "framer-motion"
 import { AuroraBackground } from "@/components/layout/aurora-background"
 import { useState, useEffect } from "react";
-import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/user-service';
+import { useUserProfileUpdates, UserProfileUpdate, getUserLocalData } from '@/services/data-service';
 
 /**
  * Componente principal de la página de inicio
