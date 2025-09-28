@@ -1,25 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Thermometer, Droplet, ToggleLeft, Compass, Gauge, Weight, Wind } from 'lucide-react';
-
-interface SelectedSensorDataProps {
-  selectedData?: string | null;
-  encoderData?: { value: { [key: string]: number } };
-  milkQuantityData?: { value: number };
-  switchStatus?: { value: boolean };
-  weightData?: { value: number };
-  tankTemperaturesData?: { 
-    value: { 
-      over_surface_temperature?: number;
-      surface_temperature?: number;
-      submerged_temperature?: number;
-    };
-    tags?: { board_id?: string };
-    readableDate?: string;
-  };
-  airQualityData?: { value: { humidity: number; temperature: number } };
-  gyroscopeData?: { value: { gyro_x?: number; gyro_y?: number; gyro_z?: number; accel_x?: number; accel_y?: number; accel_z?: number } };
-  mode?: 'realtime' | 'historical';
-}
+import { SelectedSensorDataProps, getSensorIcon, getSensorLabel, formatSensorValue, getStatusColor, sensorStatusColors } from './transformations';
 
 const SelectedSensorData = ({
   selectedData,

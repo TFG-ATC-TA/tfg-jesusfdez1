@@ -1,34 +1,11 @@
 import { Points, PointMaterial } from '@react-three/drei';
 import { useMemo, useCallback } from 'react';
 import * as THREE from 'three';
-
-function createCircleTexture() {
-  const size = 120;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext('2d');
-  if (context) {
-    context.fillStyle = 'white';
-    context.beginPath();
-    context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-    context.fill();
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-interface ParticleFieldProps {
-  particleCount?: number;
-  zone?: { x: [number, number]; y: [number, number]; z: [number, number] };
-  humidity?: number;
-  temperature?: number;
-}
+import { ParticleFieldProps, createCircleTexture, defaultParticleConfig } from './transformations';
 
 export default function ParticleField({ 
-  particleCount = 1000, 
-  zone = { x: [-3, 5], y: [-5, 5], z: [-5, 5] },
+  particleCount = defaultParticleConfig.particleCount, 
+  zone = defaultParticleConfig.zone,
   humidity = 50,
   temperature = 20
 }: ParticleFieldProps) {

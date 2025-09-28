@@ -4,41 +4,10 @@ import { TankSelector } from "./tank-selector";
 import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
 import { Loader2, X } from "lucide-react";
-import CameraSettings from "./camera-settings";
-import CameraControlButtons from "./camera-controls";
+import { CameraSettings, CameraControlButtons } from "./transformations";
 import SelectedSensorData from "./selected-sensor-data";
-
-// Import the correct type from the hook
-import { TankStatesData, TankState } from '@/hooks/use-tank-states';
-
-interface TankModelProps {
-  mode?: "realtime" | "historical";
-  filters?: { dateRange?: any };
-  selectedTime?: any;
-  handleTimeSelected?: (time: any) => void;
-  selectedHistoricalData?: any;
-  historicalData?: any;
-  tankStates?: TankStatesData | null;
-  tankStatesLoading?: boolean;
-  error?: any;
-  fetchHistoricalData?: () => void;
-  encoderData?: { value: { [key: string]: number } };
-  milkQuantityData?: { value: number };
-  switchStatus?: { value: boolean };
-  weightData?: { value: number };
-  tankTemperaturesData?: { 
-    value: { 
-      over_surface_temperature?: number;
-      surface_temperature?: number;
-      submerged_temperature?: number;
-    };
-    tags?: { board_id?: string };
-    readableDate?: string;
-  };
-  airQualityData?: { value: { humidity: number; temperature: number } };
-  gyroscopeData?: { value: { gyro_x?: number; gyro_y?: number; gyro_z?: number; accel_x?: number; accel_y?: number; accel_z?: number } };
-  selectedData?: string | null;
-}
+import { TankModelProps, TankState, TankStateWithTime } from './transformations';
+import { TankStatesData } from '@/hooks/use-tank-states';
 
 const TankModel = ({
   mode = "realtime",
@@ -104,7 +73,7 @@ const TankModel = ({
     if (mode === 'historical' && tankStates && tankStates.states.length > 0) {
       // Find current state based on selectedTime or latest state
       const currentTime = selectedTime ? new Date(selectedTime) : new Date();
-      const currentState = tankStates.states.find((state: TankState) => {
+      const currentState = tankStates.states.find((state: TankStateWithTime) => {
         const startTime = new Date(state.startTime);
         const endTime = new Date(state.endTime);
         return currentTime >= startTime && currentTime <= endTime;
