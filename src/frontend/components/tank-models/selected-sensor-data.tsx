@@ -14,28 +14,6 @@ const SelectedSensorData = ({
   mode = 'realtime',
 }: SelectedSensorDataProps) => {
   // Debug: Log the received props
-  console.log('=== SelectedSensorData Debug ===');
-  console.log('Mode:', mode);
-  console.log('Selected Data:', selectedData);
-  console.log('Air Quality Data:', airQualityData);
-  console.log('Weight Data:', weightData);
-  console.log('Tank Temperatures Data:', tankTemperaturesData);
-  console.log('Encoder Data:', encoderData);
-  console.log('Milk Quantity Data:', milkQuantityData);
-  console.log('Switch Status:', switchStatus);
-  
-  // Debug específico para encoder
-  if (selectedData === "Encoder") {
-    console.log('=== Encoder Debug ===');
-    console.log('Encoder Data Structure:', encoderData);
-    console.log('Encoder Value:', encoderData?.value);
-    console.log('Angle:', encoderData?.value?.angle);
-    console.log('Position:', encoderData?.value?.position);
-    console.log('Speed:', encoderData?.value?.speed);
-    console.log('Has Angle:', !!encoderData?.value?.angle);
-    console.log('Has Position:', !!encoderData?.value?.position);
-    console.log('Has Speed:', !!encoderData?.value?.speed);
-  }
 
   const getIcon = () => {
     switch (selectedData) {

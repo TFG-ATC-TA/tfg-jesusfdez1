@@ -52,7 +52,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(initialDateRange);
   const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>(initialDateRange);
 
-  // Digital Twin states
+  // Gemelo digital states
   const [selectedFarm] = useState<string>(farmData.idname);
   
   console.log('=== Component Initialization ===');
@@ -623,7 +623,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <div className="h-6 w-1 bg-purple-600 rounded-full"></div>
-              <h3 className="text-xl font-semibold">Digital Twin</h3>
+              <h3 className="text-xl font-semibold">Gemelo digital</h3>
             </div>
             <div>
               <p className="text-sm text-muted-foreground pl-4 mb-7">Visualización 3D del tanque con datos en tiempo real</p>
@@ -800,7 +800,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
       <div className="space-y-1">
         <div className="flex items-center gap-3">
               <div className="h-6 w-1 bg-purple-600 rounded-full"></div>
-              <h3 className="text-xl font-semibold">Digital Twin</h3>
+              <h3 className="text-xl font-semibold">Gemelo digital</h3>
         </div>
         <div>
               <p className="text-sm text-muted-foreground pl-4 mb-7">Visualización 3D del tanque con datos históricos</p>
