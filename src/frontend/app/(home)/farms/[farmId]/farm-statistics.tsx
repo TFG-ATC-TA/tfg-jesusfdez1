@@ -29,6 +29,7 @@ import {
   type HistoricalDataParams
 } from '@/services/data-service';
 import { processRealTimeDataForModel, processHistoricalDataForModel, getUnifiedData } from '@/utils/data-processing';
+import { createHandleCardSelect, SENSORS_CONFIG, createHandleLoadHistoricalData } from '@/utils/tank-utils';
 import TankModel from '@/components/tank-models/tank-model';
 import TimeSeriesSlider from '@/components/timeline/time-series-slider';
 import useAppDataStore from '@/stores/app-store';
@@ -56,9 +57,6 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
   // Gemelo digital states
   const [selectedFarm] = useState<string>(farmData.idname);
   
-  console.log('=== Component Initialization ===');
-  console.log('Farm Data:', farmData);
-  console.log('Selected Farm:', selectedFarm);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [boardIds] = useState<string[]>(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']);
   const [selectedBoard] = useState<string>('6_dof_imu');
@@ -117,20 +115,9 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
       return;
     }
 
-    console.log('=== Effect triggered (Historical tab only) ===');
-    console.log('Applied Date Range:', appliedDateRange);
-    console.log('Selected Date (from slider):', filters.selectedDate);
-    console.log('Session Token:', session?.accessToken ? 'Present' : 'Missing');
-    
     if (appliedDateRange?.from && appliedDateRange?.to && session?.accessToken) {
-      console.log('=== Conditions met, loading data ===');
       handleLoadHistoricalData();
       setSelectedTime(null); // Resetea el tiempo seleccionado
-    } else {
-      console.log('=== Conditions not met ===');
-      console.log('Has from date:', !!appliedDateRange?.from);
-      console.log('Has to date:', !!appliedDateRange?.to);
-      console.log('Has session token:', !!session?.accessToken);
     }
   }, [activeTab, appliedDateRange?.from, appliedDateRange?.to, filters.selectedDate, session?.accessToken]);
 
@@ -143,11 +130,9 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
 
     if (historicalData && Object.keys(historicalData).length > 0) {
       const timeKeys = Object.keys(historicalData);
-      console.log('Available time keys:', timeKeys);
       
       // Select the first available timestamp
       const firstTime = timeKeys[0];
-      console.log('Selected first time:', firstTime);
       
       setSelectedTime(firstTime);
       if (typeof handleTimeSelected === 'function') {
@@ -157,79 +142,25 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
   }, [activeTab, historicalData, handleTimeSelected]);
 
   const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
-    console.log('=== Date Range Changed ===');
-    console.log('New Date Range:', newDateRange);
     setDateRange(newDateRange);
     setAppliedDateRange(newDateRange);
   };
 
   const handleApplyDateRange = () => {
-    console.log('=== Apply Date Range ===');
-    console.log('Current Date Range:', dateRange);
-    console.log('Current Applied Date Range:', appliedDateRange);
-    
     if (dateRangePickerRef.current) {
       dateRangePickerRef.current.applyChanges();
     }
   };
 
-  const handleLoadHistoricalData = async () => {
-    // Usar la fecha del slider si está disponible, sino usar la fecha del rango aplicado
-    const dateToUse = filters.selectedDate || appliedDateRange?.from;
-    
-    if (!selectedFarm || !dateToUse) {
-      console.error('Missing required parameters:', { selectedFarm, dateToUse, appliedDateRange });
-      return;
-    }
-
-    if (!session?.accessToken) {
-      console.error('No session token available');
-      return;
-    }
-
-    const params: HistoricalDataParams = {
-      farm: selectedFarm,
-      date: dateToUse.toISOString().split('T')[0],
-      boardIds: boardIds,
-      // Si tu backend lo requiere, añade:
-      // tank: { height: 100 }
-    };
-
-    console.log('=== Loading Historical Data ===');
-    console.log('Params sent to backend:', params);
-    console.log('Selected Farm:', selectedFarm);
-    console.log('Date from slider:', filters.selectedDate);
-    console.log('Date from range:', appliedDateRange?.from);
-    console.log('Date used:', dateToUse);
-    console.log('Board IDs:', boardIds);
-    console.log('Session token available:', !!session?.accessToken);
-
-    try {
-      await fetchHistoricalData(params, session?.accessToken);
-      console.log('Historical data loaded successfully');
-    } catch (error: unknown) {
-      console.error('=== Error Loading Historical Data ===');
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error instanceof Error ? error.message : error);
-      console.error('Error stack:', error instanceof Error ? error.stack : undefined);
-      
-      // Ensure we always have a clear error message
-      let errorMessage = 'Error desconocido al cargar datos históricos';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message || errorMessage;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String((error as any).message);
-      }
-      
-      console.error('Final error message:', errorMessage);
-      
-      // You can also set a global error state here if needed
-      // setGlobalError(errorMessage);
-    }
-  };
+  // Crear manejador de carga de datos históricos usando utilidad compartida
+  const handleLoadHistoricalData = createHandleLoadHistoricalData(
+    selectedFarm,
+    filters,
+    appliedDateRange,
+    undefined, // No hay selectedDate en farm-statistics
+    fetchHistoricalData,
+    session
+  );
 
   const modelData = processRealTimeDataForModel(realTimeData || []);
 
@@ -249,7 +180,6 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
   }, [historicalData, selectedHistoricalData, selectedTime, selectedDate]);
 
   const handleTimeSelectionChange = (timeString: string) => {
-    console.log('Time selection changed to:', timeString);
     setSelectedTime(timeString);
     // Update selectedHistoricalData when time changes
     if (timeString && handleTimeSelected) {
@@ -257,13 +187,11 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
     }
   };
 
-  const handleCardSelect = (cardName: string) => {
-    setSelectedData(cardName === selectedData ? null : cardName);
-  };
+  // Crear manejador de selección de tarjetas usando utilidad compartida
+  const handleCardSelect = createHandleCardSelect(setSelectedData, selectedData);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    console.log('Tab changed to:', value);
   };
 
   return (
@@ -341,15 +269,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
                       ) : (
                         <div className="w-full p-1">
                           <div className="flex flex-col gap-2 p-1 pt-0">
-                            {[
-                              { name: "MilkQuantity", icon: Droplets, label: "Cantidad de Leche" },
-                              { name: "TankTemperatures", icon: Thermometer, label: "Temperatura del Tanque" },
-                              { name: "MagneticSwitch", icon: Zap, label: "Interruptor Magnético" },
-                              { name: "Encoder", icon: Gauge, label: "Encoder" },
-                              { name: "Gyroscope", icon: Activity, label: "Giroscopio" },
-                              { name: "Weight", icon: Weight, label: "Peso" },
-                              { name: "AirQuality", icon: Database, label: "Calidad del Aire" },
-                            ].map((sensor) => (
+                            {SENSORS_CONFIG.map((sensor) => (
                               <Button
                                 key={sensor.name}
                                 onClick={() => handleCardSelect(sensor.name)}
@@ -517,15 +437,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
                       ) : (
                         <div className="w-full p-1">
                           <div className="flex flex-col gap-2 p-1 pt-0">
-                            {[
-                              { name: "MilkQuantity", icon: Droplets, label: "Cantidad de Leche" },
-                              { name: "TankTemperatures", icon: Thermometer, label: "Temperatura del Tanque" },
-                              { name: "MagneticSwitch", icon: Zap, label: "Interruptor Magnético" },
-                              { name: "Encoder", icon: Gauge, label: "Encoder" },
-                              { name: "Gyroscope", icon: Activity, label: "Giroscopio" },
-                              { name: "Weight", icon: Weight, label: "Peso" },
-                              { name: "AirQuality", icon: Database, label: "Calidad del Aire" },
-                            ].map((sensor) => (
+                            {SENSORS_CONFIG.map((sensor) => (
                               <Button
                                 key={sensor.name}
                                 onClick={() => handleCardSelect(sensor.name)}
@@ -614,17 +526,26 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
                           </span>
                         </div>
                       ) : tankStatesError ? (
-                        <div className="flex items-center justify-center h-[100px]">
-                          <div className="text-center">
-                            <p className="text-sm text-red-500 mb-2">
-                              Error al cargar estados del tanque. Selecciona otra fecha e intenta de nuevo
-                            </p>
-                            <button
-                              onClick={retryFetchTankStates}
-                              className="px-3 py-1 text-sm bg-primary text-white rounded-md hover:bg-primary/90"
-                            >
-                              Intentar de nuevo
-                            </button>
+                        <div className="space-y-2">
+                          <TimeSeriesSlider
+                            startDate={appliedDateRange.from!}
+                            endDate={appliedDateRange.to!}
+                            onTimeSelected={handleTimeSelectionChange}
+                            showPlayButton={false}
+                            showTimeSlider={false}
+                          />
+                          <div className="flex items-center justify-center h-[50px]">
+                            <div className="text-center">
+                              <p className="text-sm text-red-500 mb-2">
+                                Error al cargar estados del tanque. Selecciona otra fecha e intenta de nuevo
+                              </p>
+                              <button
+                                onClick={retryFetchTankStates}
+                                className="px-3 py-1 text-sm bg-primary text-white rounded-md hover:bg-primary/90"
+                              >
+                                Intentar de nuevo
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ) : tankStates && Object.keys(tankStates).length > 0 ? (
@@ -641,7 +562,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
                           onTimeSelected={handleTimeSelectionChange}
                         />
                       ) : (
-                        <div className="h-[100px]">
+                        <div className="h-[10px]">
                           <div className="text-center mb-2">
                             <p className="text-sm text-muted-foreground">
                               No hay datos históricos disponibles para el período de tiempo seleccionado

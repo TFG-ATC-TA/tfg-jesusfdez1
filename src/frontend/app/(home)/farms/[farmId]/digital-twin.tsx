@@ -29,6 +29,7 @@ import {
   type HistoricalDataParams
 } from '@/services/data-service';
 import { processRealTimeDataForModel, processHistoricalDataForModel, getUnifiedData } from '@/utils/data-processing';
+import { getStateColor, getStateTextColor, createHandleCardSelect, SENSORS_CONFIG, createHandleLoadHistoricalData } from '@/utils/tank-utils';
 import TankModel from '@/components/tank-models/tank-model';
 import TimeSeriesSlider from '@/components/timeline/time-series-slider';
 import useAppDataStore from '@/stores/app-store';
@@ -101,57 +102,16 @@ export default function PruebaDanielPage() {
     mode, // Pasar el modo al hook
   });
 
-  // Función para obtener el color del estado
-  const getStateColor = (state: string) => {
-    switch (state) {
-      case 'MILKING': return 'bg-green-500';
-      case 'COOLING': return 'bg-blue-500';
-      case 'CLEANING': return 'bg-yellow-500';
-      case 'EMPTY TANK': return 'bg-red-500';
-      case 'MAINTENANCE': return 'bg-purple-500';
-      default: return 'bg-gray-500';
-    }
-  };
 
-  // Función para obtener el color de texto del estado
-  const getStateTextColor = (state: string) => {
-    switch (state) {
-      case 'MILKING': return 'text-green-700 dark:text-green-400';
-      case 'COOLING': return 'text-blue-700 dark:text-blue-400';
-      case 'CLEANING': return 'text-yellow-700 dark:text-yellow-400';
-      case 'EMPTY TANK': return 'text-red-700 dark:text-red-400';
-      case 'MAINTENANCE': return 'text-purple-700 dark:text-purple-400';
-      default: return 'text-gray-700 dark:text-gray-400';
-    }
-  };
-
-  /**
-   * Cargar datos históricos
-   */
-  const handleLoadHistoricalData = async () => {
-    // Usar la fecha del slider si está disponible, sino usar selectedDate
-    const dateToUse = filters.selectedDate || selectedDate;
-    
-    if (!selectedFarm || !dateToUse) {
-      console.error('Missing required parameters:', { selectedFarm, dateToUse, selectedDate });
-      return;
-    }
-
-    const params: HistoricalDataParams = {
-      farm: selectedFarm,
-      date: dateToUse.toISOString().split('T')[0],
-      boardIds: boardIds,
-      tank: { height: 100 } // Altura del tanque en cm
-    };
-
-    console.log('=== Loading Historical Data (Digital Twin) ===');
-    console.log('Params sent to backend:', params);
-    console.log('Date from slider:', filters.selectedDate);
-    console.log('Date from selectedDate:', selectedDate);
-    console.log('Date used:', dateToUse);
-
-    await fetchHistoricalData(params, session?.accessToken);
-  };
+  // Crear manejador de carga de datos históricos usando utilidad compartida
+  const handleLoadHistoricalData = createHandleLoadHistoricalData(
+    selectedFarm,
+    filters,
+    null, // No hay appliedDateRange en digital-twin
+    selectedDate,
+    fetchHistoricalData,
+    session
+  );
 
   const modelData = processRealTimeDataForModel(realTimeData || []);
 
@@ -175,20 +135,11 @@ export default function PruebaDanielPage() {
     }
   }, [mode, selectedTime, selectedDate, historicalData, selectedHistoricalData, realTimeData]);
 
-  // Sensores disponibles
-  const sensors = [
-    { name: "MilkQuantity", icon: Droplets, label: "Cantidad de Leche" },
-    { name: "TankTemperatures", icon: Thermometer, label: "Temperatura del Tanque" },
-    { name: "MagneticSwitch", icon: Zap, label: "Interruptor Magnético" },
-    { name: "Encoder", icon: Gauge, label: "Encoder" },
-    { name: "Gyroscope", icon: Activity, label: "Giroscopio" },
-    { name: "Weight", icon: Weight, label: "Peso" },
-    { name: "AirQuality", icon: Database, label: "Calidad del Aire" },
-  ];
-
-  const handleCardSelect = (cardName: string) => {
-    setSelectedData(cardName === selectedData ? null : cardName);
-  };
+  // Usar configuración de sensores compartida
+  const sensors = SENSORS_CONFIG;
+  
+  // Crear manejador de selección de tarjetas usando utilidad compartida
+  const handleCardSelect = createHandleCardSelect(setSelectedData, selectedData);
 
   // Ya no necesario - se maneja en el efecto anterior
 

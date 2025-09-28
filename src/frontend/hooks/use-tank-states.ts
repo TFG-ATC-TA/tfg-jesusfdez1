@@ -90,7 +90,7 @@ const useTankStates = ({ filters, boardIds, selectedFarm, selectedTank, mode }: 
     if (hasBasicRequirements) {
       fetchTankStates();
     }
-  }, [mode, selectedFarm, filters.selectedDate, filters.dateRange?.from, filters.dateRange?.to, session?.accessToken, fetchTankStates]);
+  }, [mode, selectedFarm, filters.selectedDate, filters.dateRange?.from, filters.dateRange?.to, session?.accessToken]);
 
   const retryFetchTankStates = () => {
     setTankStatesError(null);

@@ -35,6 +35,8 @@ interface TimeSeriesSliderProps {
   endDate: Date;
   onTimeSelected: (timeString: string) => void;
   tankStateData?: TankStatesData;
+  showPlayButton?: boolean;
+  showTimeSlider?: boolean;
 }
 
 // State summary modal component
@@ -319,7 +321,7 @@ const StateLegend = ({ states }: { states: string[] }) => {
   );
 };
 
-export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, tankStateData }: TimeSeriesSliderProps) {
+export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, tankStateData, showPlayButton = true, showTimeSlider = true }: TimeSeriesSliderProps) {
   const [currentDate, setCurrentDate] = useState(startDate);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeState, setActiveState] = useState<string | null>(null);
@@ -556,7 +558,7 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
   }, []);
 
   return (
-    <div className="w-full bg-transparent h-[100px]" ref={componentRef}>
+    <div className="w-full bg-transparent h-[10px]" ref={componentRef}>
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -582,27 +584,33 @@ export default function TimeSeriesSlider({ startDate, endDate, onTimeSelected, t
             )}
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Button size="sm" variant="outline" onClick={togglePlay} className="h-7 w-7 p-0 rounded-full">
-              {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-            </Button>
-          </div>
+          {showPlayButton && (
+            <div className="flex items-center space-x-2">
+              <Button size="sm" variant="outline" onClick={togglePlay} className="h-7 w-7 p-0 rounded-full">
+                {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </Button>
+            </div>
+          )}
         </div>
 
-        <TimeSlider
-          value={currentDate.getHours() * 60 + currentDate.getMinutes()}
-          onChange={handleTimeChange}
-          marks={stateMarkers}
-          intervals={intervalMarkers}
-          min={handleTimeSliderLimits().minTime}
-          max={handleTimeSliderLimits().maxTime}
-          activeState={activeState}
-          className="mx-1"
-        />
+        {showTimeSlider && (
+          <>
+            <TimeSlider
+              value={currentDate.getHours() * 60 + currentDate.getMinutes()}
+              onChange={handleTimeChange}
+              marks={stateMarkers}
+              intervals={intervalMarkers}
+              min={handleTimeSliderLimits().minTime}
+              max={handleTimeSliderLimits().maxTime}
+              activeState={activeState}
+              className="mx-1"
+            />
 
-        <div className="flex justify-center mt-1">
-          <StateLegend states={tankStateData ? Array.from(new Set(tankStateData?.states.map((item) => item.state))) : []} />
-        </div>
+            <div className="flex justify-center mt-1">
+              <StateLegend states={tankStateData ? Array.from(new Set(tankStateData?.states.map((item) => item.state))) : []} />
+            </div>
+          </>
+        )}
       </div>
 
       <StateSummaryModal
