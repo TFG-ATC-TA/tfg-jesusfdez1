@@ -546,27 +546,34 @@ export function useHistoricalData() {
       return;
     }
 
-    // If exact time doesn't exist, find the closest available time
+    // If exact time doesn't exist, find the closest available time within the same day
     const times = Object.keys(data);
     if (times.length > 0) {
       // Convert all times to minutes for comparison
       const targetMinutes = timeStringToMinutes(timeString);
 
-      // Find the closest time
-      let closestTime = times[0];
-      let minDifference = Math.abs(
-        timeStringToMinutes(closestTime) - targetMinutes
-      );
+      // Find the closest time within a reasonable range (max 2 hours difference)
+      const maxTimeDifference = 120; // 2 hours in minutes
+      let closestTime = null;
+      let minDifference = Infinity;
 
       times.forEach((time) => {
-        const difference = Math.abs(timeStringToMinutes(time) - targetMinutes);
-        if (difference < minDifference) {
+        const timeMinutes = timeStringToMinutes(time);
+        const difference = Math.abs(timeMinutes - targetMinutes);
+        
+        // Only consider times within the same day and within reasonable range
+        if (difference < maxTimeDifference && difference < minDifference) {
           closestTime = time;
           minDifference = difference;
         }
       });
 
-      setSelectedHistoricalData(data[closestTime]);
+      if (closestTime) {
+        setSelectedHistoricalData(data[closestTime]);
+      } else {
+        // No data available for this time or nearby times
+        setSelectedHistoricalData(null);
+      }
     } else {
       setSelectedHistoricalData(null);
     }

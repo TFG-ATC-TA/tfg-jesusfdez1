@@ -142,6 +142,7 @@ router.post('/historicalData', verifyToken, async (req, res) => {
         |> filter(fn: (r) => ${validBoardIds
           .map((id) => `r["tags_board_id"] == "${id}"`)
           .join(" or ")})
+        |> filter(fn: (r) => exists r._value)
         |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
         |> yield(name: "mean")
     `;
@@ -176,6 +177,12 @@ router.post('/historicalData', verifyToken, async (req, res) => {
         tags_sensor_id: sensorId,
         ...tags
       } = row;
+
+      // Validar que el valor sea un número válido
+      if (isNaN(rawValue) || rawValue === null || rawValue === undefined) {
+        devConsole.log(`Skipping row with invalid value - Measurement: ${measurement}, Value: ${rawValue}`);
+        return;
+      }
 
       // Debug: Log each row being processed
       devConsole.log(`Processing row - Measurement: ${measurement}, Field: ${rawField}, Value: ${rawValue}, BoardId: ${boardId}`);

@@ -154,15 +154,77 @@ export const processRealTimeDataForModel = (realTimeData: any[]) => {
 };
 
 /**
+ * Generar valores por defecto cuando no hay datos disponibles
+ */
+const getDefaultValues = () => ({
+  encoderData: {
+    value: { "00": 0, "01": 0, angle: 0, speed: 0, position: 0 },
+    measurement: "encoder",
+    tags: { board_id: "N/A", sensor_id: "N/A" },
+    readableDate: "N/A"
+  },
+  milkQuantityData: {
+    value: 0,
+    measurement: "tank_distance",
+    tags: { board_id: "N/A", sensor_id: "N/A" },
+    readableDate: "N/A"
+  },
+  switchStatus: {
+    value: 0,
+    measurement: "magnetic_switch",
+    tags: { board_id: "N/A", sensor_id: "N/A" },
+    readableDate: "N/A"
+  },
+  weightData: {
+    value: 0,
+    measurement: "weight",
+    tags: { board_id: "N/A", sensor_id: "N/A" },
+    readableDate: "N/A"
+  },
+  tankTemperaturesData: {
+    value: {
+      surface_temperature: 0,
+      over_surface_temperature: 0,
+      submerged_temperature: 0
+    },
+    measurement: "temperature_probe",
+    tags: { board_id: "N/A", sensor_id: "N/A" },
+    readableDate: "N/A"
+  },
+  airQualityData: {
+    value: {
+      humidity: 0,
+      temperature: 0
+    },
+    measurement: "air_quality",
+    tags: { board_id: "N/A", sensor_id: "N/A" },
+    readableDate: "N/A"
+  },
+  gyroscopeData: {
+    value: {
+      gyro_x: 0,
+      gyro_y: 0,
+      gyro_z: 0,
+      accel_x: 0,
+      accel_y: 0,
+      accel_z: 0
+    },
+    measurement: "6_dof_imu",
+    tags: { board_id: "N/A", sensor_id: "N/A" },
+    readableDate: "N/A"
+  }
+});
+
+/**
  * Procesar datos históricos para el modelo 3D
  */
 export const processHistoricalDataForModel = (historicalData: any) => {
   console.log('=== processHistoricalDataForModel Debug ===');
   console.log('Input Historical Data:', historicalData);
   
-  if (!historicalData || typeof historicalData !== 'object') {
-    console.log('No historical data or invalid format');
-    return {};
+  if (!historicalData || typeof historicalData !== 'object' || historicalData === null) {
+    console.log('No historical data or invalid format - using default values');
+    return getDefaultValues();
   }
 
   // If it's already in the correct format (from selectedHistoricalData)
@@ -396,6 +458,12 @@ export const getUnifiedData = (
     }
   }
   
-  // Fallback para datos históricos
-  return processHistoricalDataForModel(selectedHistoricalData || historicalData);
+  // Fallback para datos históricos - usar valores por defecto si no hay datos
+  if (selectedHistoricalData) {
+    return processHistoricalDataForModel(selectedHistoricalData);
+  } else if (historicalData) {
+    return processHistoricalDataForModel(historicalData);
+  } else {
+    return getDefaultValues();
+  }
 };
