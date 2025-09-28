@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import TemperatureGyrocopeChart from '@/components/charts/temperature-gyroscope-chart';
 import { CalendarDateRangePicker, CalendarDateRangePickerRef, DateRange } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
   useCachedData,
   type HistoricalDataParams
 } from '@/services/data-service';
+import { processRealTimeDataForModel, processHistoricalDataForModel, getUnifiedData } from '@/utils/data-processing';
 import TankModel from '@/components/tank-models/tank-model';
 import TimeSeriesSlider from '@/components/timeline/time-series-slider';
 import useAppDataStore from '@/stores/app-store';
@@ -66,6 +67,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedSensor, setSelectedSensor] = useState<string>('all');
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('charts'); // Estado para controlar pestaña activa
 
   // Stores
   const { filters, mode, setMode, setFilters } = useAppDataStore((state) => state);
@@ -84,7 +86,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
   const { loadPrediction, loadRealTimePrediction } = useTankStatePrediction();
   const { loadCachedData } = useCachedData();
 
-  // Hook para estados del tanque
+  // Hook para estados del tanque - SOLO en pestaña histórico
   const {
     tankStates,
     tankStatesLoading,
@@ -92,22 +94,32 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
     fetchTankStates,
     retryFetchTankStates,
   } = useTankStates({
-    filters: {
+    filters: activeTab === 'digital-twin' ? {
       selectedDate: filters.selectedDate || undefined,
       dateRange: appliedDateRange && appliedDateRange.from && appliedDateRange.to ? {
         from: appliedDateRange.from,
         to: appliedDateRange.to
       } : null
+    } : {
+      selectedDate: undefined,
+      dateRange: null
     },
-    boardIds,
-    selectedFarm,
-    selectedTank: selectedTank?.name || 'default-tank',
+    boardIds: activeTab === 'digital-twin' ? boardIds : [],
+    selectedFarm: activeTab === 'digital-twin' ? selectedFarm : '',
+    selectedTank: activeTab === 'digital-twin' ? (selectedTank?.name || 'default-tank') : '',
+    mode: 'historical',
   });
 
-  // Effect to load historical data when applied date range changes
+  // Effect to load historical data when applied date range changes - SOLO en pestaña histórico
   useEffect(() => {
-    console.log('=== Effect triggered ===');
+    // Solo ejecutar en la pestaña de histórico
+    if (activeTab !== 'digital-twin') {
+      return;
+    }
+
+    console.log('=== Effect triggered (Historical tab only) ===');
     console.log('Applied Date Range:', appliedDateRange);
+    console.log('Selected Date (from slider):', filters.selectedDate);
     console.log('Session Token:', session?.accessToken ? 'Present' : 'Missing');
     
     if (appliedDateRange?.from && appliedDateRange?.to && session?.accessToken) {
@@ -120,10 +132,15 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
       console.log('Has to date:', !!appliedDateRange?.to);
       console.log('Has session token:', !!session?.accessToken);
     }
-  }, [appliedDateRange?.from, appliedDateRange?.to, session?.accessToken]);
+  }, [activeTab, appliedDateRange?.from, appliedDateRange?.to, filters.selectedDate, session?.accessToken]);
 
-  // 2. Cuando llegan nuevos datos históricos, selecciona el primer timestamp
+  // 2. Cuando llegan nuevos datos históricos, selecciona el primer timestamp - SOLO en pestaña histórico
   useEffect(() => {
+    // Solo ejecutar en la pestaña de histórico
+    if (activeTab !== 'digital-twin') {
+      return;
+    }
+
     if (historicalData && Object.keys(historicalData).length > 0) {
       const timeKeys = Object.keys(historicalData);
       console.log('Available time keys:', timeKeys);
@@ -137,7 +154,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
         handleTimeSelected(firstTime);
       }
     }
-  }, [historicalData, handleTimeSelected]);
+  }, [activeTab, historicalData, handleTimeSelected]);
 
   const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
     console.log('=== Date Range Changed ===');
@@ -157,8 +174,11 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
   };
 
   const handleLoadHistoricalData = async () => {
-    if (!selectedFarm || !appliedDateRange?.from) {
-      console.error('Missing required parameters:', { selectedFarm, appliedDateRange });
+    // Usar la fecha del slider si está disponible, sino usar la fecha del rango aplicado
+    const dateToUse = filters.selectedDate || appliedDateRange?.from;
+    
+    if (!selectedFarm || !dateToUse) {
+      console.error('Missing required parameters:', { selectedFarm, dateToUse, appliedDateRange });
       return;
     }
 
@@ -169,7 +189,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
 
     const params: HistoricalDataParams = {
       farm: selectedFarm,
-      date: appliedDateRange.from.toISOString().split('T')[0],
+      date: dateToUse.toISOString().split('T')[0],
       boardIds: boardIds,
       // Si tu backend lo requiere, añade:
       // tank: { height: 100 }
@@ -178,7 +198,9 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
     console.log('=== Loading Historical Data ===');
     console.log('Params sent to backend:', params);
     console.log('Selected Farm:', selectedFarm);
-    console.log('Selected Date:', appliedDateRange.from);
+    console.log('Date from slider:', filters.selectedDate);
+    console.log('Date from range:', appliedDateRange?.from);
+    console.log('Date used:', dateToUse);
     console.log('Board IDs:', boardIds);
     console.log('Session token available:', !!session?.accessToken);
 
@@ -209,373 +231,22 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
     }
   };
 
-  /**
-   * Procesar datos reales para el modelo 3D
-   */
-  const processRealTimeDataForModel = () => {
-    // Buscar datos de IMU (6_dof_imu)
-    const imuData = realTimeData?.find((data: any) => data.topic?.includes('6_dof_imu'))?.processedData;
-    
-    // Buscar datos del giroscopio en datos históricos
-    const gyroscopeData = realTimeData?.find((data: any) => 
-      data.topic?.includes('gyroscope') || data.topic?.includes('6_dof_imu')
-    )?.processedData;
-    
-    // Buscar otros tipos de datos con diferentes patrones de topic
-    const encoderData = realTimeData?.find((data: any) => 
-      data.topic?.includes('encoder')
-    )?.processedData;
-    
-    const milkData = realTimeData?.find((data: any) => 
-      data.topic?.includes('milk') || data.topic?.includes('tank_distance')
-    )?.processedData;
-    
-    const switchData = realTimeData?.find((data: any) => 
-      data.topic?.includes('switch') || data.topic?.includes('magnetic_switch')
-    )?.processedData;
-    
-    const weightData = realTimeData?.find((data: any) => 
-      data.topic?.includes('weight')
-    )?.processedData;
-    
-    const temperatureData = realTimeData?.find((data: any) => 
-      data.topic?.includes('temperature') || data.topic?.includes('temperature_probe')
-    )?.processedData;
-    
-    const airData = realTimeData?.find((data: any) => 
-      data.topic?.includes('air') || data.topic?.includes('air_quality')
-    )?.processedData;
+  const modelData = processRealTimeDataForModel(realTimeData || []);
 
-    // Procesar datos de IMU para simular encoder solo si están disponibles
-    const processedEncoderData = imuData ? {
-      value: {
-        // Estructura para el visor 3D (claves numéricas) - solo velocidad
-        "00": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
-        "01": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
-        // Estructura para el modal (propiedades nombradas) - con todos los valores
-        angle: parseFloat((Math.atan2(imuData.value.accel_y, imuData.value.accel_x) * (180 / Math.PI)).toFixed(2)),
-        position: parseFloat((Math.abs(imuData.value.accel_z) / 2).toFixed(2)), // Normalizar a 0-1
-        speed: parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2))
-      }
-    } : undefined;
 
-    // Procesar datos reales del encoder para que tengan estructura dual
-    const processedRealEncoderData = encoderData ? {
-      value: {
-        // Estructura para el visor 3D (claves numéricas) - solo velocidad
-        "00": parseFloat((encoderData.value?.speed || encoderData.value?.["00"] || 0).toFixed(2)),
-        "01": parseFloat((encoderData.value?.speed || encoderData.value?.["01"] || 0).toFixed(2)),
-        // Estructura para el modal (propiedades nombradas) - con todos los valores
-        angle: parseFloat((encoderData.value?.angle || encoderData.value?.["00"] || 0).toFixed(2)),
-        position: parseFloat((encoderData.value?.position || 0).toFixed(2)),
-        speed: parseFloat((encoderData.value?.speed || encoderData.value?.["01"] || 0).toFixed(2))
-      }
-    } : undefined;
-
-    // Procesar datos de peso - simular basado en acelerómetro si no hay datos reales
-    const processedWeightData = weightData ? {
-      value: typeof weightData.value === 'object' ? weightData.value : weightData.value
-    } : imuData ? {
-      value: Math.abs(imuData.value.accel_z) * 100 + 500 // Simular peso basado en aceleración Z
-    } : undefined;
-
-    // Procesar datos de calidad del aire - simular basado en IMU si no hay datos reales
-    const processedAirData = airData ? {
-      value: {
-        humidity: airData.value?.humidity || airData.value,
-        temperature: airData.value?.temperature
-      }
-    } : imuData ? {
-      value: {
-        humidity: Math.abs(imuData.value.accel_x) * 20 + 50, // Simular humedad
-        temperature: Math.abs(imuData.value.accel_y) * 10 + 20 // Simular temperatura
-      }
-    } : undefined;
-
-    // Procesar datos de temperatura del tanque - simular basado en IMU si no hay datos reales
-    const processedTemperatureData = temperatureData ? {
-      value: {
-        over_surface_temperature: temperatureData.value?.over_surface_temperature || temperatureData.value,
-        surface_temperature: temperatureData.value?.surface_temperature || temperatureData.value,
-        submerged_temperature: temperatureData.value?.submerged_temperature || temperatureData.value
-      },
-      tags: temperatureData.tags,
-      readableDate: temperatureData.readableDate
-    } : imuData ? {
-      value: {
-        over_surface_temperature: Math.abs(imuData.value.accel_x) * 5 + 15,
-        surface_temperature: Math.abs(imuData.value.accel_y) * 5 + 15,
-        submerged_temperature: Math.abs(imuData.value.accel_z) * 5 + 15
-      },
-      tags: imuData.tags,
-      readableDate: imuData.readableDate
-    } : undefined;
-
-    // Procesar datos de leche - simular basado en IMU si no hay datos reales
-    const processedMilkData = milkData ? {
-      value: milkData.value
-    } : imuData ? {
-      value: Math.abs(imuData.value.accel_z) * 50 + 25 // Simular cantidad de leche
-    } : undefined;
-
-    // Procesar datos de switch - simular basado en IMU si no hay datos reales
-    const processedSwitchData = switchData ? {
-      value: switchData.value
-    } : imuData ? {
-      value: Math.abs(imuData.value.accel_x) > 1.5 // Simular switch basado en aceleración
-    } : undefined;
-
-    // Procesar datos del giroscopio - usar datos reales o simular basado en IMU
-    const processedGyroscopeData = gyroscopeData ? {
-      value: {
-        gyro_x: gyroscopeData.value?.gyro_x || gyroscopeData.value?.gyro_x_value || 0,
-        gyro_y: gyroscopeData.value?.gyro_y || gyroscopeData.value?.gyro_y_value || 0,
-        gyro_z: gyroscopeData.value?.gyro_z || gyroscopeData.value?.gyro_z_value || 0,
-        accel_x: gyroscopeData.value?.accel_x || gyroscopeData.value?.accel_x_value || 0,
-        accel_y: gyroscopeData.value?.accel_y || gyroscopeData.value?.accel_y_value || 0,
-        accel_z: gyroscopeData.value?.accel_z || gyroscopeData.value?.accel_z_value || 0
-      }
-    } : imuData ? {
-      value: {
-        gyro_x: imuData.value.gyro_x,
-        gyro_y: imuData.value.gyro_y,
-        gyro_z: imuData.value.gyro_z,
-        accel_x: imuData.value.accel_x,
-        accel_y: imuData.value.accel_y,
-        accel_z: imuData.value.accel_z
-      }
-    } : undefined;
-
-    const result = {
-      encoderData: processedRealEncoderData || processedEncoderData,
-      milkQuantityData: processedMilkData,
-      switchStatus: processedSwitchData,
-      weightData: processedWeightData,
-      tankTemperaturesData: processedTemperatureData,
-      airQualityData: processedAirData,
-      gyroscopeData: processedGyroscopeData
-    };
-
-    return result;
-  };
-
-  const modelData = processRealTimeDataForModel();
-
-  // Process historical data to ensure correct structure
-  const processHistoricalDataForModel = (historicalData: any) => {
-    console.log('=== processHistoricalDataForModel Debug ===');
-    console.log('Input Historical Data:', historicalData);
-    
-    if (!historicalData || typeof historicalData !== 'object') {
-      console.log('No historical data or invalid format');
-      return {};
-    }
-
-    // If it's already in the correct format (from selectedHistoricalData)
-    if (historicalData.encoderData || historicalData.airQualityData) {
-      console.log('Data already in correct format');
-      return historicalData;
-    }
-
-    // If it's raw historical data from backend (with time keys)
-    const timeKeys = Object.keys(historicalData);
-    console.log('Time keys found:', timeKeys);
-    
-    if (timeKeys.length > 0) {
-      // Check if we have data from multiple days (ISO date format)
-      const hasMultipleDays = timeKeys.some(key => key.includes('T') || key.includes('-'));
-      
-      if (hasMultipleDays) {
-        // Group data by day to allow navigation between days
-        const groupedByDay: Record<string, any> = {};
-        
-        timeKeys.forEach(timeKey => {
-          let dateStr = '';
-          
-          // Parse the time key to extract the date
-          if (timeKey.includes('T')) {
-            // ISO string format
-            dateStr = timeKey.split('T')[0];
-          } else if (timeKey.includes('-')) {
-            // Date format like "2024-06-10"
-            dateStr = timeKey.split(' ')[0]; // Take only the date part
-          } else {
-            // Time-only format like "12:00", use current date as fallback
-            dateStr = new Date().toISOString().split('T')[0];
-          }
-          
-          if (!groupedByDay[dateStr]) {
-            groupedByDay[dateStr] = {};
-          }
-          
-          // Store the time data under the date
-          groupedByDay[dateStr][timeKey] = historicalData[timeKey];
-        });
-        
-        console.log('Grouped data by day:', groupedByDay);
-        
-        // Return the first day's data for the 3D model
-        const firstDay = Object.keys(groupedByDay)[0];
-        const firstTime = Object.keys(groupedByDay[firstDay])[0];
-        const timeData = groupedByDay[firstDay][firstTime];
-        
-        const processedData = {
-          encoderData: timeData.encoderData,
-          milkQuantityData: timeData.milkQuantityData,
-          switchStatus: timeData.switchStatus,
-          weightData: timeData.weightData,
-          tankTemperaturesData: timeData.tankTemperaturesData,
-          airQualityData: timeData.airQualityData,
-          gyroscopeData: timeData.gyroscopeData,
-        };
-        
-        console.log('Processed data for 3D model:', processedData);
-        return processedData;
-      } else {
-        // Single day data, process as before
-        const firstTime = timeKeys[0];
-        const timeData = historicalData[firstTime];
-        
-        const processedData = {
-          encoderData: timeData.encoderData,
-          milkQuantityData: timeData.milkQuantityData,
-          switchStatus: timeData.switchStatus,
-          weightData: timeData.weightData,
-          tankTemperaturesData: timeData.tankTemperaturesData,
-          airQualityData: timeData.airQualityData,
-          gyroscopeData: timeData.gyroscopeData,
-        };
-        
-        console.log('Single day processed data:', processedData);
-        return processedData;
-      }
-    }
-
-    console.log('No valid data structure found');
-    return {};
-  };
-
-    // Unified data processing for historical mode
-  const getUnifiedData = () => {
-    console.log('=== Getting Unified Data ===');
-    console.log('Selected Historical Data:', selectedHistoricalData);
-    console.log('Historical Data:', historicalData);
-    console.log('Applied Date Range:', appliedDateRange);
-    
-    // Historical mode - always use historical data in this tab
-    const historicalDataToProcess = selectedHistoricalData || historicalData;
-
-    const processedData = processHistoricalDataForModel(historicalDataToProcess);
-    console.log('Processed Data:', processedData);
-
-    // Si no hay datos procesados y tenemos un rango de fechas aplicado, crear datos por defecto basados en IMU
-    if (!processedData.encoderData && !processedData.airQualityData && appliedDateRange) {
-      console.log('=== No processed data found, using IMU fallback ===');
-      const imuData = realTimeData?.find((data: any) => data.topic?.includes('6_dof_imu'))?.processedData;
-
-      if (imuData) {
-        console.log('=== Using IMU data for fallback ===');
-        return {
-          encoderData: {
-            value: {
-              "00": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
-              "01": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
-              angle: parseFloat((Math.atan2(imuData.value.accel_y, imuData.value.accel_x) * (180 / Math.PI)).toFixed(2)),
-              position: parseFloat((Math.abs(imuData.value.accel_z) / 2).toFixed(2)),
-              speed: parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2))
-            }
-          },
-          milkQuantityData: {
-            value: Math.abs(imuData.value.accel_z) * 50 + 25
-          },
-          switchStatus: {
-            value: Math.abs(imuData.value.accel_x) > 1.5
-          },
-          weightData: {
-            value: Math.abs(imuData.value.accel_z) * 100 + 500
-          },
-          tankTemperaturesData: {
-            value: {
-              over_surface_temperature: Math.abs(imuData.value.accel_x) * 5 + 15,
-              surface_temperature: Math.abs(imuData.value.accel_y) * 5 + 15,
-              submerged_temperature: Math.abs(imuData.value.accel_z) * 5 + 15
-            },
-            tags: imuData.tags,
-            readableDate: imuData.readableDate
-          },
-          airQualityData: {
-            value: {
-              humidity: Math.abs(imuData.value.accel_x) * 20 + 50,
-              temperature: Math.abs(imuData.value.accel_y) * 10 + 20
-            }
-          },
-          gyroscopeData: {
-            value: {
-              gyro_x: imuData.value.gyro_x,
-              gyro_y: imuData.value.gyro_y,
-              gyro_z: imuData.value.gyro_z,
-              accel_x: imuData.value.accel_x,
-              accel_y: imuData.value.accel_y,
-              accel_z: imuData.value.accel_z
-            }
-          }
-        };
-      } else {
-        console.log('=== No IMU data available, using static fallback ===');
-        // Static fallback data when no IMU data is available
-        return {
-          encoderData: {
-            value: {
-              "00": 0,
-              "01": 0,
-              angle: 0,
-              position: 0,
-              speed: 0
-            }
-          },
-          milkQuantityData: {
-            value: 0
-          },
-          switchStatus: {
-            value: false
-          },
-          weightData: {
-            value: 0
-          },
-          tankTemperaturesData: {
-            value: {
-              over_surface_temperature: 20,
-              surface_temperature: 20,
-              submerged_temperature: 20
-            },
-            tags: {},
-            readableDate: new Date().toISOString()
-          },
-          airQualityData: {
-            value: {
-              humidity: 50,
-              temperature: 20
-            }
-          },
-          gyroscopeData: {
-            value: {
-              gyro_x: 0,
-              gyro_y: 0,
-              gyro_z: 0,
-              accel_x: 0,
-              accel_y: 0,
-              accel_z: 0
-            }
-          }
-        };
-      }
-    }
-
-    console.log('=== Final processed data ===', processedData);
-    return processedData;
-  };
-
-  const unifiedData = getUnifiedData();
+  // Datos unificados - comportamiento separado por modo
+  const unifiedData = useMemo(() => {
+    // En farm-statistics, el modo se determina por la pestaña activa
+    // Pestaña "charts" = tiempo real, pestaña "digital-twin" = histórico
+    return getUnifiedData(
+      "historical", // Siempre histórico en farm-statistics
+      [], // No usar datos de tiempo real en farm-statistics
+      historicalData,
+      selectedHistoricalData,
+      selectedTime,
+      selectedDate
+    );
+  }, [historicalData, selectedHistoricalData, selectedTime, selectedDate]);
 
   const handleTimeSelectionChange = (timeString: string) => {
     console.log('Time selection changed to:', timeString);
@@ -590,9 +261,14 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
     setSelectedData(cardName === selectedData ? null : cardName);
   };
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    console.log('Tab changed to:', value);
+  };
+
   return (
     <div className="space-y-8">
-      <Tabs defaultValue="charts" className="space-y-4">
+      <Tabs defaultValue="charts" value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="charts">Tiempo Real</TabsTrigger>
           <TabsTrigger value="digital-twin">Histórico</TabsTrigger>
@@ -728,12 +404,12 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
                     <TankModel
                       mode="realtime"
                       filters={{ dateRange }}
-                      selectedHistoricalData={selectedHistoricalData}
-                      historicalData={historicalData}
+                      selectedHistoricalData={undefined} // No usar datos históricos en tiempo real
+                      historicalData={undefined} // No usar datos históricos en tiempo real
                       error={error}
                       handleTimeSelected={handleTimeSelectionChange}
-                      fetchHistoricalData={handleLoadHistoricalData}
-                      selectedTime={selectedTime}
+                      fetchHistoricalData={undefined} // No hacer peticiones históricas en tiempo real
+                      selectedTime={undefined} // No usar tiempo seleccionado en tiempo real
                       encoderData={modelData.encoderData}
                       milkQuantityData={modelData.milkQuantityData}
                       switchStatus={modelData.switchStatus}
@@ -908,7 +584,7 @@ export default function Statistics({ farmData }: { farmData: Farm }) {
                       historicalData={historicalData}
                       error={error}
                       handleTimeSelected={handleTimeSelectionChange}
-                      fetchHistoricalData={handleLoadHistoricalData}
+                      fetchHistoricalData={handleLoadHistoricalData} // Siempre histórico en farm-statistics
                       selectedTime={selectedTime}
                       encoderData={unifiedData.encoderData}
                       milkQuantityData={unifiedData.milkQuantityData}

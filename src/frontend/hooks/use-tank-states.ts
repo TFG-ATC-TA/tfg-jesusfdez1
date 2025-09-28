@@ -77,15 +77,20 @@ const useTankStates = ({ filters, boardIds, selectedFarm, selectedTank, mode }: 
     }
   }, [selectedFarm, filters.selectedDate, filters.dateRange?.from, filters.dateRange?.to, session?.accessToken]);
   
-  // Auto-ejecutar fetchTankStates cuando cambien las dependencias - FORZADO
+  // Auto-ejecutar fetchTankStates cuando cambien las dependencias - SOLO en modo histórico
   useEffect(() => {
+    // Solo ejecutar en modo histórico
+    if (mode !== 'historical') {
+      return;
+    }
+
     const hasDate = filters.selectedDate || (filters.dateRange?.from);
     const hasBasicRequirements = selectedFarm && hasDate && session?.accessToken;
 
     if (hasBasicRequirements) {
       fetchTankStates();
     }
-  }, [selectedFarm, filters.selectedDate, filters.dateRange?.from, filters.dateRange?.to, session?.accessToken]);
+  }, [mode, selectedFarm, filters.selectedDate, filters.dateRange?.from, filters.dateRange?.to, session?.accessToken, fetchTankStates]);
 
   const retryFetchTankStates = () => {
     setTankStatesError(null);

@@ -28,6 +28,7 @@ import {
   useCachedData,
   type HistoricalDataParams
 } from '@/services/data-service';
+import { processRealTimeDataForModel, processHistoricalDataForModel, getUnifiedData } from '@/utils/data-processing';
 import TankModel from '@/components/tank-models/tank-model';
 import TimeSeriesSlider from '@/components/timeline/time-series-slider';
 import useAppDataStore from '@/stores/app-store';
@@ -76,7 +77,7 @@ export default function PruebaDanielPage() {
   const { loadPrediction, loadRealTimePrediction } = useTankStatePrediction();
   const { loadCachedData } = useCachedData();
 
-  // Hook para estados del tanque
+  // Hook para estados del tanque - SOLO en modo histórico
   const {
     tankStates,
     tankStatesLoading,
@@ -84,16 +85,19 @@ export default function PruebaDanielPage() {
     fetchTankStates,
     retryFetchTankStates,
   } = useTankStates({
-    filters: {
+    filters: mode === 'historical' ? {
       selectedDate: filters.selectedDate || undefined,
       dateRange: dateRange && dateRange.from && dateRange.to ? {
         from: dateRange.from,
         to: dateRange.to
       } : null
-    },
-    boardIds,
-    selectedFarm,
-    selectedTank: selectedTank?.name || 'default-tank',
+    } : {
+      selectedDate: undefined,
+      dateRange: null
+    }, // No cargar estados en modo tiempo real
+    boardIds: mode === 'historical' ? boardIds : [], // No usar boardIds en modo tiempo real
+    selectedFarm: mode === 'historical' ? selectedFarm : '', // No usar selectedFarm en modo tiempo real
+    selectedTank: mode === 'historical' ? (selectedTank?.name || 'default-tank') : '', // No usar selectedTank en modo tiempo real
     mode, // Pasar el modo al hook
   });
 
@@ -125,484 +129,51 @@ export default function PruebaDanielPage() {
    * Cargar datos históricos
    */
   const handleLoadHistoricalData = async () => {
-    if (!selectedFarm || !selectedDate) return;
+    // Usar la fecha del slider si está disponible, sino usar selectedDate
+    const dateToUse = filters.selectedDate || selectedDate;
+    
+    if (!selectedFarm || !dateToUse) {
+      console.error('Missing required parameters:', { selectedFarm, dateToUse, selectedDate });
+      return;
+    }
 
     const params: HistoricalDataParams = {
       farm: selectedFarm,
-      date: selectedDate.toISOString().split('T')[0],
+      date: dateToUse.toISOString().split('T')[0],
       boardIds: boardIds,
       tank: { height: 100 } // Altura del tanque en cm
     };
 
-    // Loading historical data
+    console.log('=== Loading Historical Data (Digital Twin) ===');
+    console.log('Params sent to backend:', params);
+    console.log('Date from slider:', filters.selectedDate);
+    console.log('Date from selectedDate:', selectedDate);
+    console.log('Date used:', dateToUse);
 
     await fetchHistoricalData(params, session?.accessToken);
   };
 
-  /**
-   * Procesar datos reales para el modelo 3D
-   */
-  const processRealTimeDataForModel = () => {
-    // Buscar datos de IMU (6_dof_imu)
-    const imuData = realTimeData?.find((data: any) => data.topic?.includes('6_dof_imu'))?.processedData;
-    
-    // Buscar datos del giroscopio en datos históricos
-    const gyroscopeData = realTimeData?.find((data: any) => 
-      data.topic?.includes('gyroscope') || data.topic?.includes('6_dof_imu')
-    )?.processedData;
-    
-    // Buscar otros tipos de datos con diferentes patrones de topic
-    const encoderData = realTimeData?.find((data: any) => 
-      data.topic?.includes('encoder')
-    )?.processedData;
-    
-    const milkData = realTimeData?.find((data: any) => 
-      data.topic?.includes('milk') || data.topic?.includes('tank_distance')
-    )?.processedData;
-    
-    const switchData = realTimeData?.find((data: any) => 
-      data.topic?.includes('switch') || data.topic?.includes('magnetic_switch')
-    )?.processedData;
-    
-    const weightData = realTimeData?.find((data: any) => 
-      data.topic?.includes('weight')
-    )?.processedData;
-    
-    const temperatureData = realTimeData?.find((data: any) => 
-      data.topic?.includes('temperature') || data.topic?.includes('temperature_probe')
-    )?.processedData;
-    
-    const airData = realTimeData?.find((data: any) => 
-      data.topic?.includes('air') || data.topic?.includes('air_quality')
-    )?.processedData;
+  const modelData = processRealTimeDataForModel(realTimeData || []);
 
-    // Procesar datos de IMU para simular encoder solo si están disponibles
-    const processedEncoderData = imuData ? {
-      value: {
-        // Estructura para el visor 3D (claves numéricas) - solo velocidad
-        "00": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
-        "01": parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2)),
-        // Estructura para el modal (propiedades nombradas) - con todos los valores
-        angle: parseFloat((Math.atan2(imuData.value.accel_y, imuData.value.accel_x) * (180 / Math.PI)).toFixed(2)),
-        position: parseFloat((Math.abs(imuData.value.accel_z) / 2).toFixed(2)), // Normalizar a 0-1
-        speed: parseFloat((Math.sqrt(imuData.value.gyro_x**2 + imuData.value.gyro_y**2 + imuData.value.gyro_z**2) * 10).toFixed(2))
-      }
-    } : undefined;
 
-    // Procesar datos reales del encoder para que tengan estructura dual
-    const processedRealEncoderData = encoderData ? {
-      value: {
-        // Estructura para el visor 3D (claves numéricas) - solo velocidad
-        "00": parseFloat((encoderData.value?.speed || encoderData.value?.["00"] || 0).toFixed(2)),
-        "01": parseFloat((encoderData.value?.speed || encoderData.value?.["01"] || 0).toFixed(2)),
-        // Estructura para el modal (propiedades nombradas) - con todos los valores
-        angle: parseFloat((encoderData.value?.angle || encoderData.value?.["00"] || 0).toFixed(2)),
-        position: parseFloat((encoderData.value?.position || 0).toFixed(2)),
-        speed: parseFloat((encoderData.value?.speed || encoderData.value?.["01"] || 0).toFixed(2))
-      }
-    } : undefined;
 
-    // Procesar datos de peso - simular basado en acelerómetro si no hay datos reales
-    const processedWeightData = weightData ? {
-      value: typeof weightData.value === 'object' ? weightData.value : weightData.value
-    } : imuData ? {
-      value: Math.abs(imuData.value.accel_z) * 100 + 500 // Simular peso basado en aceleración Z
-    } : undefined;
-
-    // Procesar datos de calidad del aire - simular basado en IMU si no hay datos reales
-    const processedAirData = airData ? {
-      value: {
-        humidity: airData.value?.humidity || airData.value,
-        temperature: airData.value?.temperature
-      }
-    } : imuData ? {
-      value: {
-        humidity: Math.abs(imuData.value.accel_x) * 20 + 50, // Simular humedad
-        temperature: Math.abs(imuData.value.accel_y) * 10 + 20 // Simular temperatura
-      }
-    } : undefined;
-
-    // Procesar datos de temperatura del tanque - simular basado en IMU si no hay datos reales
-    const processedTemperatureData = temperatureData ? {
-      value: {
-        over_surface_temperature: temperatureData.value?.over_surface_temperature || temperatureData.value,
-        surface_temperature: temperatureData.value?.surface_temperature || temperatureData.value,
-        submerged_temperature: temperatureData.value?.submerged_temperature || temperatureData.value
-      },
-      tags: temperatureData.tags,
-      readableDate: temperatureData.readableDate
-    } : imuData ? {
-      value: {
-        over_surface_temperature: Math.abs(imuData.value.accel_x) * 5 + 15,
-        surface_temperature: Math.abs(imuData.value.accel_y) * 5 + 15,
-        submerged_temperature: Math.abs(imuData.value.accel_z) * 5 + 15
-      },
-      tags: imuData.tags,
-      readableDate: imuData.readableDate
-    } : undefined;
-
-    // Procesar datos de leche - simular basado en IMU si no hay datos reales
-    const processedMilkData = milkData ? {
-      value: milkData.value
-    } : imuData ? {
-      value: Math.abs(imuData.value.accel_z) * 50 + 25 // Simular cantidad de leche
-    } : undefined;
-
-    // Procesar datos de switch - simular basado en IMU si no hay datos reales
-    const processedSwitchData = switchData ? {
-      value: switchData.value
-    } : imuData ? {
-      value: Math.abs(imuData.value.accel_x) > 1.5 // Simular switch basado en aceleración
-    } : undefined;
-
-    // Procesar datos del giroscopio - usar datos reales o simular basado en IMU
-    const processedGyroscopeData = gyroscopeData ? {
-      value: {
-        gyro_x: gyroscopeData.value?.gyro_x || gyroscopeData.value?.gyro_x_value || 0,
-        gyro_y: gyroscopeData.value?.gyro_y || gyroscopeData.value?.gyro_y_value || 0,
-        gyro_z: gyroscopeData.value?.gyro_z || gyroscopeData.value?.gyro_z_value || 0,
-        accel_x: gyroscopeData.value?.accel_x || gyroscopeData.value?.accel_x_value || 0,
-        accel_y: gyroscopeData.value?.accel_y || gyroscopeData.value?.accel_y_value || 0,
-        accel_z: gyroscopeData.value?.accel_z || gyroscopeData.value?.accel_z_value || 0
-      }
-    } : imuData ? {
-      value: {
-        gyro_x: imuData.value.gyro_x,
-        gyro_y: imuData.value.gyro_y,
-        gyro_z: imuData.value.gyro_z,
-        accel_x: imuData.value.accel_x,
-        accel_y: imuData.value.accel_y,
-        accel_z: imuData.value.accel_z
-      }
-    } : undefined;
-
-    const result = {
-      encoderData: processedRealEncoderData || processedEncoderData,
-      milkQuantityData: processedMilkData,
-      switchStatus: processedSwitchData,
-      weightData: processedWeightData,
-      tankTemperaturesData: processedTemperatureData,
-      airQualityData: processedAirData,
-      gyroscopeData: processedGyroscopeData
-    };
-
-    return result;
-  };
-
-  const modelData = processRealTimeDataForModel();
-
-  // Process historical data to ensure correct structure
-  const processHistoricalDataForModel = (historicalData: any) => {
-    console.log('=== processHistoricalDataForModel Debug ===');
-    console.log('Input Historical Data:', historicalData);
-    
-    if (!historicalData || typeof historicalData !== 'object') {
-      console.log('No historical data or invalid format');
-      return {};
-    }
-
-    // If it's already in the correct format (from selectedHistoricalData)
-    if (historicalData.encoderData || historicalData.airQualityData) {
-      console.log('Data already in correct format');
-      // Asegurar que los datos del encoder tengan estructura dual
-      if (historicalData.encoderData) {
-        console.log('Processing encoder data for dual structure');
-        const encoderValue = historicalData.encoderData.value;
-        console.log('Original encoder value:', encoderValue);
-        
-        // Manejar diferentes estructuras de datos del encoder
-        let angle, speed, position;
-        
-        // Si ya tiene estructura con "00" y "01" (datos históricos del backend)
-        if (encoderValue["00"] !== undefined || encoderValue["01"] !== undefined) {
-          // Usar los valores "00" y "01" como velocidad y ángulo
-          speed = encoderValue["00"] || encoderValue["01"];
-          angle = encoderValue["01"] || encoderValue["00"];
-          position = 0; // No hay posición en datos históricos
-        }
-        // Si es un objeto con propiedades nombradas
-        else if (typeof encoderValue === 'object' && encoderValue !== null) {
-          angle = encoderValue.angle || encoderValue.angle_value;
-          speed = encoderValue.speed || encoderValue.speed_value || encoderValue.rpm;
-          position = encoderValue.position || encoderValue.position_value;
-        }
-        // Si es un valor directo (número)
-        else if (typeof encoderValue === 'number') {
-          speed = encoderValue; // Asumir que es velocidad si es un número directo
-        }
-        
-        if (encoderValue && !encoderValue["00"] && !encoderValue["01"]) {
-          // Si no tiene estructura dual, agregarla
-          historicalData.encoderData.value = {
-            // Estructura para el visor 3D (claves numéricas) - solo velocidad
-            "00": parseFloat((speed || angle || 0).toFixed(2)),
-            "01": parseFloat((speed || angle || 0).toFixed(2)),
-            // Estructura para el modal (propiedades nombradas) - con todos los valores
-            angle: parseFloat((angle || speed || 0).toFixed(2)),
-            position: parseFloat((position || 0).toFixed(2)),
-            speed: parseFloat((speed || angle || 0).toFixed(2))
-          };
-  
-        } else if (encoderValue["00"] !== undefined || encoderValue["01"] !== undefined) {
-          // Si ya tiene estructura "00"/"01", agregar propiedades nombradas para el modal
-          historicalData.encoderData.value = {
-            ...encoderValue, // Mantener estructura original
-            // Agregar propiedades nombradas para el modal
-            angle: parseFloat((encoderValue["01"] || encoderValue["00"] || 0).toFixed(2)),
-            position: 0, // No hay posición en datos históricos
-            speed: parseFloat((encoderValue["00"] || encoderValue["01"] || 0).toFixed(2))
-          };
-          console.log('Enhanced encoder data with named properties:', historicalData.encoderData.value);
-        }
-      }
-      console.log('Returning processed data:', historicalData);
-      return historicalData;
-    }
-
-    // If it's raw historical data from backend (with time keys)
-    const timeKeys = Object.keys(historicalData);
-    console.log('Time keys found:', timeKeys);
-    if (timeKeys.length > 0) {
-      const firstTime = timeKeys[0];
-      const timeData = historicalData[firstTime];
-      console.log('First time data:', timeData);
-      
-      // Process historical data to match real-time structure
-      let processedEncoderData = timeData.encoderData;
-      console.log('Raw encoder data:', processedEncoderData);
-      if (processedEncoderData && processedEncoderData.value) {
-        const encoderValue = processedEncoderData.value;
-        console.log('Encoder value from time data:', encoderValue);
-        
-        // Manejar diferentes estructuras de datos del encoder
-        let angle, speed, position;
-        
-        // Si ya tiene estructura con "00" y "01" (datos históricos del backend)
-        if (encoderValue["00"] !== undefined || encoderValue["01"] !== undefined) {
-          // Usar los valores "00" y "01" como velocidad y ángulo
-          speed = encoderValue["00"] || encoderValue["01"];
-          angle = encoderValue["01"] || encoderValue["00"];
-          position = 0; // No hay posición en datos históricos
-        }
-        // Si es un objeto con propiedades nombradas
-        else if (typeof encoderValue === 'object' && encoderValue !== null) {
-          angle = encoderValue.angle || encoderValue.angle_value;
-          speed = encoderValue.speed || encoderValue.speed_value || encoderValue.rpm;
-          position = encoderValue.position || encoderValue.position_value;
-        }
-        // Si es un valor directo (número)
-        else if (typeof encoderValue === 'number') {
-          speed = encoderValue; // Asumir que es velocidad si es un número directo
-        }
-        
-        // Si no tiene estructura dual, agregarla
-        if (!encoderValue["00"] && !encoderValue["01"]) {
-          processedEncoderData.value = {
-            // Estructura para el visor 3D (claves numéricas) - solo velocidad
-            "00": parseFloat((speed || angle || 0).toFixed(2)),
-            "01": parseFloat((speed || angle || 0).toFixed(2)),
-            // Estructura para el modal (propiedades nombradas) - con todos los valores
-            angle: parseFloat((angle || speed || 0).toFixed(2)),
-            position: parseFloat((position || 0).toFixed(2)),
-            speed: parseFloat((speed || angle || 0).toFixed(2))
-          };
-    
-        } else {
-          // Si ya tiene estructura "00"/"01", agregar propiedades nombradas para el modal
-          processedEncoderData.value = {
-            ...encoderValue, // Mantener estructura original
-            // Agregar propiedades nombradas para el modal
-            angle: parseFloat((encoderValue["01"] || encoderValue["00"] || 0).toFixed(2)),
-            position: 0, // No hay posición en datos históricos
-            speed: parseFloat((encoderValue["00"] || encoderValue["01"] || 0).toFixed(2))
-          };
-    
-        }
-      }
-      
-      const processedData = {
-        encoderData: processedEncoderData,
-        milkQuantityData: timeData.milkQuantityData ? {
-          ...timeData.milkQuantityData,
-          value: timeData.milkQuantityData.value // El valor viene directamente en datos históricos
-        } : undefined,
-        switchStatus: timeData.switchStatus ? {
-          ...timeData.switchStatus,
-          value: timeData.switchStatus.value // El valor viene directamente en datos históricos
-        } : undefined,
-        weightData: timeData.weightData ? {
-          ...timeData.weightData,
-          value: timeData.weightData.value // El valor viene directamente en datos históricos
-        } : undefined,
-        tankTemperaturesData: timeData.tankTemperaturesData ? {
-          ...timeData.tankTemperaturesData,
-          value: {
-            // Mapear campos de temperatura específicos
-            surface_temperature: timeData.tankTemperaturesData.value?.surface_temperature,
-            over_surface_temperature: timeData.tankTemperaturesData.value?.over_surface_temperature,
-            submerged_temperature: timeData.tankTemperaturesData.value?.submerged_temperature
-          }
-        } : undefined,
-        airQualityData: timeData.airQualityData ? {
-          ...timeData.airQualityData,
-          value: {
-            // Extraer humidity y temperature de los datos históricos
-            humidity: timeData.airQualityData.value?.heat_compensated_humidity || 
-                     timeData.airQualityData.value?.raw_humidity ||
-                     timeData.airQualityData.value?.humidity,
-            temperature: timeData.airQualityData.value?.heat_compensated_temperature || 
-                        timeData.airQualityData.value?.raw_temperature ||
-                        timeData.airQualityData.value?.temperature
-          }
-        } : undefined,
-        gyroscopeData: timeData.gyroscopeData ? {
-          ...timeData.gyroscopeData,
-          value: {
-            // Extraer datos del giroscopio de los datos históricos
-            gyro_x: timeData.gyroscopeData.value?.gyro_x,
-            gyro_y: timeData.gyroscopeData.value?.gyro_y,
-            gyro_z: timeData.gyroscopeData.value?.gyro_z,
-            accel_x: timeData.gyroscopeData.value?.accel_x,
-            accel_y: timeData.gyroscopeData.value?.accel_y,
-            accel_z: timeData.gyroscopeData.value?.accel_z
-          }
-        } : undefined,
-      };
-
-      return processedData;
-    }
-
-    return {};
-  };
-
-  // Unified data processing for both modes
-  const getUnifiedData = () => {
-    if (mode === "realtime") {
-      return {
-        encoderData: modelData.encoderData,
-        milkQuantityData: modelData.milkQuantityData,
-        switchStatus: modelData.switchStatus,
-        weightData: modelData.weightData,
-        tankTemperaturesData: modelData.tankTemperaturesData,
-        airQualityData: modelData.airQualityData,
-        gyroscopeData: modelData.gyroscopeData,
-      };
-    } else {
-      // Historical mode - SIMPLIFICADO
-      
-      // FORZAR extracción de datos históricos
-      if (historicalData && typeof historicalData === 'object') {
-        // Obtener todas las claves de tiempo disponibles (formato "HH:MM")
-        const timeKeys = Object.keys(historicalData).filter(key => 
-          key.includes(':') && historicalData[key]
-        );
-        
-        if (timeKeys.length > 0) {
-          // Si hay selectedTime específico, usarlo; sino usar la primera clave disponible
-          let targetTime = selectedTime;
-          
-          if (!targetTime && selectedDate) {
-            targetTime = selectedDate.toLocaleTimeString('en-US', {
-              hour12: false,
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-          }
-          
-          // Buscar la clave más cercana o usar la primera disponible
-          let selectedTimeKey = timeKeys[0]; // Default: primera disponible
-          
-          if (targetTime) {
-            const foundKey = timeKeys.find(key => key === targetTime);
-            if (foundKey) {
-              selectedTimeKey = foundKey;
-            } else {
-              // Buscar el más cercano
-              const [targetHours, targetMinutes] = targetTime.split(':').map(Number);
-              const targetTotalMinutes = targetHours * 60 + targetMinutes;
-              
-              selectedTimeKey = timeKeys.reduce((closest, current) => {
-                const [currentHours, currentMinutes] = current.split(':').map(Number);
-                const currentTotalMinutes = currentHours * 60 + currentMinutes;
-                
-                const [closestHours, closestMinutes] = closest.split(':').map(Number);
-                const closestTotalMinutes = closestHours * 60 + closestMinutes;
-                
-                const currentDiff = Math.abs(currentTotalMinutes - targetTotalMinutes);
-                const closestDiff = Math.abs(closestTotalMinutes - targetTotalMinutes);
-                
-                return currentDiff < closestDiff ? current : closest;
-              });
-            }
-          }
-          
-          // Extraer y procesar datos del tiempo seleccionado
-          const specificTimeData = historicalData[selectedTimeKey];
-          if (specificTimeData) {
-            return processHistoricalDataForModel({ [selectedTimeKey]: specificTimeData });
-          }
-        }
-      }
-      
-      // Fallback final
-      return processHistoricalDataForModel(selectedHistoricalData || historicalData);
-    }
-  };
-
-  // FORZAR recálculo SIEMPRE que cambie cualquier dependencia
+  // Datos unificados - comportamiento separado por modo
   const unifiedData = useMemo(() => {
     if (mode === "realtime") {
-      return {
-        encoderData: modelData.encoderData,
-        milkQuantityData: modelData.milkQuantityData,
-        switchStatus: modelData.switchStatus,
-        weightData: modelData.weightData,
-        tankTemperaturesData: modelData.tankTemperaturesData,
-        airQualityData: modelData.airQualityData,
-        gyroscopeData: modelData.gyroscopeData,
-      };
-    }
-    
-    // Historical mode - FORZAR extracción de datos
-    if (historicalData && typeof historicalData === 'object') {
-      const timeKeys = Object.keys(historicalData).filter(key => 
-        key.includes(':') && historicalData[key]
+      // MODO TIEMPO REAL: Solo usar datos de WebSocket
+      return processRealTimeDataForModel(realTimeData || []);
+    } else {
+      // MODO HISTÓRICO: Solo usar datos históricos de la API
+      return getUnifiedData(
+        mode,
+        [], // No pasar datos de tiempo real en modo histórico
+        historicalData,
+        selectedHistoricalData,
+        selectedTime,
+        selectedDate
       );
-      
-      if (timeKeys.length > 0) {
-        // Usar el primer tiempo disponible por defecto
-        let selectedTimeKey = timeKeys[0];
-        
-        // Si hay selectedTime, buscar el más cercano
-        if (selectedTime) {
-          const foundKey = timeKeys.find(key => key === selectedTime);
-          if (foundKey) {
-            selectedTimeKey = foundKey;
-          }
-        } else if (selectedDate) {
-          // Si no hay selectedTime pero sí selectedDate, usar hora de selectedDate
-          const targetTime = selectedDate.toLocaleTimeString('en-US', {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-          const foundKey = timeKeys.find(key => key === targetTime);
-          if (foundKey) {
-            selectedTimeKey = foundKey;
-          }
-        }
-        
-        // Extraer datos del tiempo seleccionado
-        const specificTimeData = historicalData[selectedTimeKey];
-        if (specificTimeData) {
-          return processHistoricalDataForModel({ [selectedTimeKey]: specificTimeData });
-        }
-      }
     }
-    
-    // Fallback
-    return processHistoricalDataForModel(selectedHistoricalData || historicalData);
-  }, [mode, selectedTime, selectedDate, historicalData, selectedHistoricalData, modelData, filters.selectedDate, tankStates]);
+  }, [mode, selectedTime, selectedDate, historicalData, selectedHistoricalData, realTimeData]);
 
   // Sensores disponibles
   const sensors = [
@@ -621,15 +192,12 @@ export default function PruebaDanielPage() {
 
   // Ya no necesario - se maneja en el efecto anterior
 
-  // FORZAR recarga de datos históricos cuando cambie la fecha
+  // SOLO cargar datos históricos en modo histórico
   useEffect(() => {
-    if (filters.selectedDate && mode === 'historical' && selectedFarm && session?.accessToken) {
+    if (mode === 'historical' && filters.selectedDate && selectedFarm && session?.accessToken) {
       setSelectedDate(filters.selectedDate);
       
-      // FORZAR carga de datos históricos del nuevo día
       const newDate = filters.selectedDate.toISOString().split('T')[0];
-      
-
       const params: HistoricalDataParams = {
         farm: selectedFarm,
         date: newDate,
@@ -637,7 +205,7 @@ export default function PruebaDanielPage() {
         tank: { height: 100 }
       };
       
-      // RECARGAR datos del backend para el nuevo día
+      // Solo cargar datos históricos en modo histórico
       fetchHistoricalData(params, session?.accessToken);
       fetchTankStates();
     }
@@ -870,15 +438,15 @@ export default function PruebaDanielPage() {
               <div className="flex-1 relative">
                 <TankModel
                   mode={mode}
-                  filters={{ dateRange }}
-                  selectedHistoricalData={selectedHistoricalData}
-                  historicalData={historicalData}
-                  tankStates={tankStates}
-                  tankStatesLoading={tankStatesLoading}
-                  error={error}
-                  handleTimeSelected={handleTimeSelected}
-                  fetchHistoricalData={handleLoadHistoricalData}
-                  selectedTime={selectedTime}
+                  filters={mode === 'historical' ? { dateRange } : undefined}
+                  selectedHistoricalData={mode === 'historical' ? selectedHistoricalData : undefined}
+                  historicalData={mode === 'historical' ? historicalData : undefined}
+                  tankStates={mode === 'historical' ? tankStates : undefined}
+                  tankStatesLoading={mode === 'historical' ? tankStatesLoading : false}
+                  error={mode === 'historical' ? error : undefined}
+                  handleTimeSelected={mode === 'historical' ? handleTimeSelected : undefined}
+                  fetchHistoricalData={mode === 'historical' ? handleLoadHistoricalData : undefined}
+                  selectedTime={mode === 'historical' ? selectedTime : undefined}
                   encoderData={unifiedData?.encoderData}
                   milkQuantityData={unifiedData?.milkQuantityData}
                   switchStatus={unifiedData?.switchStatus}
