@@ -13,6 +13,25 @@ Aplicación web de código abierto para la gestión de vaquerías, dispositivos 
 
 Este proyecto tiene como objetivo desarrollar una aplicación web para la gestión de vaquerías, equipamiento relacionado, recogidas de leche y dispositivos IoT que permiten monitorear distintos aspectos del proceso de producción láctea. La aplicación está diseñada para diferentes roles de usuario, como administradores, veterinarios y ganaderos, cada uno con permisos y vistas personalizadas.
 
+## Galería
+
+Aquí tienes un vistazo a la interfaz de la aplicación Lactokeeper, mostrando algunas de sus principales características y vistas:
+
+<div align="center">
+    <img src=".github/imgs/login.png" alt="Inicio de Sesión y Soporte PWA" width="49%">
+    <img src=".github/imgs/main_dashboard.png" alt="Navegación Principal" width="49%">
+</div>
+<br>
+<div align="center">
+    <img src=".github/imgs/farms_list.png" alt="Gestión de Granjas" width="49%">
+    <img src=".github/imgs/farm_stats.png" alt="Estadísticas de la Granja" width="49%">
+</div>
+<br>
+<div align="center">
+    <img src=".github/imgs/realtime_data.png" alt="Monitoreo de Sensores en Tiempo Real" width="49%">
+    <img src=".github/imgs/notifications.png" alt="Centro de Notificaciones" width="49%">
+</div>
+
 ## Estructura del proyecto
 
 El repositorio contiene dos carpetas principales:
@@ -21,7 +40,9 @@ El repositorio contiene dos carpetas principales:
     - **`frontend/`**: Se incluye el código relacionado con la interfaz de usuario, utilizando tecnologías modernas de desarrollo web.
     - **`backend/`**: Código encargado de gestionar las funcionalidades del servidor, base de datos y API que conecta con el frontend.
 
-- **`others/`**: Contiene recursos adicionales necesarios para entender el proyecto. Esto incluye bocetos y prototipos de las interfaces y lógica de usuario. Así como documentación, diagramas, y cualquier material relacionado con la estructura del sistema. También incluye un poblador de datos (`populate-mongodb/`) que permite inicializar la base de datos MongoDB con datos de prueba.
+- **`others/`**: Contiene recursos adicionales necesarios para entender el proyecto.
+    - **`diagrams/`**: Documentación exhaustiva del sistema, incluyendo diagramas de secuencia (p. ej., inicio de sesión, añadir granja) y diagramas de paquetes para comprender la arquitectura.
+    - **`populate-mongodb/`**: Un script dedicado para inicializar la base de datos MongoDB con datos de prueba realistas.
 
 ## Cómo ejecutar el programa
 

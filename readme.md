@@ -13,6 +13,25 @@ Open-source web application for dairy farm management, IoT devices and more.
 
 This project aims to develop a web application for managing dairy farms, related equipment, milk collection and IoT devices that allow monitoring different aspects of the dairy production process. The application is designed for different user roles, such as administrators, veterinarians and farmers, each with customized permissions and views.
 
+## Gallery
+
+Here is a glimpse of the Lactokeeper application interface, showcasing some of its core features and views:
+
+<div align="center">
+    <img src=".github/imgs/login.png" alt="Login and Mobile PWA Support" width="49%">
+    <img src=".github/imgs/main_dashboard.png" alt="Main Dashboard Navigation" width="49%">
+</div>
+<br>
+<div align="center">
+    <img src=".github/imgs/farms_list.png" alt="Farms Management" width="49%">
+    <img src=".github/imgs/farm_stats.png" alt="Farm Statistics Overview" width="49%">
+</div>
+<br>
+<div align="center">
+    <img src=".github/imgs/realtime_data.png" alt="Real-time Sensor Monitoring" width="49%">
+    <img src=".github/imgs/notifications.png" alt="Notification Center" width="49%">
+</div>
+
 ## Project structure
 
 The repository contains two main folders:
@@ -21,7 +40,9 @@ The repository contains two main folders:
     - **`frontend/`**: Includes code related to the user interface, using modern web development technologies.
     - **`backend/`**: Code responsible for managing server functionalities, database and API that connects with the frontend.
 
-- **`others/`**: Contains additional resources necessary to understand the project. This includes sketches and prototypes of interfaces and user logic. As well as documentation, diagrams, and any material related to the system structure. It also includes a data populator (`populate-mongodb/`) that allows initializing the MongoDB database with test data.
+- **`others/`**: Contains additional resources necessary to understand the project.
+    - **`diagrams/`**: Comprehensive system documentation including sequence diagrams (e.g., login, add farm) and package diagrams to understand the system architecture.
+    - **`populate-mongodb/`**: A dedicated script to initialize the MongoDB database with realistic test data.
 
 ## How to run the program
 
